@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>YKS Koçluk — Öğrenci Paneli</title>
+<style>
+:root{
+ --bg:#f4f7fb;--card:#fff;--text:#172033;--muted:#6b7485;--primary:#173b73;
+ --primary2:#245aa5;--soft:#eaf1ff;--green:#16835b;--greenSoft:#e8f7f0;
+ --red:#c53d4b;--yellow:#b77900;--line:#e1e7f0;--shadow:0 8px 28px rgba(23,32,51,.08);
+}
+*{box-sizing:border-box} body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--text)}
+button,input,select,textarea{font:inherit} button{cursor:pointer;border:0}
+.top{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:10}
+.topin{max-width:1200px;margin:auto;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;gap:20px}
+.brand{font-weight:900;font-size:20px}.brand small{display:block;color:var(--muted);font-weight:500;font-size:11px;margin-top:2px}
+nav{display:flex;gap:6px;overflow:auto;padding:0 20px;max-width:1200px;margin:auto}
+nav button{background:transparent;color:var(--muted);padding:12px 13px;border-radius:10px;white-space:nowrap}
+nav button.active{background:var(--soft);color:var(--primary);font-weight:800}
+main{max-width:1200px;margin:24px auto;padding:0 20px}.page{display:none}.page.active{display:block}
+.hero{background:linear-gradient(135deg,#173b73,#2e67b3);color:#fff;border-radius:20px;padding:26px;box-shadow:var(--shadow)}
+.hero h1{margin:0 0 8px;font-size:28px}.hero p{margin:5px 0;color:#eaf2ff}.hero .row{margin-top:18px}
+.row{display:flex;gap:10px;flex-wrap:wrap}.btn{padding:11px 15px;border-radius:10px;background:var(--primary);color:#fff;font-weight:750}
+.btn.light{background:#fff;color:var(--primary)}.btn.ghost{background:var(--soft);color:var(--primary)}.btn.danger{background:#fff0f1;color:var(--red)}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:16px}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:var(--shadow)}
+.stat .label{color:var(--muted);font-size:13px}.stat .num{font-size:28px;font-weight:900;margin-top:8px}.stat .sub{font-size:12px;color:var(--muted);margin-top:4px}
+h2{margin:0 0 8px;font-size:21px}h3{margin:0 0 10px}.muted{color:var(--muted)}
+.progress{height:10px;background:#edf1f6;border-radius:99px;overflow:hidden}.progress>i{display:block;height:100%;background:var(--primary2);border-radius:99px}
+.kpi{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}.kpi:last-child{border-bottom:0}
+.list{display:grid;gap:10px}.item{border:1px solid var(--line);border-radius:12px;padding:13px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.badge{padding:5px 8px;border-radius:99px;background:var(--soft);color:var(--primary);font-size:11px;font-weight:800}
+.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.field label{display:block;font-size:12px;font-weight:750;margin:0 0 5px}.field input,.field select,.field textarea{width:100%;border:1px solid #ccd5e3;border-radius:10px;padding:10px;background:#fff;outline:none}.field textarea{min-height:90px;resize:vertical}
+.full{grid-column:1/-1}.actions{margin-top:14px;display:flex;gap:8px;flex-wrap:wrap}
+.empty{padding:25px;text-align:center;color:var(--muted);border:1px dashed #ccd5e3;border-radius:12px}
+.tablewrap{overflow:auto}.table{width:100%;border-collapse:collapse}.table th,.table td{text-align:left;padding:10px;border-bottom:1px solid var(--line);font-size:13px}
+.chart{height:220px;display:flex;align-items:end;gap:10px;padding:20px 10px 5px}.bar{flex:1;min-width:18px;background:#2e67b3;border-radius:7px 7px 0 0;position:relative}.bar span{position:absolute;bottom:-22px;left:50%;transform:translateX(-50%);font-size:10px;color:var(--muted)}
+.timer{font-size:64px;font-weight:900;text-align:center;letter-spacing:2px;margin:15px 0}.center{text-align:center}
+.notice{padding:12px;border-radius:12px;background:#fff8df;color:#775500;font-size:13px;margin-top:12px}
+.plan{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.plan .card{position:relative}.price{font-size:30px;font-weight:900}.check{color:var(--green);font-weight:700}
+footer{text-align:center;color:var(--muted);padding:35px 20px;font-size:12px}
+@media(max-width:850px){.grid4{grid-template-columns:1fr 1fr}.grid2,.formgrid,.plan{grid-template-columns:1fr}.topin{align-items:flex-start}.hero h1{font-size:23px}}
+@media(max-width:520px){.grid4{grid-template-columns:1fr}.grid2{grid-template-columns:1fr}main{padding:0 12px}.topin{padding:12px}.timer{font-size:48px}}
+</style>
+</head>
+<body>
+<header class="top">
+ <div class="topin"><div class="brand">🎓 YKS Koçluk<small>Kişisel çalışma ve takip paneli</small></div><div id="today" class="muted"></div></div>
+ <nav id="nav"></nav>
+</header>
+
+<main>
+<section id="dashboard" class="page active">
+ <div class="hero"><h1 id="welcome">Hoş geldin 👋</h1><p id="goalLine">Hedefini belirle, planını oluştur ve ilerlemeni takip et.</p><div class="row"><button class="btn light" onclick="show('goal')">🎯 Hedefimi Düzenle</button><button class="btn light" onclick="show('tasks')">➕ Bugünün Görevini Ekle</button></div></div>
+ <div class="grid4">
+  <div class="card stat"><div class="label">Hedef sıralama</div><div class="num" id="sRank">—</div><div class="sub">hedefin</div></div>
+  <div class="card stat"><div class="label">Son TYT</div><div class="num" id="sTYT">—</div><div class="sub">net</div></div>
+  <div class="card stat"><div class="label">Son AYT</div><div class="num" id="sAYT">—</div><div class="sub">net</div></div>
+  <div class="card stat"><div class="label">Bugünkü görevler</div><div class="num" id="sTask">0/0</div><div class="sub">tamamlanma</div></div>
+ </div>
+ <div class="grid2">
+  <div class="card"><h2>📈 Bugünkü ilerleme</h2><div class="progress"><i id="dayProg" style="width:0%"></i></div><p class="muted" id="dayText">Henüz görev eklenmedi.</p><div class="kpi"><span>Toplam deneme</span><b id="sExams">0</b></div><div class="kpi"><span>Toplam çalışma</span><b id="sStudy">0 dk</b></div></div>
+  <div class="card"><h2>🎯 Hedef</h2><div class="kpi"><span>Sınav</span><b id="gExam">—</b></div><div class="kpi"><span>Üniversite</span><b id="gUni">—</b></div><div class="kpi"><span>Bölüm</span><b id="gDept">—</b></div><div class="kpi"><span>Hedef net</span><b id="gNet">—</b></div></div>
+ </div>
+ <div class="grid2">
+  <div class="card"><h2>🔥 Hızlı başlangıç</h2><div class="list"><button class="item" onclick="show('timer')"><span>⏱️ 40 dakika odaklan</span><span class="badge">Başla</span></button><button class="item" onclick="show('exam')"><span>📝 Deneme sonucu gir</span><span class="badge">Ekle</span></button><button class="item" onclick="show('topics')"><span>📚 Konu ilerlemeni güncelle</span><span class="badge">Güncelle</span></button></div></div>
+  <div class="card"><h2>💡 Koç notu</h2><p id="coachNote" class="muted">Her gün küçük ama ölçülebilir bir ilerleme yap. Görevlerini tamamladıkça sistem istatistiklerini günceller.</p></div>
+ </div>
+</section>
+
+<section id="goal" class="page">
+ <div class="card"><h2>🎯 Hedefini oluştur</h2><p class="muted">Hedef bilgilerini kaydet. Ana sayfa ve analizler otomatik güncellenir.</p>
+ <div class="formgrid">
+  <div class="field"><label>Ad / kullanıcı adı</label><input id="fName" placeholder="Öğrenci"></div>
+  <div class="field"><label>Sınav</label><select id="fExam"><option>EA</option><option>SAY</option><option>SÖZ</option><option>TYT</option></select></div>
+  <div class="field"><label>Hedef sıralama</label><input id="fRank" type="number" min="1" placeholder="5000"></div>
+  <div class="field"><label>Hedef toplam net</label><input id="fNet" type="number" min="0" max="165" placeholder="80"></div>
+  <div class="field"><label>Üniversite</label><input id="fUni" placeholder="Ankara Üniversitesi"></div>
+  <div class="field"><label>Bölüm</label><input id="fDept" placeholder="Hukuk"></div>
+ </div><div class="actions"><button class="btn" onclick="saveGoal()">💾 Hedefi Kaydet</button></div></div>
+ <div class="card"><h3>📌 Hedef mantığı</h3><p class="muted">Hedef değiştirilebilir. Bu demo sürümünde veriler yalnızca kullandığın tarayıcıda saklanır. Gerçek kullanıcı hesapları için sunucu/veritabanı bağlantısı gerekir.</p></div>
+</section>
+
+<section id="tasks" class="page">
+ <div class="grid2">
+  <div class="card"><h2>➕ Görev ekle</h2><div class="formgrid">
+   <div class="field"><label>Ders</label><select id="tSubject"><option>Matematik</option><option>Türkçe</option><option>Edebiyat</option><option>Tarih</option><option>Coğrafya</option><option>Geometri</option><option>Diğer</option></select></div>
+   <div class="field"><label>Öncelik</label><select id="tPriority"><option>Yüksek</option><option>Orta</option><option>Düşük</option></select></div>
+   <div class="field full"><label>Görev</label><input id="tTitle" placeholder="Örn. Türev 40 soru"></div>
+   <div class="field"><label>Süre (dakika)</label><input id="tMin" type="number" min="5" value="40"></div>
+  </div><div class="actions"><button class="btn" onclick="addTask()">Görevi ekle</button><button class="btn ghost" onclick="autoPlan()">⚡ Otomatik günlük plan</button></div></div>
+  <div class="card"><h2>📅 Bugünün özeti</h2><div class="kpi"><span>Toplam görev</span><b id="taskCount">0</b></div><div class="kpi"><span>Tamamlanan</span><b id="taskDone">0</b></div><div class="kpi"><span>Planlanan süre</span><b id="taskMinutes">0 dk</b></div><div class="kpi"><span>Öncelikli görev</span><b id="highCount">0</b></div></div>
+ </div>
+ <div class="card" style="margin-top:16px"><h2>✅ Görev listesi</h2><div id="taskList" class="list"></div></div>
+</section>
+
+<section id="exam" class="page">
+ <div class="grid2">
+  <div class="card"><h2>📝 Deneme ekle</h2><div class="formgrid">
+   <div class="field"><label>Tarih</label><input id="eDate" type="date"></div>
+   <div class="field"><label>Tür</label><select id="eType"><option>TYT</option><option>AYT</option></select></div>
+   <div class="field"><label>Net</label><input id="eNet" type="number" step=".25" min="0"></div>
+   <div class="field"><label>Deneme adı</label><input id="eName" placeholder="Örn. Genel Deneme 1"></div>
+   <div class="field"><label>Doğru</label><input id="eCorrect" type="number" min="0"></div>
+   <div class="field"><label>Yanlış</label><input id="eWrong" type="number" min="0"></div>
+  </div><div class="actions"><button class="btn" onclick="addExam()">Denemeyi kaydet</button></div></div>
+  <div class="card"><h2>📊 Net trendi</h2><div id="chart" class="chart"></div><p class="muted">Son denemelerin netlerini gösterir.</p></div>
+ </div>
+ <div class="card" style="margin-top:16px"><h2>Geçmiş denemeler</h2><div id="examList"></div></div>
+</section>
+
+<section id="topics" class="page">
+ <div class="card"><h2>📚 Konu takip</h2><p class="muted">Konuların ilerlemesini yüzde olarak takip et.</p><div class="formgrid">
+  <div class="field"><label>Ders</label><select id="pSubject"><option>Matematik</option><option>Geometri</option><option>Edebiyat</option><option>Türkçe</option><option>Tarih</option><option>Coğrafya</option></select></div>
+  <div class="field"><label>Konu</label><input id="pTopic" placeholder="Örn. Türev"></div>
+  <div class="field full"><label>İlerleme: <span id="pVal">0</span>%</label><input id="pProgress" type="range" min="0" max="100" value="0" oninput="pVal.textContent=this.value"></div>
+ </div><div class="actions"><button class="btn" onclick="addTopic()">Konu ekle</button></div></div>
+ <div class="card" style="margin-top:16px"><h2>📖 Konu durumları</h2><div id="topicList" class="list"></div></div>
+</section>
+
+<section id="timer" class="page">
+ <div class="card center"><h2>⏱️ Odak çalışma</h2><p class="muted">40 dakikalık odak oturumu. Tamamlandığında çalışma sürene eklenir.</p><div class="timer" id="clock">40:00</div><div class="actions" style="justify-content:center"><button class="btn" id="startBtn" onclick="toggleTimer()">▶ Başlat</button><button class="btn ghost" onclick="resetTimer()">↺ Sıfırla</button></div><div class="notice">Tarayıcı sekmesini kapatmadan çalıştır. Gerçek ürün sürümünde günlük/haftalık çalışma geçmişi ayrıca tutulabilir.</div></div>
+ <div class="grid2"><div class="card"><h3>Bugünkü çalışma</h3><div class="stat"><div class="num" id="timerToday">0 dk</div></div></div><div class="card"><h3>Toplam çalışma</h3><div class="stat"><div class="num" id="timerTotal">0 dk</div></div></div></div>
+</section>
+
+<section id="analytics" class="page">
+ <div class="grid4"><div class="card stat"><div class="label">Toplam görev</div><div class="num" id="aTasks">0</div></div><div class="card stat"><div class="label">Görev başarı</div><div class="num" id="aRate">0%</div></div><div class="card stat"><div class="label">Deneme</div><div class="num" id="aExams">0</div></div><div class="card stat"><div class="label">Çalışma</div><div class="num" id="aStudy">0 dk</div></div></div>
+ <div class="grid2"><div class="card"><h2>📈 Performans özeti</h2><div class="kpi"><span>Son TYT</span><b id="aTYT">—</b></div><div class="kpi"><span>Son AYT</span><b id="aAYT">—</b></div><div class="kpi"><span>Hedef net</span><b id="aTarget">—</b></div></div><div class="card"><h2>🎯 Konu ortalaması</h2><div class="progress"><i id="topicAvg" style="width:0%"></i></div><p id="topicText" class="muted">0%</p></div></div>
+</section>
+
+<section id="membership" class="page">
+ <div class="card"><h2>⭐ Üyelik</h2><p class="muted">Aşağıdaki planlar ürün taslağıdır. Gerçek ödeme henüz bağlı değildir.</p></div>
+ <div class="plan">
+  <div class="card"><h3>Ücretsiz</h3><div class="price">₺0</div><p class="muted">Temel takip</p><p class="check">✓ Hedef</p><p class="check">✓ Görevler</p><p class="check">✓ Denemeler</p><button class="btn ghost">Mevcut plan</button></div>
+  <div class="card"><h3>Plus</h3><div class="price">₺79<span style="font-size:13px">/ay</span></div><p class="muted">Daha gelişmiş takip</p><p class="check">✓ Tüm ücretsiz özellikler</p><p class="check">✓ Gelişmiş analiz</p><p class="check">✓ Akıllı çalışma planı</p><button class="btn" onclick="alert('Demo: ödeme altyapısı henüz bağlanmadı.')">Plus'ı seç</button></div>
+  <div class="card"><h3>Pro</h3><div class="price">₺149<span style="font-size:13px">/ay</span></div><p class="muted">Koçluk odaklı</p><p class="check">✓ Tüm Plus özellikleri</p><p class="check">✓ Kişisel öneriler</p><p class="check">✓ Öncelikli destek</p><button class="btn" onclick="alert('Demo: ödeme altyapısı henüz bağlanmadı.')">Pro'yu seç</button></div>
+ </div>
+</section>
+
+<section id="settings" class="page">
+ <div class="card"><h2>⚙️ Ayarlar</h2><p class="muted">Bu cihazdaki demo verilerini yönet.</p><div class="actions"><button class="btn danger" onclick="clearData()">Tüm verileri sıfırla</button></div><div class="notice">Bu işlem geri alınamaz. Gerçek ticari sürümde kullanıcı hesabı ve sunucu taraflı veri güvenliği kullanılmalıdır.</div></div>
+</section>
+</main>
+<footer>YKS Koçluk • Demo V2 • Veriler bu tarayıcıda saklanır.</footer>
+
+<script>
+const KEY='yks_koc_v2';
+const defaultState={goal:{name:'Öğrenci',exam:'EA',rank:5000,net:80,uni:'Ankara Üniversitesi',dept:'Hukuk'},tasks:[],exams:[],topics:[],study:0,studyByDay:{}};
+let S=load(), timerSec=2400,timerInt=null;
+const pages=[['dashboard','Ana Sayfa'],['goal','🎯 Hedefim'],['tasks','Görevler'],['exam','Denemeler'],['topics','Konular'],['timer','Çalışma Saati'],['analytics','📊 Analiz'],['membership','Üyelik'],['settings','⚙ Ayarlar']];
+function load(){try{return {...defaultState,...JSON.parse(localStorage.getItem(KEY))}}catch(e){return structuredClone(defaultState)}}
+function save(){localStorage.setItem(KEY,JSON.stringify(S));render()}
+function show(id){document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));document.getElementById(id).classList.add('active');document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('active',x.dataset.page===id));render()}
+function initNav(){nav.innerHTML=pages.map(p=>`<button data-page="${p[0]}" onclick="show('${p[0]}')">${p[1]}</button>`).join('')}
+function fmtRank(n){return n?Number(n).toLocaleString('tr-TR'):'—'}
+function today(){return new Date().toISOString().slice(0,10)}
+function saveGoal(){S.goal={name:fName.value||'Öğrenci',exam:fExam.value,rank:+fRank.value||0,net:+fNet.value||0,uni:fUni.value||'—',dept:fDept.value||'—'};save();show('dashboard')}
+function addTask(){if(!tTitle.value.trim())return alert('Görev adını yaz.');S.tasks.push({id:Date.now(),date:today(),subject:tSubject.value,title:tTitle.value.trim(),min:+tMin.value||40,priority:tPriority.value,done:false});tTitle.value='';save()}
+function toggleTask(id){let t=S.tasks.find(x=>x.id===id);if(t){t.done=!t.done;save()}}
+function delTask(id){S.tasks=S.tasks.filter(x=>x.id!==id);save()}
+function autoPlan(){let arr=[['Matematik','AYT Matematik soru çözümü','Yüksek',50],['Edebiyat','Edebiyat konu tekrarı','Orta',40],['Türkçe','Paragraf 30 soru','Orta',30],['Tarih','Tarih kısa tekrar','Düşük',25]];arr.forEach(a=>S.tasks.push({id:Date.now()+Math.random(),date:today(),subject:a[0],title:a[1],priority:a[2],min:a[3],done:false}));save();show('tasks')}
+function addExam(){if(!eNet.value)return alert('Net gir.');S.exams.push({id:Date.now(),date:eDate.value||today(),type:eType.value,net:+eNet.value,name:eName.value||'Deneme',correct:+eCorrect.value||0,wrong:+eWrong.value||0});eNet.value='';eName.value='';save();show('exam')}
+function delExam(id){S.exams=S.exams.filter(x=>x.id!==id);save()}
+function addTopic(){if(!pTopic.value.trim())return alert('Konu adı gir.');S.topics.push({id:Date.now(),subject:pSubject.value,title:pTopic.value.trim(),progress:+pProgress.value});pTopic.value='';pProgress.value=0;pVal.textContent='0';save()}
+function updateTopic(id,v){let t=S.topics.find(x=>x.id===id);if(t){t.progress=+v;save()}}
+function delTopic(id){S.topics=S.topics.filter(x=>x.id!==id);save()}
+function toggleTimer(){if(timerInt){clearInterval(timerInt);timerInt=null;startBtn.textContent='▶ Devam';return}startBtn.textContent='⏸ Duraklat';timerInt=setInterval(()=>{timerSec--;updateClock();if(timerSec<=0){clearInterval(timerInt);timerInt=null;S.study+=40;S.studyByDay[today()]=(S.studyByDay[today()]||0)+40;save();alert('40 dakikalık çalışma tamamlandı! 🎉');resetTimer()}},1000)}
+function resetTimer(){if(timerInt)clearInterval(timerInt);timerInt=null;timerSec=2400;startBtn.textContent='▶ Başlat';updateClock()}
+function updateClock(){clock.textContent=String(Math.floor(timerSec/60)).padStart(2,'0')+':'+String(timerSec%60).padStart(2,'0')}
+function clearData(){if(confirm('Tüm demo verileri silinsin mi?')){localStorage.removeItem(KEY);S=load();render()}}
+function render(){
+ const g=S.goal||defaultState.goal; const todays=S.tasks.filter(t=>t.date===today()),done=todays.filter(t=>t.done).length,rate=todays.length?Math.round(done/todays.length*100):0;
+ welcome.textContent=`Hoş geldin, ${g.name||'Öğrenci'} 👋`;goalLine.textContent=g.rank?`${g.uni} ${g.dept} • ${g.exam} • hedef sıralama ${fmtRank(g.rank)}`:'Hedefini belirle ve ilerlemeni takip et.';
+ sRank.textContent=fmtRank(g.rank);sTask.textContent=`${done}/${todays.length}`;sExams.textContent=S.exams.length;sStudy.textContent=S.study+' dk';
+ dayProg.style.width=rate+'%';dayText.textContent=todays.length?`Bugünkü görevlerin %${rate} tamamlandı.`:'Henüz bugün için görev eklenmedi.';
+ gExam.textContent=g.exam||'—';gUni.textContent=g.uni||'—';gDept.textContent=g.dept||'—';gNet.textContent=g.net||'—';
+ let ty=S.exams.filter(e=>e.type==='TYT').slice().sort((a,b)=>b.date.localeCompare(a.date))[0],ay=S.exams.filter(e=>e.type==='AYT').slice().sort((a,b)=>b.date.localeCompare(a.date))[0];sTYT.textContent=ty?ty.net:'—';sAYT.textContent=ay?ay.net:'—';
+ fName.value=g.name||'';fExam.value=g.exam||'EA';fRank.value=g.rank||'';fNet.value=g.net||'';fUni.value=g.uni||'';fDept.value=g.dept||'';
+ taskCount.textContent=todays.length;taskDone.textContent=done;taskMinutes.textContent=todays.reduce((a,x)=>a+x.min,0)+' dk';highCount.textContent=todays.filter(x=>x.priority==='Yüksek').length;
+ taskList.innerHTML=todays.length?todays.map(t=>`<div class="item"><div><b>${t.done?'☑':'☐'} ${esc(t.title)}</b><div class="muted">${t.subject} • ${t.min} dk • ${t.priority}</div></div><div class="row"><button class="btn ghost" onclick="toggleTask(${t.id})">${t.done?'Geri al':'Tamamla'}</button><button class="btn danger" onclick="delTask(${t.id})">Sil</button></div></div>`).join(''):`<div class="empty">Bugün için görev yok. Yukarıdan görev ekleyebilirsin.</div>`;
+ renderExams();renderTopics();renderAnalytics();timerToday.textContent=(S.studyByDay[today()]||0)+' dk';timerTotal.textContent=S.study+' dk';updateClock();
+ document.getElementById('today').textContent=new Date().toLocaleDateString('tr-TR',{weekday:'short',day:'numeric',month:'long'});
+}
+function renderExams(){let a=S.exams.slice().sort((x,y)=>y.date.localeCompare(x.date));examList.innerHTML=a.length?`<div class="tablewrap"><table class="table"><tr><th>Tarih</th><th>Tür</th><th>Deneme</th><th>Net</th><th></th></tr>${a.map(e=>`<tr><td>${e.date}</td><td><span class="badge">${e.type}</span></td><td>${esc(e.name)}</td><td><b>${e.net}</b></td><td><button class="btn danger" onclick="delExam(${e.id})">Sil</button></td></tr>`).join('')}</table></div>`:`<div class="empty">Henüz deneme eklenmedi.</div>`;let vals=a.slice(0,8).reverse();chart.innerHTML=vals.length?vals.map(e=>`<div class="bar" style="height:${Math.max(8,Math.min(100,e.net))}%"><span>${e.net}</span></div>`).join(''):`<div class="empty" style="width:100%">Grafik için deneme ekle.</div>`}
+function renderTopics(){topicList.innerHTML=S.topics.length?S.topics.map(t=>`<div class="item"><div style="flex:1"><b>${esc(t.title)}</b><div class="muted">${t.subject}</div><div class="progress" style="margin-top:8px"><i style="width:${t.progress}%"></i></div></div><div style="min-width:90px"><b>${t.progress}%</b><button class="btn danger" style="margin-top:6px" onclick="delTopic(${t.id})">Sil</button></div></div>`).join(''):`<div class="empty">Henüz konu eklenmedi.</div>`}
+function renderAnalytics(){let total=S.tasks.length,allDone=S.tasks.filter(x=>x.done).length,avg=S.topics.length?Math.round(S.topics.reduce((a,x)=>a+x.progress,0)/S.topics.length):0;aTasks.textContent=total;aRate.textContent=(total?Math.round(allDone/total*100):0)+'%';aExams.textContent=S.exams.length;aStudy.textContent=S.study+' dk';let ty=S.exams.filter(e=>e.type==='TYT').sort((a,b)=>b.date.localeCompare(a.date))[0],ay=S.exams.filter(e=>e.type==='AYT').sort((a,b)=>b.date.localeCompare(a.date))[0];aTYT.textContent=ty?ty.net:'—';aAYT.textContent=ay?ay.net:'—';aTarget.textContent=S.goal.net||'—';topicAvg.style.width=avg+'%';topicText.textContent=avg+'% konu ilerleme ortalaması'}
+function esc(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
+initNav();eDate.value=today();render();
+</script>
+</body>
+</html>
