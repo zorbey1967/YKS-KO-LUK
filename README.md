@@ -1,2 +1,2 @@
-# YKS-KO-LUK
+# YKS-KOÇLUK
 YKS Öğrencileri için kişisel çalışma ve takip plartformu
