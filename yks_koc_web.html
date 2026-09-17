@@ -1,0 +1,84 @@
+<!doctype html><html lang="tr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>YKS Koç — Dashboard</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,-apple-system,sans-serif;background:#f5f7fb;color:#172033}
+header{background:#fff;border-bottom:1px solid #e5e8ef;padding:17px 28px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:3}
+.logo{font-size:23px;font-weight:850}.pill{background:#eef2ff;padding:7px 11px;border-radius:99px;font-size:12px}
+main{max-width:1150px;margin:25px auto;padding:0 20px}h1{margin:0;font-size:29px}.sub{color:#687386;margin:5px 0 23px}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.card{background:#fff;border:1px solid #e4e8f0;border-radius:16px;padding:18px;margin-top:15px;box-shadow:0 4px 15px #17203308}
+.label{color:#687386;font-size:13px}.num{font-size:28px;font-weight:850;margin-top:7px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:14px}.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+input,select{width:100%;padding:10px;border:1px solid #d8dde7;border-radius:9px;margin-top:5px;background:#fff}
+button{border:0;background:#172033;color:white;padding:10px 14px;border-radius:9px;margin-top:9px;cursor:pointer}
+button.secondary{background:#edf0f5;color:#172033}.task{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid #edf0f5}.task:last-child{border-bottom:0}
+.task input{width:auto;margin:0}.done{text-decoration:line-through;color:#87909f}.progress{height:9px;background:#edf0f5;border-radius:10px;overflow:hidden;margin:7px 0 13px}.bar{height:100%;background:#172033}
+table{width:100%;border-collapse:collapse}td,th{text-align:left;padding:10px;border-bottom:1px solid #edf0f5;font-size:14px}
+.muted{color:#687386;font-size:13px}.hero{padding:23px}.goal{font-size:18px;font-weight:750}
+@media(max-width:750px){.grid{grid-template-columns:1fr 1fr}.row,.row3{grid-template-columns:1fr}.card{padding:15px}main{padding:0 12px}}
+</style></head><body>
+<header><div class="logo">YKS Koç</div><div class="pill">Veritabanı + Dashboard v0.3</div></header>
+<main>
+<div class="card hero"><h1 id="hello">Hoş geldin 👋</h1><div class="sub">Bugünkü hedeflerini tamamla ve ilerlemeni takip et.</div>
+<div class="goal" id="goal">Hedef yükleniyor...</div></div>
+<div class="grid">
+<div class="card"><div class="label">Hedef sıralama</div><div class="num" id="target">-</div></div>
+<div class="card"><div class="label">Son TYT</div><div class="num" id="tyt">-</div></div>
+<div class="card"><div class="label">Son AYT</div><div class="num" id="ayt">-</div></div>
+<div class="card"><div class="label">Bugünkü görev</div><div class="num" id="completion">-</div></div>
+</div>
+<div class="row">
+<div class="card"><h3>🎯 Hedef oluştur</h3><div class="row3">
+<label>Sınav<select id="gexam"><option>EA</option><option>SAY</option><option>SÖZ</option></select></label>
+<label>Hedef net<input id="gnet" type="number" placeholder="80"></label>
+<label>Sıralama<input id="grank" type="number" placeholder="5000"></label></div>
+<label>Üniversite<input id="guniv" placeholder="Ankara Üniversitesi"></label>
+<label>Bölüm<input id="gdept" placeholder="Hukuk"></label>
+<button onclick="saveGoal()">Hedefi kaydet</button></div>
+<div class="card"><h3>📝 Deneme ekle</h3><div class="row">
+<label>TYT net<input id="tytIn" type="number" step=".25"></label>
+<label>AYT net<input id="aytIn" type="number" step=".25"></label></div>
+<button onclick="saveExam()">Denemeyi kaydet</button></div>
+</div>
+<div class="card"><h3>✅ Bugünün görevleri</h3><div id="tasks"></div>
+<div class="row"><input id="newSubject" placeholder="Ders"><input id="newTitle" placeholder="Görev"></div>
+<button onclick="addTask()">Görev ekle</button></div>
+<div class="card"><h3>📚 Konu ilerlemesi</h3><div id="topics"></div></div>
+<div class="card"><h3>💳 YKS Koç üyeliği</h3><div id="subscription" class="muted">Üyelik yükleniyor...</div><div id="plans" class="row"></div><p class="muted">Prototip kart bilgisi toplamaz; gerçek tahsilat için ödeme sağlayıcısı hesabı ve API anahtarları gerekir.</p></div><div class="card"><h3>📊 Denemeler</h3><table><thead><tr><th>Tarih</th><th>TYT</th><th>AYT</th></tr></thead><tbody id="exams"></tbody></table></div>
+</main>
+<script>
+async function api(url,opt={}){const r=await fetch(url,opt);return r.json()}
+async function load(){
+ const d=await api('/api/dashboard');
+ document.getElementById('hello').textContent='Hoş geldin, '+d.user.name+' 👋';
+ document.getElementById('target').textContent=Number(d.user.target_rank||0).toLocaleString('tr-TR');
+ document.getElementById('completion').textContent=d.completion.done+'/'+d.completion.total;
+ if(d.exams[0]){document.getElementById('tyt').textContent=d.exams[0].tyt_net;document.getElementById('ayt').textContent=d.exams[0].ayt_net}
+ if(d.goal)document.getElementById('goal').textContent=`${d.goal.target_university||''} ${d.goal.target_department||''} · ${d.goal.exam} · hedef sıralama ${Number(d.goal.target_rank||0).toLocaleString('tr-TR')}`;
+ document.getElementById('exams').innerHTML=d.exams.map(x=>`<tr><td>${x.exam_date}</td><td>${x.tyt_net}</td><td>${x.ayt_net}</td></tr>`).join('');
+ document.getElementById('topics').innerHTML=d.topics.map(x=>`<div><b>${x.exam} ${x.subject}</b> — ${x.topic} <span class="muted">${x.progress}%</span><div class="progress"><div class="bar" style="width:${x.progress}%"></div></div></div>`).join('');
+ document.getElementById('tasks').innerHTML=d.tasks.map(x=>`<div class="task ${x.completed?'done':''}"><input type="checkbox" ${x.completed?'checked':''} onchange="toggleTask(${x.id})"><span><b>${x.subject}</b> · ${x.title} <span class="muted">(${x.duration_minutes} dk)</span></span></div>`).join('')||'<span class="muted">Bugün görev yok.</span>';
+}
+async function saveGoal(){await api('/api/goal',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({exam:gexam.value,target_net:gnet.value,target_rank:grank.value,university:guniv.value,department:gdept.value})});load()}
+async function saveExam(){await api('/api/exam',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tyt_net:tytIn.value,ayt_net:aytIn.value})});load()}
+async function toggleTask(id){await api('/api/task/'+id+'/toggle',{method:'POST'});load()}
+async function addTask(){if(!newSubject.value||!newTitle.value)return;await api('/api/task',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({subject:newSubject.value,title:newTitle.value,minutes:40})});newSubject.value='';newTitle.value='';load()}
+load();
+
+async function loadPayments(){
+ const s=await api('/api/subscription');
+ document.getElementById('subscription').innerHTML=`Mevcut plan: <b>${s.name}</b> · ${s.price_monthly} TL/ay`;
+ const ps=await api('/api/plans');
+ document.getElementById('plans').innerHTML=ps.map(p=>`<div class="card" style="margin-top:8px"><h4>${p.name}</h4><div class="num">${p.price_monthly} TL<span class="muted">/ay</span></div><p class="muted">${JSON.parse(p.features_json).join(' · ')}</p><button onclick="startCheckout('${p.code}')">${p.code==='free'?'Ücretsiz seç':'Paketi seç'}</button></div>`).join('');
+}
+async function startCheckout(plan){
+ const r=await api('/api/checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({plan})});
+ if(plan!=='free' && r.ok){
+   if(confirm('Demo sürümünde gerçek para çekilmez. Test üyeliğini şimdi aktif edelim mi?')){
+     await api('/api/subscription/demo-activate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({plan})});
+     loadPayments();
+   }
+ } else alert(r.message||'Plan seçildi');
+}
+loadPayments();
+</script></body></html>
