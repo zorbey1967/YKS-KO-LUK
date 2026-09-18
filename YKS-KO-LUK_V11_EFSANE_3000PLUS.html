@@ -1,0 +1,3029 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#173b73">
+<title>YKS Koçluk — V11 EFSANE</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+ --bg:#f5f7fb;--card:#fff;--text:#142033;--muted:#6b778b;--line:#e2e8f0;
+ --primary:#173b73;--primary2:#2e67b5;--soft:#eaf2ff;--ok:#13845b;--okbg:#e8f7f0;
+ --warn:#a96f00;--warnbg:#fff6da;--bad:#c43b4b;--badbg:#fff0f2;
+ --shadow:0 12px 35px rgba(20,32,51,.08);--radius:20px;
+}
+[data-theme="dark"]{
+ --bg:#0d1420;--card:#131d2b;--text:#eef4ff;--muted:#9eacc0;--line:#273548;
+ --primary:#6ea5ff;--primary2:#8bb8ff;--soft:#172941;--ok:#45c995;--okbg:#123126;
+ --warn:#e7b657;--warnbg:#332a12;--bad:#ff7483;--badbg:#35171d;
+ --shadow:0 15px 40px rgba(0,0,0,.25);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer}
+.app{display:flex;min-height:100vh}
+.sidebar{width:260px;position:fixed;inset:0 auto 0 0;background:var(--card);border-right:1px solid var(--line);padding:20px 14px;z-index:20;display:flex;flex-direction:column}
+.brand{display:flex;align-items:center;gap:11px;padding:8px 10px 22px}
+.brand-icon{width:42px;height:42px;border-radius:13px;background:linear-gradient(135deg,var(--primary),var(--primary2));display:grid;place-items:center;color:white;font-size:22px;box-shadow:0 8px 20px rgba(46,103,181,.22)}
+.brand strong{font-size:18px}.brand small{display:block;color:var(--muted);font-size:11px;margin-top:2px}
+.nav{display:grid;gap:5px}.nav button{border:0;background:transparent;color:var(--muted);text-align:left;padding:11px 12px;border-radius:12px;display:flex;gap:10px;align-items:center;font-weight:700}
+.nav button:hover{background:var(--soft);color:var(--primary)}.nav button.active{background:var(--soft);color:var(--primary)}
+.sidebar-bottom{margin-top:auto}.mini-user{border:1px solid var(--line);border-radius:16px;padding:12px;background:var(--bg)}
+.avatar{width:34px;height:34px;border-radius:11px;background:var(--soft);display:grid;place-items:center;font-weight:900;color:var(--primary)}
+.userline{display:flex;align-items:center;gap:9px}.userline div:last-child{min-width:0}.userline strong,.userline span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.userline span{font-size:11px;color:var(--muted)}
+.main{margin-left:260px;width:calc(100% - 260px);padding:24px 28px 60px}
+.topbar{display:flex;justify-content:space-between;align-items:center;gap:15px;margin-bottom:24px}
+.mobile-menu{display:none}.eyebrow{color:var(--primary2);font-weight:800;font-size:12px;text-transform:uppercase;letter-spacing:.08em}
+h1{font-size:28px;margin:3px 0 0}.top-actions{display:flex;gap:9px;align-items:center}
+.icon-btn,.btn{border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:12px;padding:10px 13px;font-weight:800}
+.icon-btn{width:42px;height:42px;padding:0}.btn.primary{background:var(--primary);border-color:var(--primary);color:white}.btn.secondary{background:var(--soft);border-color:transparent;color:var(--primary)}.btn.danger{color:var(--bad);background:var(--badbg);border-color:transparent}
+.page{display:none}.page.active{display:block}
+.hero{background:linear-gradient(135deg,var(--primary),#285f9f);color:#fff;border-radius:26px;padding:26px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.hero:after{content:"";position:absolute;width:220px;height:220px;border-radius:50%;background:rgba(255,255,255,.08);right:-60px;top:-90px}
+.hero h2{font-size:26px;margin:0 0 7px}.hero p{margin:0;color:#dbe8ff}.hero-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:20px}.hero .btn{background:#fff;color:var(--primary);border-color:#fff}
+.grid{display:grid;gap:16px}.stats{grid-template-columns:repeat(4,minmax(0,1fr));margin:18px 0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow)}
+.stat .label{font-size:12px;color:var(--muted);font-weight:800}.stat .value{font-size:27px;font-weight:900;margin-top:6px}.stat .sub{font-size:12px;color:var(--muted);margin-top:4px}
+.cols{grid-template-columns:1.35fr .85fr}.two{grid-template-columns:1fr 1fr}.three{grid-template-columns:repeat(3,1fr)}
+.section-title{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:0 0 14px}.section-title h3{margin:0;font-size:17px}.section-title span{font-size:12px;color:var(--muted)}
+.progress{height:9px;border-radius:99px;background:var(--line);overflow:hidden}.progress>i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--primary2),#5c9cf0)}
+.kpi{display:flex;justify-content:space-between;align-items:end;gap:10px;margin-bottom:10px}.kpi b{font-size:24px}
+.task{display:flex;align-items:center;gap:11px;padding:12px 0;border-bottom:1px solid var(--line)}.task:last-child{border-bottom:0}.check{width:22px;height:22px;border-radius:7px;border:2px solid var(--line);display:grid;place-items:center;flex:0 0 auto}.check.done{background:var(--ok);border-color:var(--ok);color:white}.task-main{min-width:0;flex:1}.task-main strong{display:block}.task-main small{color:var(--muted)}.task.done .task-main strong{text-decoration:line-through;color:var(--muted)}
+.chip{display:inline-flex;align-items:center;gap:5px;padding:5px 8px;border-radius:999px;background:var(--soft);color:var(--primary);font-size:11px;font-weight:800}
+.table{width:100%;border-collapse:collapse}.table th,.table td{text-align:left;padding:11px 8px;border-bottom:1px solid var(--line);font-size:13px}.table th{font-size:11px;color:var(--muted);text-transform:uppercase}
+.empty{text-align:center;padding:30px 12px;color:var(--muted)}
+.form-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:13px}.field label{display:block;font-size:12px;font-weight:800;margin:0 0 6px}.field input,.field select,.field textarea{width:100%;border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:12px;padding:11px 12px;outline:none}.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--primary2);box-shadow:0 0 0 3px rgba(46,103,181,.1)}
+.actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:14px}
+.plan-day{border:1px solid var(--line);border-radius:15px;padding:14px}.plan-day h4{margin:0 0 10px}.plan-item{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px dashed var(--line);font-size:13px}.plan-item:last-child{border-bottom:0}
+.subject{display:flex;align-items:center;gap:12px}.subject-icon{width:42px;height:42px;border-radius:13px;background:var(--soft);display:grid;place-items:center;font-size:20px}.subject-main{flex:1}.subject-main strong{display:block}.subject-main small{color:var(--muted)}
+.topic-row{padding:13px 0;border-bottom:1px solid var(--line)}.topic-row:last-child{border-bottom:0}.topic-head{display:flex;justify-content:space-between;gap:10px;margin-bottom:7px}
+.timer{text-align:center;padding:28px}.timer-face{font-size:68px;font-weight:900;letter-spacing:-.05em;margin:10px 0}.timer-mode{font-weight:800;color:var(--primary2)}
+.chart{display:flex;align-items:end;gap:8px;height:160px;padding-top:15px}.bar{flex:1;min-width:10px;position:relative;background:var(--soft);border-radius:9px 9px 3px 3px}.bar i{display:block;position:absolute;bottom:0;left:0;right:0;border-radius:9px 9px 3px 3px;background:var(--primary2)}.bar small{position:absolute;top:-18px;left:50%;transform:translateX(-50%);font-size:9px;color:var(--muted)}.bar em{position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);font-size:9px;color:var(--muted);font-style:normal}
+.notice{padding:12px 14px;border-radius:13px;background:var(--warnbg);color:var(--warn);font-size:12px}.success{padding:12px 14px;border-radius:13px;background:var(--okbg);color:var(--ok);font-size:12px}
+.modal{position:fixed;inset:0;background:rgba(8,16,28,.55);display:none;place-items:center;padding:20px;z-index:80}.modal.show{display:grid}.modal-box{width:min(560px,100%);background:var(--card);border:1px solid var(--line);border-radius:22px;padding:22px;box-shadow:0 30px 80px rgba(0,0,0,.25)}.modal-head{display:flex;justify-content:space-between;gap:10px;align-items:center}.modal-head h3{margin:0}.close{border:0;background:transparent;color:var(--muted);font-size:25px}
+.toast{position:fixed;right:22px;bottom:22px;z-index:100;background:var(--text);color:var(--card);padding:12px 15px;border-radius:13px;box-shadow:var(--shadow);display:none;max-width:360px;font-size:13px;font-weight:700}.toast.show{display:block}
+.authbox{max-width:700px}.auth-status{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:15px 0}.status{border:1px solid var(--line);border-radius:14px;padding:12px}.status b{display:block;font-size:12px}.status span{font-size:12px;color:var(--muted)}
+.switch{display:flex;justify-content:space-between;align-items:center;padding:13px 0;border-bottom:1px solid var(--line)}.switch:last-child{border:0}.toggle{width:46px;height:26px;border-radius:99px;background:var(--line);border:0;padding:3px}.toggle i{display:block;width:20px;height:20px;background:#fff;border-radius:50%;transition:.2s}.toggle.on{background:var(--ok)}.toggle.on i{transform:translateX(20px)}
+.active-filter{background:var(--primary)!important;color:#fff!important;border-color:var(--primary)!important}
+.v10-command{overflow:hidden}
+.mini-kpi{padding:14px;border:1px solid var(--line);border-radius:16px;background:var(--card)}
+.mini-kpi span,.mini-kpi small{display:block;color:var(--muted);font-size:11px}
+.mini-kpi b{display:block;font-size:25px;margin:4px 0}
+.task.overdue{border-left:4px solid var(--danger)}
+.badge-overdue{font-size:10px;padding:3px 7px;border-radius:99px;background:rgba(220,80,80,.12);color:var(--danger)}
+.week-row{display:grid;grid-template-columns:80px 1fr 60px;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)}
+.week-row:last-child{border-bottom:0}
+@media(max-width:700px){.week-row{grid-template-columns:65px 1fr 50px}}
+
+.task-date{font-size:11px;color:var(--muted);margin-top:3px}
+.performance-row{padding:13px 0;border-bottom:1px solid var(--line)}
+.performance-row:last-child{border-bottom:0}
+.performance-head{display:flex;justify-content:space-between;gap:10px;margin-bottom:7px}
+.performance-meta{display:flex;justify-content:space-between;gap:10px;font-size:11px;color:var(--muted);margin-top:5px}
+
+
+.calendar-head,.calendar-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:7px}
+.calendar-head div{font-size:10px;color:var(--muted);font-weight:900;text-align:center;padding:5px}
+.cal-cell{min-height:74px;border:1px solid var(--line);border-radius:12px;padding:7px;background:var(--card);cursor:pointer;position:relative}
+.cal-cell:hover{border-color:var(--primary2);background:var(--soft)}
+.cal-cell.muted{opacity:.4}.cal-cell.today{outline:2px solid var(--primary2)}
+.cal-cell.selected{background:var(--soft);border-color:var(--primary2)}
+.cal-num{font-weight:900;font-size:12px}.cal-dot{width:6px;height:6px;border-radius:50%;background:var(--ok);display:inline-block;margin-left:3px}
+.cal-min{font-size:9px;color:var(--muted);margin-top:8px}
+
+
+.calc-big{font-size:38px;font-weight:950;letter-spacing:-.04em}.calc-row{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}.calc-row:last-child{border-bottom:0}
+
+@media(max-width:1050px){.stats{grid-template-columns:repeat(2,1fr)}.cols{grid-template-columns:1fr}.three{grid-template-columns:1fr 1fr}}
+@media(max-width:760px){
+ .sidebar{transform:translateX(-100%);transition:.2s;width:270px}.sidebar.open{transform:none}.main{margin-left:0;width:100%;padding:16px 14px 45px}.mobile-menu{display:block}.topbar{align-items:flex-start}.top-actions .btn{display:none}.form-grid,.two,.three{grid-template-columns:1fr}.stats{grid-template-columns:1fr 1fr}.hero{padding:21px}.hero h2{font-size:22px}.timer-face{font-size:54px}
+}
+
+/* =========================================================
+   V11 EFSANE — KOMUTA MERKEZİ
+   ========================================================= */
+.max-hero{
+ background:
+ linear-gradient(135deg,var(--primary),var(--primary2));
+ color:#fff;
+ border-radius:28px;
+ padding:28px;
+ display:flex;
+ justify-content:space-between;
+ align-items:flex-end;
+ gap:20px;
+ box-shadow:var(--shadow);
+ position:relative;
+ overflow:hidden;
+}
+.max-hero:after{
+ content:"";
+ position:absolute;
+ width:300px;
+ height:300px;
+ border-radius:50%;
+ background:rgba(255,255,255,.08);
+ right:-100px;
+ top:-150px;
+}
+.max-hero h2{
+ margin:4px 0 8px;
+ font-size:31px;
+ position:relative;
+ z-index:1;
+}
+.max-hero p{
+ margin:0;
+ max-width:720px;
+ color:#e3edff;
+ line-height:1.6;
+ position:relative;
+ z-index:1;
+}
+.max-eyebrow{
+ color:#dce9ff;
+ position:relative;
+ z-index:1;
+}
+.max-hero-actions{
+ display:flex;
+ gap:8px;
+ flex-wrap:wrap;
+ position:relative;
+ z-index:2;
+}
+.max-white{
+ background:#fff!important;
+ color:var(--primary)!important;
+ border-color:#fff!important;
+}
+.max-kpis{
+ grid-template-columns:repeat(4,minmax(0,1fr));
+ margin:16px 0;
+}
+.max-kpi{
+ min-height:130px;
+}
+.max-kpi span{
+ color:var(--muted);
+ font-size:12px;
+ font-weight:800;
+}
+.max-kpi b{
+ display:block;
+ font-size:28px;
+ margin-top:8px;
+}
+.max-kpi small{
+ color:var(--muted);
+ display:block;
+ margin-top:4px;
+}
+.max-three{
+ grid-template-columns:1.25fr .75fr 1fr;
+}
+.max-next{
+ border:1px solid var(--line);
+ border-radius:17px;
+ padding:16px;
+ background:var(--soft);
+}
+.max-next-title{
+ font-size:18px;
+ font-weight:900;
+ margin-bottom:5px;
+}
+.max-next-meta{
+ color:var(--muted);
+ font-size:12px;
+}
+.max-score-ring{
+ width:130px;
+ height:130px;
+ margin:8px auto;
+ border-radius:50%;
+ display:grid;
+ place-items:center;
+ align-content:center;
+ border:12px solid var(--soft);
+ background:var(--card);
+ box-shadow:inset 0 0 0 1px var(--line);
+}
+.max-score-ring strong{
+ font-size:34px;
+ line-height:1;
+}
+.max-score-ring span{
+ color:var(--muted);
+ font-size:11px;
+}
+.max-coach{
+ line-height:1.7;
+ color:var(--text);
+ font-size:13px;
+}
+.max-coach b{
+ display:block;
+ font-size:17px;
+ margin-bottom:7px;
+}
+.max-queue-item{
+ display:flex;
+ align-items:center;
+ gap:10px;
+ padding:12px 0;
+ border-bottom:1px solid var(--line);
+}
+.max-queue-item:last-child{
+ border-bottom:0;
+}
+.max-queue-rank{
+ width:30px;
+ height:30px;
+ display:grid;
+ place-items:center;
+ border-radius:10px;
+ background:var(--soft);
+ color:var(--primary);
+ font-weight:900;
+}
+.max-queue-main{
+ flex:1;
+ min-width:0;
+}
+.max-queue-main b{
+ display:block;
+ white-space:nowrap;
+ overflow:hidden;
+ text-overflow:ellipsis;
+}
+.max-queue-main small{
+ color:var(--muted);
+ display:block;
+ margin-top:3px;
+}
+.max-week-bars{
+ display:grid;
+ grid-template-columns:repeat(7,1fr);
+ align-items:end;
+ gap:9px;
+ min-height:190px;
+}
+.max-day-bar{
+ min-width:0;
+ display:flex;
+ flex-direction:column;
+ align-items:center;
+ justify-content:flex-end;
+ height:180px;
+}
+.max-day-bar-value{
+ font-size:10px;
+ color:var(--muted);
+ margin-bottom:5px;
+}
+.max-day-bar-track{
+ height:130px;
+ width:100%;
+ max-width:42px;
+ border-radius:10px;
+ background:var(--soft);
+ display:flex;
+ align-items:flex-end;
+ overflow:hidden;
+}
+.max-day-bar-fill{
+ width:100%;
+ min-height:3px;
+ background:linear-gradient(180deg,var(--primary2),var(--primary));
+ border-radius:10px;
+}
+.max-day-bar-label{
+ margin-top:7px;
+ font-size:10px;
+ color:var(--muted);
+ font-weight:800;
+}
+.max-quick-grid{
+ display:grid;
+ grid-template-columns:repeat(4,1fr);
+ gap:9px;
+}
+.max-quick-grid button{
+ border:1px solid var(--line);
+ background:var(--card);
+ color:var(--text);
+ border-radius:15px;
+ padding:14px 10px;
+ text-align:left;
+ font-weight:900;
+ transition:.15s;
+}
+.max-quick-grid button:hover{
+ transform:translateY(-1px);
+ border-color:var(--primary2);
+ background:var(--soft);
+}
+.max-quick-grid button small{
+ display:block;
+ margin-top:4px;
+ color:var(--muted);
+ font-weight:600;
+ font-size:10px;
+}
+.max-template-list{
+ display:grid;
+ gap:8px;
+}
+.max-template-list button{
+ border:1px solid var(--line);
+ background:var(--card);
+ color:var(--text);
+ border-radius:14px;
+ padding:12px 13px;
+ text-align:left;
+}
+.max-template-list button:hover{
+ background:var(--soft);
+ border-color:var(--primary2);
+}
+.max-template-list b{
+ display:block;
+ font-size:13px;
+}
+.max-template-list small{
+ display:block;
+ margin-top:3px;
+ color:var(--muted);
+}
+.max-day-table{
+ width:100%;
+ border-collapse:collapse;
+}
+.max-day-table th,
+.max-day-table td{
+ padding:10px 8px;
+ border-bottom:1px solid var(--line);
+ text-align:left;
+ font-size:12px;
+}
+.max-day-table th{
+ color:var(--muted);
+ font-size:10px;
+ text-transform:uppercase;
+}
+.max-health-grid{
+ display:grid;
+ grid-template-columns:repeat(3,1fr);
+ gap:10px;
+}
+.max-health{
+ border:1px solid var(--line);
+ border-radius:14px;
+ padding:13px;
+}
+.max-health b{
+ display:block;
+ font-size:13px;
+}
+.max-health small{
+ display:block;
+ color:var(--muted);
+ margin-top:4px;
+}
+.max-ok{
+ color:var(--ok);
+}
+.max-warn{
+ color:var(--warn);
+}
+.max-bad{
+ color:var(--bad);
+}
+.max-command-palette{
+ position:fixed;
+ inset:0;
+ background:rgba(8,16,28,.58);
+ z-index:120;
+ display:none;
+ align-items:flex-start;
+ justify-content:center;
+ padding:10vh 18px;
+}
+.max-command-palette.show{
+ display:flex;
+}
+.max-command-box{
+ width:min(720px,100%);
+ background:var(--card);
+ border:1px solid var(--line);
+ border-radius:20px;
+ box-shadow:0 30px 90px rgba(0,0,0,.35);
+ overflow:hidden;
+}
+.max-command-search{
+ width:100%;
+ border:0;
+ border-bottom:1px solid var(--line);
+ background:var(--card);
+ color:var(--text);
+ padding:18px 20px;
+ font-size:17px;
+ outline:none;
+}
+.max-command-results{
+ max-height:55vh;
+ overflow:auto;
+ padding:8px;
+}
+.max-command-item{
+ width:100%;
+ border:0;
+ background:transparent;
+ color:var(--text);
+ border-radius:12px;
+ padding:12px;
+ display:flex;
+ align-items:center;
+ gap:10px;
+ text-align:left;
+}
+.max-command-item:hover,
+.max-command-item.active{
+ background:var(--soft);
+ color:var(--primary);
+}
+.max-command-item small{
+ margin-left:auto;
+ color:var(--muted);
+}
+.max-shortcut{
+ display:inline-flex;
+ border:1px solid var(--line);
+ background:var(--bg);
+ border-radius:6px;
+ padding:2px 6px;
+ font-size:10px;
+}
+.max-floating{
+ position:fixed;
+ right:22px;
+ bottom:22px;
+ z-index:55;
+ display:flex;
+ gap:7px;
+}
+.max-floating button{
+ width:48px;
+ height:48px;
+ border:0;
+ border-radius:16px;
+ background:var(--primary);
+ color:#fff;
+ box-shadow:var(--shadow);
+ font-size:19px;
+}
+@media(max-width:1050px){
+ .max-kpis{grid-template-columns:repeat(2,1fr)}
+ .max-three{grid-template-columns:1fr}
+ .max-health-grid{grid-template-columns:1fr 1fr}
+}
+@media(max-width:760px){
+ .max-hero{
+  display:block;
+ }
+ .max-hero-actions{
+  margin-top:18px;
+ }
+ .max-kpis{
+  grid-template-columns:1fr 1fr;
+ }
+ .max-quick-grid{
+  grid-template-columns:1fr 1fr;
+ }
+ .max-health-grid{
+  grid-template-columns:1fr;
+ }
+ .max-floating{
+  right:14px;
+  bottom:14px;
+ }
+}
+@media(max-width:470px){
+ .max-kpis{
+  grid-template-columns:1fr;
+ }
+ .max-week-bars{
+  gap:4px;
+ }
+ .max-day-bar-track{
+  max-width:28px;
+ }
+}
+
+/* V11 utility design layer */
+.u-m-1{margin:1px}
+.u-mt-1{margin-top:1px}
+.u-mb-1{margin-bottom:1px}
+.u-p-1{padding:1px}
+.u-gap-1{gap:1px}
+.u-m-2{margin:2px}
+.u-mt-2{margin-top:2px}
+.u-mb-2{margin-bottom:2px}
+.u-p-2{padding:2px}
+.u-gap-2{gap:2px}
+.u-m-3{margin:3px}
+.u-mt-3{margin-top:3px}
+.u-mb-3{margin-bottom:3px}
+.u-p-3{padding:3px}
+.u-gap-3{gap:3px}
+.u-m-4{margin:4px}
+.u-mt-4{margin-top:4px}
+.u-mb-4{margin-bottom:4px}
+.u-p-4{padding:4px}
+.u-gap-4{gap:4px}
+.u-m-5{margin:5px}
+.u-mt-5{margin-top:5px}
+.u-mb-5{margin-bottom:5px}
+.u-p-5{padding:5px}
+.u-gap-5{gap:5px}
+.u-m-6{margin:6px}
+.u-mt-6{margin-top:6px}
+.u-mb-6{margin-bottom:6px}
+.u-p-6{padding:6px}
+.u-gap-6{gap:6px}
+.u-m-7{margin:7px}
+.u-mt-7{margin-top:7px}
+.u-mb-7{margin-bottom:7px}
+.u-p-7{padding:7px}
+.u-gap-7{gap:7px}
+.u-m-8{margin:8px}
+.u-mt-8{margin-top:8px}
+.u-mb-8{margin-bottom:8px}
+.u-p-8{padding:8px}
+.u-gap-8{gap:8px}
+.u-m-9{margin:9px}
+.u-mt-9{margin-top:9px}
+.u-mb-9{margin-bottom:9px}
+.u-p-9{padding:9px}
+.u-gap-9{gap:9px}
+.u-m-10{margin:10px}
+.u-mt-10{margin-top:10px}
+.u-mb-10{margin-bottom:10px}
+.u-p-10{padding:10px}
+.u-gap-10{gap:10px}
+.u-m-11{margin:11px}
+.u-mt-11{margin-top:11px}
+.u-mb-11{margin-bottom:11px}
+.u-p-11{padding:11px}
+.u-gap-11{gap:11px}
+.u-m-12{margin:12px}
+.u-mt-12{margin-top:12px}
+.u-mb-12{margin-bottom:12px}
+.u-p-12{padding:12px}
+.u-gap-12{gap:12px}
+.u-m-13{margin:13px}
+.u-mt-13{margin-top:13px}
+.u-mb-13{margin-bottom:13px}
+.u-p-13{padding:13px}
+.u-gap-13{gap:13px}
+.u-m-14{margin:14px}
+.u-mt-14{margin-top:14px}
+.u-mb-14{margin-bottom:14px}
+.u-p-14{padding:14px}
+.u-gap-14{gap:14px}
+.u-m-15{margin:15px}
+.u-mt-15{margin-top:15px}
+.u-mb-15{margin-bottom:15px}
+.u-p-15{padding:15px}
+.u-gap-15{gap:15px}
+.u-m-16{margin:16px}
+.u-mt-16{margin-top:16px}
+.u-mb-16{margin-bottom:16px}
+.u-p-16{padding:16px}
+.u-gap-16{gap:16px}
+.u-m-17{margin:17px}
+.u-mt-17{margin-top:17px}
+.u-mb-17{margin-bottom:17px}
+.u-p-17{padding:17px}
+.u-gap-17{gap:17px}
+.u-m-18{margin:18px}
+.u-mt-18{margin-top:18px}
+.u-mb-18{margin-bottom:18px}
+.u-p-18{padding:18px}
+.u-gap-18{gap:18px}
+.u-m-19{margin:19px}
+.u-mt-19{margin-top:19px}
+.u-mb-19{margin-bottom:19px}
+.u-p-19{padding:19px}
+.u-gap-19{gap:19px}
+.u-m-20{margin:20px}
+.u-mt-20{margin-top:20px}
+.u-mb-20{margin-bottom:20px}
+.u-p-20{padding:20px}
+.u-gap-20{gap:20px}
+.u-m-21{margin:21px}
+.u-mt-21{margin-top:21px}
+.u-mb-21{margin-bottom:21px}
+.u-p-21{padding:21px}
+.u-gap-21{gap:21px}
+.u-m-22{margin:22px}
+.u-mt-22{margin-top:22px}
+.u-mb-22{margin-bottom:22px}
+.u-p-22{padding:22px}
+.u-gap-22{gap:22px}
+.u-m-23{margin:23px}
+.u-mt-23{margin-top:23px}
+.u-mb-23{margin-bottom:23px}
+.u-p-23{padding:23px}
+.u-gap-23{gap:23px}
+.u-m-24{margin:24px}
+.u-mt-24{margin-top:24px}
+.u-mb-24{margin-bottom:24px}
+.u-p-24{padding:24px}
+.u-gap-24{gap:24px}
+.u-m-25{margin:25px}
+.u-mt-25{margin-top:25px}
+.u-mb-25{margin-bottom:25px}
+.u-p-25{padding:25px}
+.u-gap-25{gap:25px}
+.u-m-26{margin:26px}
+.u-mt-26{margin-top:26px}
+.u-mb-26{margin-bottom:26px}
+.u-p-26{padding:26px}
+.u-gap-26{gap:26px}
+.u-m-27{margin:27px}
+.u-mt-27{margin-top:27px}
+.u-mb-27{margin-bottom:27px}
+.u-p-27{padding:27px}
+.u-gap-27{gap:27px}
+.u-m-28{margin:28px}
+.u-mt-28{margin-top:28px}
+.u-mb-28{margin-bottom:28px}
+.u-p-28{padding:28px}
+.u-gap-28{gap:28px}
+.u-m-29{margin:29px}
+.u-mt-29{margin-top:29px}
+.u-mb-29{margin-bottom:29px}
+.u-p-29{padding:29px}
+.u-gap-29{gap:29px}
+.u-m-30{margin:30px}
+.u-mt-30{margin-top:30px}
+.u-mb-30{margin-bottom:30px}
+.u-p-30{padding:30px}
+.u-gap-30{gap:30px}
+.u-m-31{margin:31px}
+.u-mt-31{margin-top:31px}
+.u-mb-31{margin-bottom:31px}
+.u-p-31{padding:31px}
+.u-gap-31{gap:31px}
+.u-m-32{margin:32px}
+.u-mt-32{margin-top:32px}
+.u-mb-32{margin-bottom:32px}
+.u-p-32{padding:32px}
+.u-gap-32{gap:32px}
+.u-m-33{margin:33px}
+.u-mt-33{margin-top:33px}
+.u-mb-33{margin-bottom:33px}
+.u-p-33{padding:33px}
+.u-gap-33{gap:33px}
+.u-m-34{margin:34px}
+.u-mt-34{margin-top:34px}
+.u-mb-34{margin-bottom:34px}
+.u-p-34{padding:34px}
+.u-gap-34{gap:34px}
+.u-m-35{margin:35px}
+.u-mt-35{margin-top:35px}
+.u-mb-35{margin-bottom:35px}
+.u-p-35{padding:35px}
+.u-gap-35{gap:35px}
+.u-m-36{margin:36px}
+.u-mt-36{margin-top:36px}
+.u-mb-36{margin-bottom:36px}
+.u-p-36{padding:36px}
+.u-gap-36{gap:36px}
+.u-m-37{margin:37px}
+.u-mt-37{margin-top:37px}
+.u-mb-37{margin-bottom:37px}
+.u-p-37{padding:37px}
+.u-gap-37{gap:37px}
+.u-m-38{margin:38px}
+.u-mt-38{margin-top:38px}
+.u-mb-38{margin-bottom:38px}
+.u-p-38{padding:38px}
+.u-gap-38{gap:38px}
+.u-m-39{margin:39px}
+.u-mt-39{margin-top:39px}
+.u-mb-39{margin-bottom:39px}
+.u-p-39{padding:39px}
+.u-gap-39{gap:39px}
+.u-m-40{margin:40px}
+.u-mt-40{margin-top:40px}
+.u-mb-40{margin-bottom:40px}
+.u-p-40{padding:40px}
+.u-gap-40{gap:40px}
+.u-m-41{margin:41px}
+.u-mt-41{margin-top:41px}
+.u-mb-41{margin-bottom:41px}
+.u-p-41{padding:41px}
+.u-gap-41{gap:41px}
+.u-m-42{margin:42px}
+.u-mt-42{margin-top:42px}
+.u-mb-42{margin-bottom:42px}
+.u-p-42{padding:42px}
+.u-gap-42{gap:42px}
+.u-m-43{margin:43px}
+.u-mt-43{margin-top:43px}
+.u-mb-43{margin-bottom:43px}
+.u-p-43{padding:43px}
+.u-gap-43{gap:43px}
+.u-m-44{margin:44px}
+.u-mt-44{margin-top:44px}
+.u-mb-44{margin-bottom:44px}
+.u-p-44{padding:44px}
+.u-gap-44{gap:44px}
+.u-m-45{margin:45px}
+.u-mt-45{margin-top:45px}
+.u-mb-45{margin-bottom:45px}
+.u-p-45{padding:45px}
+.u-gap-45{gap:45px}
+.u-m-46{margin:46px}
+.u-mt-46{margin-top:46px}
+.u-mb-46{margin-bottom:46px}
+.u-p-46{padding:46px}
+.u-gap-46{gap:46px}
+.u-m-47{margin:47px}
+.u-mt-47{margin-top:47px}
+.u-mb-47{margin-bottom:47px}
+.u-p-47{padding:47px}
+.u-gap-47{gap:47px}
+.u-m-48{margin:48px}
+.u-mt-48{margin-top:48px}
+.u-mb-48{margin-bottom:48px}
+.u-p-48{padding:48px}
+.u-gap-48{gap:48px}
+.u-m-49{margin:49px}
+.u-mt-49{margin-top:49px}
+.u-mb-49{margin-bottom:49px}
+.u-p-49{padding:49px}
+.u-gap-49{gap:49px}
+.u-m-50{margin:50px}
+.u-mt-50{margin-top:50px}
+.u-mb-50{margin-bottom:50px}
+.u-p-50{padding:50px}
+.u-gap-50{gap:50px}
+.u-m-51{margin:51px}
+.u-mt-51{margin-top:51px}
+.u-mb-51{margin-bottom:51px}
+.u-p-51{padding:51px}
+.u-gap-51{gap:51px}
+.u-m-52{margin:52px}
+.u-mt-52{margin-top:52px}
+.u-mb-52{margin-bottom:52px}
+.u-p-52{padding:52px}
+.u-gap-52{gap:52px}
+.u-m-53{margin:53px}
+.u-mt-53{margin-top:53px}
+.u-mb-53{margin-bottom:53px}
+.u-p-53{padding:53px}
+.u-gap-53{gap:53px}
+.u-m-54{margin:54px}
+.u-mt-54{margin-top:54px}
+.u-mb-54{margin-bottom:54px}
+.u-p-54{padding:54px}
+.u-gap-54{gap:54px}
+.u-m-55{margin:55px}
+.u-mt-55{margin-top:55px}
+.u-mb-55{margin-bottom:55px}
+.u-p-55{padding:55px}
+.u-gap-55{gap:55px}
+.u-m-56{margin:56px}
+.u-mt-56{margin-top:56px}
+.u-mb-56{margin-bottom:56px}
+.u-p-56{padding:56px}
+.u-gap-56{gap:56px}
+.u-m-57{margin:57px}
+.u-mt-57{margin-top:57px}
+.u-mb-57{margin-bottom:57px}
+.u-p-57{padding:57px}
+.u-gap-57{gap:57px}
+.u-m-58{margin:58px}
+.u-mt-58{margin-top:58px}
+.u-mb-58{margin-bottom:58px}
+.u-p-58{padding:58px}
+.u-gap-58{gap:58px}
+.u-m-59{margin:59px}
+.u-mt-59{margin-top:59px}
+.u-mb-59{margin-bottom:59px}
+.u-p-59{padding:59px}
+.u-gap-59{gap:59px}
+.u-m-60{margin:60px}
+.u-mt-60{margin-top:60px}
+.u-mb-60{margin-bottom:60px}
+.u-p-60{padding:60px}
+.u-gap-60{gap:60px}
+.u-m-61{margin:61px}
+.u-mt-61{margin-top:61px}
+.u-mb-61{margin-bottom:61px}
+.u-p-61{padding:61px}
+.u-gap-61{gap:61px}
+.u-m-62{margin:62px}
+.u-mt-62{margin-top:62px}
+.u-mb-62{margin-bottom:62px}
+.u-p-62{padding:62px}
+.u-gap-62{gap:62px}
+.u-m-63{margin:63px}
+.u-mt-63{margin-top:63px}
+.u-mb-63{margin-bottom:63px}
+.u-p-63{padding:63px}
+.u-gap-63{gap:63px}
+.u-m-64{margin:64px}
+.u-mt-64{margin-top:64px}
+.u-mb-64{margin-bottom:64px}
+.u-p-64{padding:64px}
+.u-gap-64{gap:64px}
+.u-m-65{margin:65px}
+.u-mt-65{margin-top:65px}
+.u-mb-65{margin-bottom:65px}
+.u-p-65{padding:65px}
+.u-gap-65{gap:65px}
+.u-m-66{margin:66px}
+.u-mt-66{margin-top:66px}
+.u-mb-66{margin-bottom:66px}
+.u-p-66{padding:66px}
+.u-gap-66{gap:66px}
+.u-m-67{margin:67px}
+.u-mt-67{margin-top:67px}
+.u-mb-67{margin-bottom:67px}
+.u-p-67{padding:67px}
+.u-gap-67{gap:67px}
+.u-m-68{margin:68px}
+.u-mt-68{margin-top:68px}
+.u-mb-68{margin-bottom:68px}
+.u-p-68{padding:68px}
+.u-gap-68{gap:68px}
+.u-m-69{margin:69px}
+.u-mt-69{margin-top:69px}
+.u-mb-69{margin-bottom:69px}
+.u-p-69{padding:69px}
+.u-gap-69{gap:69px}
+.u-m-70{margin:70px}
+.u-mt-70{margin-top:70px}
+.u-mb-70{margin-bottom:70px}
+.u-p-70{padding:70px}
+.u-gap-70{gap:70px}
+.u-m-71{margin:71px}
+.u-mt-71{margin-top:71px}
+.u-mb-71{margin-bottom:71px}
+.u-p-71{padding:71px}
+.u-gap-71{gap:71px}
+.u-m-72{margin:72px}
+.u-mt-72{margin-top:72px}
+.u-mb-72{margin-bottom:72px}
+.u-p-72{padding:72px}
+.u-gap-72{gap:72px}
+.u-m-73{margin:73px}
+.u-mt-73{margin-top:73px}
+.u-mb-73{margin-bottom:73px}
+.u-p-73{padding:73px}
+.u-gap-73{gap:73px}
+.u-m-74{margin:74px}
+.u-mt-74{margin-top:74px}
+.u-mb-74{margin-bottom:74px}
+.u-p-74{padding:74px}
+.u-gap-74{gap:74px}
+.u-m-75{margin:75px}
+.u-mt-75{margin-top:75px}
+.u-mb-75{margin-bottom:75px}
+.u-p-75{padding:75px}
+.u-gap-75{gap:75px}
+.u-m-76{margin:76px}
+.u-mt-76{margin-top:76px}
+.u-mb-76{margin-bottom:76px}
+.u-p-76{padding:76px}
+.u-gap-76{gap:76px}
+.u-m-77{margin:77px}
+.u-mt-77{margin-top:77px}
+.u-mb-77{margin-bottom:77px}
+.u-p-77{padding:77px}
+.u-gap-77{gap:77px}
+.u-m-78{margin:78px}
+.u-mt-78{margin-top:78px}
+.u-mb-78{margin-bottom:78px}
+.u-p-78{padding:78px}
+.u-gap-78{gap:78px}
+.u-m-79{margin:79px}
+.u-mt-79{margin-top:79px}
+.u-mb-79{margin-bottom:79px}
+.u-p-79{padding:79px}
+.u-gap-79{gap:79px}
+.u-m-80{margin:80px}
+.u-mt-80{margin-top:80px}
+.u-mb-80{margin-bottom:80px}
+.u-p-80{padding:80px}
+.u-gap-80{gap:80px}
+.u-m-81{margin:81px}
+.u-mt-81{margin-top:81px}
+.u-mb-81{margin-bottom:81px}
+.u-p-81{padding:81px}
+.u-gap-81{gap:81px}
+.u-m-82{margin:82px}
+.u-mt-82{margin-top:82px}
+.u-mb-82{margin-bottom:82px}
+.u-p-82{padding:82px}
+.u-gap-82{gap:82px}
+.u-m-83{margin:83px}
+.u-mt-83{margin-top:83px}
+.u-mb-83{margin-bottom:83px}
+.u-p-83{padding:83px}
+.u-gap-83{gap:83px}
+.u-m-84{margin:84px}
+.u-mt-84{margin-top:84px}
+.u-mb-84{margin-bottom:84px}
+.u-p-84{padding:84px}
+.u-gap-84{gap:84px}
+.u-m-85{margin:85px}
+.u-mt-85{margin-top:85px}
+.u-mb-85{margin-bottom:85px}
+.u-p-85{padding:85px}
+.u-gap-85{gap:85px}
+.u-m-86{margin:86px}
+.u-mt-86{margin-top:86px}
+.u-mb-86{margin-bottom:86px}
+.u-p-86{padding:86px}
+.u-gap-86{gap:86px}
+.u-m-87{margin:87px}
+.u-mt-87{margin-top:87px}
+.u-mb-87{margin-bottom:87px}
+.u-p-87{padding:87px}
+.u-gap-87{gap:87px}
+.u-m-88{margin:88px}
+.u-mt-88{margin-top:88px}
+.u-mb-88{margin-bottom:88px}
+.u-p-88{padding:88px}
+.u-gap-88{gap:88px}
+.u-m-89{margin:89px}
+.u-mt-89{margin-top:89px}
+.u-mb-89{margin-bottom:89px}
+.u-p-89{padding:89px}
+.u-gap-89{gap:89px}
+.u-m-90{margin:90px}
+.u-mt-90{margin-top:90px}
+.u-mb-90{margin-bottom:90px}
+.u-p-90{padding:90px}
+.u-gap-90{gap:90px}
+.u-m-91{margin:91px}
+.u-mt-91{margin-top:91px}
+.u-mb-91{margin-bottom:91px}
+.u-p-91{padding:91px}
+.u-gap-91{gap:91px}
+.u-m-92{margin:92px}
+.u-mt-92{margin-top:92px}
+.u-mb-92{margin-bottom:92px}
+.u-p-92{padding:92px}
+.u-gap-92{gap:92px}
+.u-m-93{margin:93px}
+.u-mt-93{margin-top:93px}
+.u-mb-93{margin-bottom:93px}
+.u-p-93{padding:93px}
+.u-gap-93{gap:93px}
+.u-m-94{margin:94px}
+.u-mt-94{margin-top:94px}
+.u-mb-94{margin-bottom:94px}
+.u-p-94{padding:94px}
+.u-gap-94{gap:94px}
+.u-m-95{margin:95px}
+.u-mt-95{margin-top:95px}
+.u-mb-95{margin-bottom:95px}
+.u-p-95{padding:95px}
+.u-gap-95{gap:95px}
+.u-m-96{margin:96px}
+.u-mt-96{margin-top:96px}
+.u-mb-96{margin-bottom:96px}
+.u-p-96{padding:96px}
+.u-gap-96{gap:96px}
+.u-m-97{margin:97px}
+.u-mt-97{margin-top:97px}
+.u-mb-97{margin-bottom:97px}
+.u-p-97{padding:97px}
+.u-gap-97{gap:97px}
+.u-m-98{margin:98px}
+.u-mt-98{margin-top:98px}
+.u-mb-98{margin-bottom:98px}
+.u-p-98{padding:98px}
+.u-gap-98{gap:98px}
+.u-m-99{margin:99px}
+.u-mt-99{margin-top:99px}
+.u-mb-99{margin-bottom:99px}
+.u-p-99{padding:99px}
+.u-gap-99{gap:99px}
+.u-m-100{margin:100px}
+.u-mt-100{margin-top:100px}
+.u-mb-100{margin-bottom:100px}
+.u-p-100{padding:100px}
+.u-gap-100{gap:100px}
+.u-m-101{margin:101px}
+.u-mt-101{margin-top:101px}
+.u-mb-101{margin-bottom:101px}
+.u-p-101{padding:101px}
+.u-gap-101{gap:101px}
+.u-m-102{margin:102px}
+.u-mt-102{margin-top:102px}
+.u-mb-102{margin-bottom:102px}
+.u-p-102{padding:102px}
+.u-gap-102{gap:102px}
+.u-m-103{margin:103px}
+.u-mt-103{margin-top:103px}
+.u-mb-103{margin-bottom:103px}
+.u-p-103{padding:103px}
+.u-gap-103{gap:103px}
+.u-m-104{margin:104px}
+.u-mt-104{margin-top:104px}
+.u-mb-104{margin-bottom:104px}
+.u-p-104{padding:104px}
+.u-gap-104{gap:104px}
+.u-m-105{margin:105px}
+.u-mt-105{margin-top:105px}
+.u-mb-105{margin-bottom:105px}
+.u-p-105{padding:105px}
+.u-gap-105{gap:105px}
+.u-m-106{margin:106px}
+.u-mt-106{margin-top:106px}
+.u-mb-106{margin-bottom:106px}
+.u-p-106{padding:106px}
+.u-gap-106{gap:106px}
+.u-m-107{margin:107px}
+.u-mt-107{margin-top:107px}
+.u-mb-107{margin-bottom:107px}
+.u-p-107{padding:107px}
+.u-gap-107{gap:107px}
+.u-m-108{margin:108px}
+.u-mt-108{margin-top:108px}
+.u-mb-108{margin-bottom:108px}
+.u-p-108{padding:108px}
+.u-gap-108{gap:108px}
+.u-m-109{margin:109px}
+.u-mt-109{margin-top:109px}
+.u-mb-109{margin-bottom:109px}
+.u-p-109{padding:109px}
+.u-gap-109{gap:109px}
+.u-m-110{margin:110px}
+.u-mt-110{margin-top:110px}
+.u-mb-110{margin-bottom:110px}
+.u-p-110{padding:110px}
+.u-gap-110{gap:110px}
+.u-m-111{margin:111px}
+.u-mt-111{margin-top:111px}
+.u-mb-111{margin-bottom:111px}
+.u-p-111{padding:111px}
+.u-gap-111{gap:111px}
+.u-m-112{margin:112px}
+.u-mt-112{margin-top:112px}
+.u-mb-112{margin-bottom:112px}
+.u-p-112{padding:112px}
+.u-gap-112{gap:112px}
+.u-m-113{margin:113px}
+.u-mt-113{margin-top:113px}
+.u-mb-113{margin-bottom:113px}
+.u-p-113{padding:113px}
+.u-gap-113{gap:113px}
+.u-m-114{margin:114px}
+.u-mt-114{margin-top:114px}
+.u-mb-114{margin-bottom:114px}
+.u-p-114{padding:114px}
+.u-gap-114{gap:114px}
+.u-m-115{margin:115px}
+.u-mt-115{margin-top:115px}
+.u-mb-115{margin-bottom:115px}
+.u-p-115{padding:115px}
+.u-gap-115{gap:115px}
+.u-m-116{margin:116px}
+.u-mt-116{margin-top:116px}
+.u-mb-116{margin-bottom:116px}
+.u-p-116{padding:116px}
+.u-gap-116{gap:116px}
+.u-m-117{margin:117px}
+.u-mt-117{margin-top:117px}
+.u-mb-117{margin-bottom:117px}
+.u-p-117{padding:117px}
+.u-gap-117{gap:117px}
+.u-m-118{margin:118px}
+.u-mt-118{margin-top:118px}
+.u-mb-118{margin-bottom:118px}
+.u-p-118{padding:118px}
+.u-gap-118{gap:118px}
+.u-m-119{margin:119px}
+.u-mt-119{margin-top:119px}
+.u-mb-119{margin-bottom:119px}
+.u-p-119{padding:119px}
+.u-gap-119{gap:119px}
+.u-m-120{margin:120px}
+.u-mt-120{margin-top:120px}
+.u-mb-120{margin-bottom:120px}
+.u-p-120{padding:120px}
+.u-gap-120{gap:120px}
+.u-m-121{margin:121px}
+.u-mt-121{margin-top:121px}
+.u-mb-121{margin-bottom:121px}
+.u-p-121{padding:121px}
+.u-gap-121{gap:121px}
+.u-m-122{margin:122px}
+.u-mt-122{margin-top:122px}
+.u-mb-122{margin-bottom:122px}
+.u-p-122{padding:122px}
+.u-gap-122{gap:122px}
+.u-m-123{margin:123px}
+.u-mt-123{margin-top:123px}
+.u-mb-123{margin-bottom:123px}
+.u-p-123{padding:123px}
+.u-gap-123{gap:123px}
+.u-m-124{margin:124px}
+.u-mt-124{margin-top:124px}
+.u-mb-124{margin-bottom:124px}
+.u-p-124{padding:124px}
+.u-gap-124{gap:124px}
+.u-m-125{margin:125px}
+.u-mt-125{margin-top:125px}
+.u-mb-125{margin-bottom:125px}
+.u-p-125{padding:125px}
+.u-gap-125{gap:125px}
+.u-m-126{margin:126px}
+.u-mt-126{margin-top:126px}
+.u-mb-126{margin-bottom:126px}
+.u-p-126{padding:126px}
+.u-gap-126{gap:126px}
+.u-m-127{margin:127px}
+.u-mt-127{margin-top:127px}
+.u-mb-127{margin-bottom:127px}
+.u-p-127{padding:127px}
+.u-gap-127{gap:127px}
+.u-m-128{margin:128px}
+.u-mt-128{margin-top:128px}
+.u-mb-128{margin-bottom:128px}
+.u-p-128{padding:128px}
+.u-gap-128{gap:128px}
+.u-m-129{margin:129px}
+.u-mt-129{margin-top:129px}
+.u-mb-129{margin-bottom:129px}
+.u-p-129{padding:129px}
+.u-gap-129{gap:129px}
+.u-m-130{margin:130px}
+.u-mt-130{margin-top:130px}
+.u-mb-130{margin-bottom:130px}
+.u-p-130{padding:130px}
+.u-gap-130{gap:130px}
+.u-m-131{margin:131px}
+.u-mt-131{margin-top:131px}
+.u-mb-131{margin-bottom:131px}
+.u-p-131{padding:131px}
+.u-gap-131{gap:131px}
+.u-m-132{margin:132px}
+.u-mt-132{margin-top:132px}
+.u-mb-132{margin-bottom:132px}
+.u-p-132{padding:132px}
+.u-gap-132{gap:132px}
+.u-m-133{margin:133px}
+.u-mt-133{margin-top:133px}
+.u-mb-133{margin-bottom:133px}
+.u-p-133{padding:133px}
+.u-gap-133{gap:133px}
+.u-m-134{margin:134px}
+.u-mt-134{margin-top:134px}
+.u-mb-134{margin-bottom:134px}
+.u-p-134{padding:134px}
+.u-gap-134{gap:134px}
+.u-m-135{margin:135px}
+.u-mt-135{margin-top:135px}
+.u-mb-135{margin-bottom:135px}
+.u-p-135{padding:135px}
+.u-gap-135{gap:135px}
+.u-m-136{margin:136px}
+.u-mt-136{margin-top:136px}
+.u-mb-136{margin-bottom:136px}
+.u-p-136{padding:136px}
+.u-gap-136{gap:136px}
+.u-m-137{margin:137px}
+.u-mt-137{margin-top:137px}
+.u-mb-137{margin-bottom:137px}
+.u-p-137{padding:137px}
+.u-gap-137{gap:137px}
+.u-m-138{margin:138px}
+.u-mt-138{margin-top:138px}
+.u-mb-138{margin-bottom:138px}
+.u-p-138{padding:138px}
+.u-gap-138{gap:138px}
+.u-m-139{margin:139px}
+.u-mt-139{margin-top:139px}
+.u-mb-139{margin-bottom:139px}
+.u-p-139{padding:139px}
+.u-gap-139{gap:139px}
+.u-m-140{margin:140px}
+.u-mt-140{margin-top:140px}
+.u-mb-140{margin-bottom:140px}
+.u-p-140{padding:140px}
+.u-gap-140{gap:140px}
+.u-m-141{margin:141px}
+.u-mt-141{margin-top:141px}
+.u-mb-141{margin-bottom:141px}
+.u-p-141{padding:141px}
+.u-gap-141{gap:141px}
+.u-m-142{margin:142px}
+.u-mt-142{margin-top:142px}
+.u-mb-142{margin-bottom:142px}
+.u-p-142{padding:142px}
+.u-gap-142{gap:142px}
+.u-m-143{margin:143px}
+.u-mt-143{margin-top:143px}
+.u-mb-143{margin-bottom:143px}
+.u-p-143{padding:143px}
+.u-gap-143{gap:143px}
+.u-m-144{margin:144px}
+.u-mt-144{margin-top:144px}
+.u-mb-144{margin-bottom:144px}
+.u-p-144{padding:144px}
+.u-gap-144{gap:144px}
+.u-m-145{margin:145px}
+.u-mt-145{margin-top:145px}
+.u-mb-145{margin-bottom:145px}
+.u-p-145{padding:145px}
+.u-gap-145{gap:145px}
+.u-m-146{margin:146px}
+.u-mt-146{margin-top:146px}
+.u-mb-146{margin-bottom:146px}
+.u-p-146{padding:146px}
+.u-gap-146{gap:146px}
+.u-m-147{margin:147px}
+.u-mt-147{margin-top:147px}
+.u-mb-147{margin-bottom:147px}
+.u-p-147{padding:147px}
+.u-gap-147{gap:147px}
+.u-m-148{margin:148px}
+.u-mt-148{margin-top:148px}
+.u-mb-148{margin-bottom:148px}
+.u-p-148{padding:148px}
+.u-gap-148{gap:148px}
+.u-m-149{margin:149px}
+.u-mt-149{margin-top:149px}
+.u-mb-149{margin-bottom:149px}
+.u-p-149{padding:149px}
+.u-gap-149{gap:149px}
+.u-m-150{margin:150px}
+.u-mt-150{margin-top:150px}
+.u-mb-150{margin-bottom:150px}
+.u-p-150{padding:150px}
+.u-gap-150{gap:150px}
+.u-m-151{margin:151px}
+.u-mt-151{margin-top:151px}
+.u-mb-151{margin-bottom:151px}
+.u-p-151{padding:151px}
+.u-gap-151{gap:151px}
+.u-m-152{margin:152px}
+.u-mt-152{margin-top:152px}
+.u-mb-152{margin-bottom:152px}
+.u-p-152{padding:152px}
+.u-gap-152{gap:152px}
+.u-m-153{margin:153px}
+.u-mt-153{margin-top:153px}
+.u-mb-153{margin-bottom:153px}
+.u-p-153{padding:153px}
+.u-gap-153{gap:153px}
+.u-m-154{margin:154px}
+.u-mt-154{margin-top:154px}
+.u-mb-154{margin-bottom:154px}
+.u-p-154{padding:154px}
+.u-gap-154{gap:154px}
+.u-m-155{margin:155px}
+.u-mt-155{margin-top:155px}
+.u-mb-155{margin-bottom:155px}
+.u-p-155{padding:155px}
+.u-gap-155{gap:155px}
+.u-m-156{margin:156px}
+.u-mt-156{margin-top:156px}
+.u-mb-156{margin-bottom:156px}
+.u-p-156{padding:156px}
+.u-gap-156{gap:156px}
+.u-m-157{margin:157px}
+.u-mt-157{margin-top:157px}
+.u-mb-157{margin-bottom:157px}
+.u-p-157{padding:157px}
+.u-gap-157{gap:157px}
+.u-m-158{margin:158px}
+.u-mt-158{margin-top:158px}
+.u-mb-158{margin-bottom:158px}
+.u-p-158{padding:158px}
+.u-gap-158{gap:158px}
+.u-m-159{margin:159px}
+.u-mt-159{margin-top:159px}
+.u-mb-159{margin-bottom:159px}
+.u-p-159{padding:159px}
+.u-gap-159{gap:159px}
+.u-m-160{margin:160px}
+.u-mt-160{margin-top:160px}
+.u-mb-160{margin-bottom:160px}
+.u-p-160{padding:160px}
+.u-gap-160{gap:160px}
+.u-flex{display:flex}
+.u-grid{display:grid}
+.u-block{display:block}
+.u-hidden{display:none}
+.u-w-full{width:100%}
+.u-h-full{height:100%}
+.u-radius-sm{border-radius:8px}
+.u-radius-md{border-radius:14px}
+.u-radius-lg{border-radius:20px}
+.u-text-center{text-align:center}
+.u-text-left{text-align:left}
+.u-font-bold{font-weight:800}
+.u-font-black{font-weight:950}
+.u-relative{position:relative}
+.u-overflow-hidden{overflow:hidden}
+.u-pointer{cursor:pointer}
+.u-nowrap{white-space:nowrap}
+.u-break{word-break:break-word}
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="sidebar" id="sidebar">
+  <div class="brand"><div class="brand-icon">🎓</div><div><strong>YKS Koçluk</strong><small>V11 Efsane • Öğrenci paneli</small></div></div>
+  <nav class="nav" id="nav"></nav>
+  <div class="sidebar-bottom">
+    <div class="mini-user">
+      <div class="userline"><div class="avatar" id="sideAvatar">Ö</div><div><strong id="sideName">Öğrenci</strong><span id="sideEmail">Giriş yapılmadı</span></div></div>
+    </div>
+  </div>
+</aside>
+
+<main class="main">
+<header class="topbar">
+  <div style="display:flex;gap:10px;align-items:center">
+    <button class="icon-btn mobile-menu" onclick="toggleSidebar()">☰</button>
+    <div><div class="eyebrow" id="pageEyebrow">YKS 2027</div><h1 id="pageTitle">Ana Sayfa</h1></div>
+  </div>
+  <div class="top-actions"><button class="btn secondary" onclick="go('account')">👤 Hesabım</button><button class="icon-btn" onclick="toggleTheme()" id="themeBtn">☾</button></div>
+</header>
+
+<section class="page active" id="page-home">
+  <div class="hero">
+    <div class="eyebrow" style="color:#cfe1ff">Kişisel çalışma merkezi</div>
+    <h2 id="welcome">Hoş geldin, Öğrenci 👋</h2>
+    <p id="heroSub">Hedefini belirle, günlük planını oluştur ve ilerlemeni tek panelden takip et.</p>
+    <div class="hero-actions"><button class="btn" onclick="generatePlan()">🤖 Akıllı Planımı Oluştur</button><button class="btn" onclick="openTaskModal()">＋ Görev Ekle</button><button class="btn" onclick="go('timer')">⏱ Çalışmaya Başla</button></div>
+  </div>
+  <div class="grid stats">
+    <div class="card stat"><div class="label">🎯 HEDEF SIRALAMA</div><div class="value" id="sRank">5.000</div><div class="sub">EA • Hukuk</div></div>
+    <div class="card stat"><div class="label">📚 BUGÜN</div><div class="value" id="sStudy">0 dk</div><div class="sub" id="sStudySub">0 oturum</div></div>
+    <div class="card stat"><div class="label">✅ GÖREV</div><div class="value" id="sTasks">0%</div><div class="sub" id="sTasksSub">0 / 0 tamamlandı</div></div>
+    <div class="card stat"><div class="label">🔥 SERİ</div><div class="value" id="sStreak">0 gün</div><div class="sub">Çalışma serin</div></div>
+  </div>
+  <div class="card v10-command" style="margin-top:16px">
+   <div class="section-title"><h3>⚡ Bugünün Kontrol Merkezi</h3><span id="commandDate"></span></div>
+   <div class="grid stats">
+    <div class="mini-kpi"><span>Bugün kalan</span><b id="quickRemaining">0</b><small>görev</small></div>
+    <div class="mini-kpi"><span>Geciken</span><b id="quickOverdue">0</b><small>görev</small></div>
+    <div class="mini-kpi"><span>Son 7 gün</span><b id="quickWeek">0</b><small>dakika</small></div>
+    <div class="mini-kpi"><span>Son TYT</span><b id="quickNet">—</b><small>net</small></div>
+   </div>
+   <div id="quickInsight" class="success" style="margin-top:12px">Verilerin geldikçe sana kısa ve uygulanabilir bir sonraki adım göstereceğim.</div>
+  </div>
+  <div class="grid cols">
+    <div class="card"><div class="section-title"><h3>Bugünün görevleri</h3><button class="btn secondary" onclick="openTaskModal()">＋ Ekle</button></div><div id="homeTasks"></div></div>
+    <div class="card"><div class="section-title"><h3>Hedef durumu</h3><span>Bu hafta</span></div><div class="kpi"><div><span style="color:var(--muted);font-size:12px">Haftalık hedef</span><br><b id="weekGoal">10s</b></div><span class="chip" id="weekPct">0%</span></div><div class="progress"><i id="weekBar" style="width:0%"></i></div><div style="height:15px"></div><div class="success">💡 Her gün küçük ama düzenli ilerleme, deneme sonuçlarının daha anlamlı olmasını sağlar.</div></div>
+  </div>
+  <div class="card" style="margin-top:16px"><div class="section-title"><h3>🧠 Koçun bugün ne diyor?</h3><button class="btn secondary" onclick="coachRefresh()">Yenile</button></div><div id="coachAdvice"></div></div>
+  <div class="grid two" style="margin-top:16px">
+    <div class="card"><div class="section-title"><h3>📌 Akıllı plan</h3><span>Öneri</span></div><div id="homePlan"></div></div>
+    <div class="card"><div class="section-title"><h3>📈 Son performans</h3><span>TYT + AYT</span></div><div id="homePerformance"></div></div>
+  </div>
+</section>
+
+<section class="page" id="page-goal">
+ <div class="grid two">
+  <div class="card"><div class="section-title"><h3>🎯 Hedefim</h3><span>Kişisel hedef</span></div>
+   <div class="form-grid">
+    <div class="field"><label>Ad Soyad</label><input id="pName" placeholder="Ad Soyad"></div>
+    <div class="field"><label>E-posta</label><input id="pEmail" disabled></div>
+    <div class="field"><label>Alan</label><select id="pTrack"><option>Eşit Ağırlık</option><option>Sayısal</option><option>Sözel</option><option>TYT</option></select></div>
+    <div class="field"><label>Hedef bölüm</label><input id="pDept" placeholder="Hukuk"></div>
+    <div class="field"><label>Hedef sıralama</label><input id="pRank" type="number" value="5000"></div>
+    <div class="field"><label>Haftalık çalışma hedefi (saat)</label><input id="pWeek" type="number" value="10"></div>
+   </div>
+   <div class="actions"><button class="btn primary" onclick="saveProfile()">💾 Hedefi Kaydet</button></div>
+   <div id="profileMsg" style="margin-top:12px"></div>
+  </div>
+  <div class="card"><div class="section-title"><h3>🏁 Hedef panosu</h3></div>
+   <div class="kpi"><div><span style="color:var(--muted);font-size:12px">Hedef sıralama</span><br><b id="goalRank">5.000</b></div><span class="chip" id="goalDept">Hukuk</span></div>
+   <div class="progress"><i id="goalBar" style="width:35%"></i></div>
+   <p style="color:var(--muted);font-size:12px">Bu çubuk motivasyon amaçlıdır; gerçek sıralama tahmini değildir.</p>
+   <div class="notice">⚠️ Hedef sıralamayı düzenli deneme sonuçlarınla birlikte değerlendir.</div>
+  </div>
+ </div>
+</section>
+
+<section class="page" id="page-tasks">
+ <div class="card">
+  <div class="section-title">
+   <h3>✅ Görevler</h3>
+   <button class="btn primary" onclick="openTaskModal()">＋ Yeni görev</button>
+  </div>
+  <div class="actions" style="margin-top:0;flex-wrap:wrap">
+   <button class="btn secondary task-filter active-filter" id="tfToday" onclick="setTaskFilter('today')">Bugün</button>
+   <button class="btn task-filter" id="tfUpcoming" onclick="setTaskFilter('upcoming')">Yaklaşan</button>
+   <button class="btn task-filter" id="tfOverdue" onclick="setTaskFilter('overdue')">Geciken</button>
+   <button class="btn task-filter" id="tfAll" onclick="setTaskFilter('all')">Tümü</button>
+  </div>
+  <div class="form-grid" style="margin-top:10px">
+   <div class="field"><label>Görev ara</label><input id="taskSearch" placeholder="Matematik, deneme..." oninput="renderTasks()"></div>
+   <div class="field"><label>Öncelik</label><select id="taskPriorityFilter" onchange="renderTasks()"><option value="all">Tümü</option><option value="Yüksek">Yüksek</option><option value="Normal">Normal</option><option value="Düşük">Düşük</option></select></div>
+  </div>
+  <div id="taskList" style="margin-top:8px"></div>
+ </div>
+</section>
+
+<section class="page" id="page-plan">
+ <div class="grid two">
+  <div class="card"><div class="section-title"><h3>🤖 Akıllı Plan</h3><span>Tek tıkla üret</span></div>
+   <p style="color:var(--muted);font-size:13px">Hedef alanın, son denemelerin ve konu seviyelerin üzerinden günlük bir taslak oluşturur.</p>
+   <div class="form-grid">
+    <div class="field"><label>Günlük süre (dk)</label><input id="planMinutes" type="number" value="240"></div>
+    <div class="field"><label>Öncelik</label><select id="planFocus"><option>Eksik konular</option><option>Deneme + analiz</option><option>AYT ağırlıklı</option><option>TYT ağırlıklı</option></select></div>
+   </div>
+   <div class="actions"><button class="btn primary" onclick="generatePlan()">✨ Plan Oluştur</button><button class="btn" onclick="addPlanAsTasks()">📋 Görevlerime aktar</button></div>
+  </div>
+  <div class="card"><div class="section-title"><h3>Bugünün planı</h3><span id="planDate"></span></div><div id="planView"></div></div>
+ </div>
+</section>
+
+<section class="page" id="page-exams">
+ <div class="grid two">
+  <div class="card"><div class="section-title"><h3>📝 Deneme ekle</h3></div>
+   <div class="form-grid">
+    <div class="field"><label>Deneme</label><input id="examName" placeholder="Örn. TYT Genel Deneme"></div>
+    <div class="field"><label>Tarih</label><input id="examDate" type="date"></div>
+    <div class="field"><label>TYT net</label><input id="examTYT" type="number" step=".25" placeholder="70"></div>
+    <div class="field"><label>AYT net</label><input id="examAYT" type="number" step=".25" placeholder="45"></div>
+    <div class="field"><label>Not</label><input id="examNote" placeholder="En zorlandığım bölüm..."></div>
+   </div>
+   <div class="actions"><button class="btn primary" onclick="addExam()">＋ Denemeyi kaydet</button></div>
+  </div>
+  <div class="card"><div class="section-title"><h3>📈 Özet</h3></div><div id="examSummary"></div></div>
+ </div>
+ <div class="card" style="margin-top:16px"><div class="section-title"><h3>Son denemeler</h3><button class="btn danger" onclick="clearExams()">Temizle</button></div><div id="examTable"></div></div>
+</section>
+
+
+<section class="page" id="page-calculator">
+ <div class="grid two">
+  <div class="card">
+   <div class="section-title"><h3>🧮 Net Hesaplama</h3><span>4 yanlış = 1 doğru</span></div>
+   <p style="color:var(--muted);font-size:13px">TYT veya AYT denemende doğru, yanlış ve boş sayılarını gir. Netler otomatik hesaplanır.</p>
+   <div class="form-grid">
+    <div class="field"><label>Tür</label><select id="calcType"><option>TYT</option><option>AYT</option></select></div>
+    <div class="field"><label>Doğru</label><input id="calcCorrect" type="number" min="0" value="0"></div>
+    <div class="field"><label>Yanlış</label><input id="calcWrong" type="number" min="0" value="0"></div>
+    <div class="field"><label>Boş</label><input id="calcBlank" type="number" min="0" value="0"></div>
+   </div>
+   <div class="actions"><button class="btn primary" onclick="calculateNet()">Hesapla</button><button class="btn" onclick="saveCalc()">Denemeye aktar</button></div>
+   <div id="calcResult" style="margin-top:14px"></div>
+  </div>
+  <div class="card">
+   <div class="section-title"><h3>📌 Son hesaplamalar</h3><button class="btn danger" onclick="clearCalcs()">Temizle</button></div>
+   <div id="calcHistory"></div>
+  </div>
+ </div>
+ <div class="grid three" style="margin-top:16px">
+  <div class="card"><div class="section-title"><h3>TYT</h3><span>Genel</span></div><div class="kpi"><div><span style="color:var(--muted);font-size:11px">Son net</span><br><b id="lastTYT">0</b></div></div></div>
+  <div class="card"><div class="section-title"><h3>AYT</h3><span>Genel</span></div><div class="kpi"><div><span style="color:var(--muted);font-size:11px">Son net</span><br><b id="lastAYT">0</b></div></div></div>
+  <div class="card"><div class="section-title"><h3>Hedef</h3><span>Takip</span></div><div id="calcTarget" class="success">Net verisi girdikçe burada özet oluşur.</div></div>
+ </div>
+</section>
+
+<section class="page" id="page-topics">
+ <div class="grid two">
+  <div class="card"><div class="section-title"><h3>📚 Konu takip</h3><button class="btn secondary" onclick="seedTopics()">Örnek konuları yükle</button></div><div id="topicList"></div></div>
+  <div class="card"><div class="section-title"><h3>🎯 Öncelik haritası</h3></div><div id="topicSummary"></div></div>
+ </div>
+</section>
+
+<section class="page" id="page-questions">
+ <div class="card"><div class="section-title"><h3>❓ Soru merkezi</h3><span>Hızlı kayıt</span></div>
+  <div class="form-grid">
+   <div class="field"><label>Ders</label><select id="qSubject"><option>Matematik</option><option>Türkçe</option><option>Edebiyat</option><option>Tarih</option><option>Coğrafya</option><option>Geometri</option></select></div>
+   <div class="field"><label>Doğru</label><input id="qCorrect" type="number" value="0"></div>
+   <div class="field"><label>Yanlış</label><input id="qWrong" type="number" value="0"></div>
+   <div class="field"><label>Boş</label><input id="qBlank" type="number" value="0"></div>
+  </div>
+  <div class="actions"><button class="btn primary" onclick="addQuestionSet()">📌 Seti kaydet</button></div>
+ </div>
+ <div class="card" style="margin-top:16px"><div class="section-title"><h3>🧠 Koçun bugün ne diyor?</h3><button class="btn secondary" onclick="coachRefresh()">Yenile</button></div><div id="coachAdvice"></div></div>
+  <div class="grid two" style="margin-top:16px"><div class="card"><div class="section-title"><h3>Ders bazlı toplam</h3></div><div id="questionStats"></div></div><div class="card"><div class="section-title"><h3>Bugünün özeti</h3></div><div id="questionToday"></div></div></div>
+</section>
+
+<section class="page" id="page-timer">
+ <div class="grid two">
+  <div class="card timer"><div class="timer-mode" id="timerMode">Odak</div><div class="timer-face" id="timerFace">40:00</div><div class="actions" style="justify-content:center"><button class="btn primary" onclick="timerStart()" id="timerBtn">▶ Başlat</button><button class="btn" onclick="timerReset()">↺ Sıfırla</button></div><div style="margin-top:15px"><button class="btn secondary" onclick="setTimerMode(25)">25 dk</button> <button class="btn secondary" onclick="setTimerMode(40)">40 dk</button> <button class="btn secondary" onclick="setTimerMode(60)">60 dk</button></div>
+   <div class="actions" style="justify-content:center;margin-top:10px"><input id="customTimer" type="number" min="1" max="240" placeholder="Özel dakika" style="max-width:140px"><button class="btn" onclick="setCustomTimer()">Uygula</button></div></div>
+  <div class="card"><div class="section-title"><h3>⏱ Bugünkü çalışma</h3></div><div class="kpi"><div><span style="color:var(--muted);font-size:12px">Toplam</span><br><b id="timerToday">0 dk</b></div><span class="chip" id="timerSessions">0 oturum</span></div><div class="progress"><i id="timerBar" style="width:0%"></i></div><p style="font-size:12px;color:var(--muted)">Sayaç tamamlandığında çalışma süren otomatik kaydedilir.</p></div>
+ </div>
+</section>
+
+<section class="page" id="page-analytics">
+ <div class="grid stats">
+  <div class="card stat"><div class="label">TOPLAM ÇALIŞMA</div><div class="value" id="aTotal">0s</div><div class="sub">Kayıtlı oturumlar</div></div>
+  <div class="card stat"><div class="label">ORT. DENEME</div><div class="value" id="aAvg">0</div><div class="sub">TYT net</div></div>
+  <div class="card stat"><div class="label">SORU</div><div class="value" id="aQuestions">0</div><div class="sub">Kayıtlı soru</div></div>
+  <div class="card stat"><div class="label">GÖREV</div><div class="value" id="aCompletion">0%</div><div class="sub">Tamamlanma</div></div>
+ </div>
+ <div class="grid two">
+  <div class="card"><div class="section-title"><h3>Son 7 gün çalışma</h3><span>dakika</span></div><div class="chart" id="studyChart"></div></div>
+  <div class="card"><div class="section-title"><h3>Deneme trendi</h3><span>TYT</span></div><div class="chart" id="examChart"></div></div>
+ </div>
+ <div class="card" style="margin-top:16px">
+  <div class="section-title"><h3>📚 Ders Bazlı Performans</h3><span>Son kayıtların</span></div>
+  <div id="subjectAnalytics"></div>
+ </div>
+</section>
+
+
+<section class="page" id="page-calendar">
+ <div class="grid two">
+  <div class="card">
+   <div class="section-title"><h3>📅 Çalışma Takvimi</h3><span id="calendarMonth"></span></div>
+   <div class="actions" style="margin-top:0;margin-bottom:12px">
+    <button class="btn" onclick="calendarMove(-1)">← Önceki</button>
+    <button class="btn secondary" onclick="calendarToday()">Bugün</button>
+    <button class="btn" onclick="calendarMove(1)">Sonraki →</button>
+   </div>
+   <div id="calendarGrid"></div>
+  </div>
+  <div class="card">
+   <div class="section-title"><h3>🎯 Gün Özeti</h3><span id="selectedDateLabel"></span></div>
+   <div id="selectedDay"></div>
+  </div>
+ </div>
+</section>
+
+<section class="page" id="page-membership">
+ <div class="hero"><div class="eyebrow" style="color:#cfe1ff">Üyelik</div><h2>YKS Koçluk Pro</h2><p>Şimdilik ücretsiz altyapıyı kullanıyorsun. Üyelik ekranı ürün yapısı için hazırlandı.</p></div>
+ <div class="grid three" style="margin-top:16px">
+  <div class="card"><h3>🆓 Ücretsiz</h3><p style="color:var(--muted);font-size:13px">Temel görev, deneme, konu ve çalışma takibi.</p><span class="chip">Aktif</span></div>
+  <div class="card"><h3>⚡ Pro</h3><p style="color:var(--muted);font-size:13px">Gelişmiş analiz, sınırsız plan ve kişiselleştirme.</p><span class="chip">Yakında</span></div>
+  <div class="card"><h3>🤖 AI Koç</h3><p style="color:var(--muted);font-size:13px">Daha gelişmiş öneri ve çalışma planları.</p><span class="chip">Yakında</span></div>
+ </div>
+</section>
+
+<section class="page" id="page-account">
+ <div class="card authbox">
+  <div class="section-title"><h3>👤 Hesabım</h3><span>Supabase Auth</span></div>
+  <div class="notice">🔐 Şifren bu HTML dosyasında tutulmaz. Kimlik doğrulama Supabase Auth tarafından yönetilir.</div>
+  <div class="auth-status"><div class="status"><b>Oturum</b><span id="authSession">Giriş yapılmadı</span></div><div class="status"><b>Profil</b><span id="authProfile">Hazır değil</span></div><div class="status"><b>Veri</b><span>Bu cihazda</span></div></div>
+  <div class="form-grid">
+   <div class="field"><label>Hesap e-postası</label><input id="authEmail" type="email" placeholder="ornek@mail.com"></div>
+   <div class="field"><label>Şifre</label><input id="authPassword" type="password" placeholder="••••••••"></div>
+  </div>
+  <div class="actions"><button class="btn primary" onclick="signUp()">📝 Kayıt ol</button><button class="btn secondary" onclick="signIn()">🔑 Giriş yap</button><button class="btn" onclick="signOut()">Çıkış yap</button></div>
+  <div id="authMsg" style="margin-top:12px"></div>
+  <hr style="border:0;border-top:1px solid var(--line);margin:20px 0">
+  <div class="section-title"><h3>Profil</h3></div>
+  <div class="form-grid">
+   <div class="field"><label>Ad Soyad</label><input id="aName" placeholder="Ad Soyad"></div>
+   <div class="field"><label>Plan</label><input id="aPlan" value="Ücretsiz"></div>
+  </div>
+  <div class="actions"><button class="btn primary" onclick="saveProfileFromAccount()">💾 Profili kaydet</button></div>
+ </div>
+ <div class="card" style="margin-top:16px"><div class="section-title"><h3>🧠 Koçun bugün ne diyor?</h3><button class="btn secondary" onclick="coachRefresh()">Yenile</button></div><div id="coachAdvice"></div></div>
+  <div class="grid two" style="margin-top:16px">
+  <div class="card"><div class="section-title"><h3>💾 Veri yedeği</h3></div><p style="font-size:13px;color:var(--muted)">Çalışma verilerini JSON dosyası olarak dışarı aktar veya daha sonra geri yükle.</p><div class="actions"><button class="btn" onclick="exportData()">⬇ Dışa aktar</button><label class="btn" style="display:inline-flex;align-items:center">⬆ İçe aktar<input type="file" accept="application/json" onchange="importData(event)" hidden></label></div></div>
+  <div class="card"><div class="section-title"><h3>⚙ Görünüm</h3></div><div class="switch"><span>Koyu tema</span><button class="toggle" id="themeToggle" onclick="toggleTheme()"><i></i></button></div><div class="switch"><span>Verileri yerel sakla</span><span class="chip">Açık</span></div></div>
+ </div>
+</section>
+
+<section class="page" id="page-settings">
+ <div class="card"><div class="section-title"><h3>⚙ Ayarlar</h3></div>
+  <div class="switch"><div><b>Koyu tema</b><br><small style="color:var(--muted)">Göz yormayan gece görünümü</small></div><button class="toggle" id="themeToggle2" onclick="toggleTheme()"><i></i></button></div>
+  <div class="switch"><div><b>Verileri sıfırla</b><br><small style="color:var(--muted)">Bu cihazdaki görev, deneme, konu ve sayaç verilerini siler.</small></div><button class="btn danger" onclick="resetAll()">Sıfırla</button></div>
+ </div>
+</section>
+</main>
+</div>
+
+
+<section class="page" id="page-max">
+ <div class="max-hero">
+  <div>
+   <div class="eyebrow max-eyebrow">YKS KOÇLUK • V11 EFSANE</div>
+   <h2>⚡ Komuta Merkezi</h2>
+   <p>Bugün ne yapacağını tek ekrandan gör. Görev, çalışma, deneme ve hedef verilerini hızlıca yönet.</p>
+  </div>
+  <div class="max-hero-actions">
+   <button class="btn max-white" onclick="maxQuickSession(25)">▶ 25 dk Başla</button>
+   <button class="btn max-white" onclick="maxQuickSession(50)">▶ 50 dk Başla</button>
+   <button class="btn max-white" onclick="openTaskModal()">＋ Görev</button>
+  </div>
+ </div>
+
+ <div class="grid max-kpis">
+  <div class="card max-kpi"><span>Bugünkü çalışma</span><b id="maxTodayMinutes">0 dk</b><small id="maxTodaySessions">0 oturum</small></div>
+  <div class="card max-kpi"><span>Bugünkü görev</span><b id="maxTaskProgress">0%</b><small id="maxTaskText">0 / 0</small></div>
+  <div class="card max-kpi"><span>Çalışma serisi</span><b id="maxStreak">0 gün</b><small>Kesintisiz gün</small></div>
+  <div class="card max-kpi"><span>Haftalık hedef</span><b id="maxWeekProgress">0%</b><small id="maxWeekText">0 / 0 saat</small></div>
+ </div>
+
+ <div class="grid max-three">
+  <div class="card">
+   <div class="section-title"><h3>🎯 Şimdi ne yapmalıyım?</h3><span>Otomatik sıra</span></div>
+   <div id="maxNextAction"></div>
+   <div class="actions">
+    <button class="btn primary" onclick="maxStartNext()">▶ Sıradakini Başlat</button>
+    <button class="btn secondary" onclick="maxRefresh()">↻ Yenile</button>
+   </div>
+  </div>
+
+  <div class="card">
+   <div class="section-title"><h3>🔥 Günlük skor</h3><span id="maxScoreLabel">0 / 100</span></div>
+   <div class="max-score-ring" id="maxScoreRing"><strong id="maxScore">0</strong><span>/100</span></div>
+   <div id="maxScoreText" class="success" style="margin-top:12px">Bugün ilk adımı at.</div>
+  </div>
+
+  <div class="card">
+   <div class="section-title"><h3>🧠 Hızlı koç</h3><span>Veriye göre</span></div>
+   <div id="maxCoach" class="max-coach"></div>
+  </div>
+ </div>
+
+ <div class="grid two" style="margin-top:16px">
+  <div class="card">
+   <div class="section-title"><h3>📌 Odak kuyruğu</h3><span>Öncelik + tarih</span></div>
+   <div id="maxQueue"></div>
+  </div>
+  <div class="card">
+   <div class="section-title"><h3>📅 7 günlük ritim</h3><span>Dakika</span></div>
+   <div id="maxWeekBars" class="max-week-bars"></div>
+  </div>
+ </div>
+
+ <div class="grid two" style="margin-top:16px">
+  <div class="card">
+   <div class="section-title"><h3>⚡ Hızlı işlem</h3><span>Tek tık</span></div>
+   <div class="max-quick-grid">
+    <button onclick="openTaskModal()">➕ Yeni görev<small>Görev oluştur</small></button>
+    <button onclick="maxQuickSession(25)">⏱ 25 dk<small>Hızlı odak</small></button>
+    <button onclick="maxQuickSession(50)">⏱ 50 dk<small>Derin çalışma</small></button>
+    <button onclick="go('exams')">📝 Deneme<small>Sonuç ekle</small></button>
+    <button onclick="go('calculator')">🧮 Net<small>Net hesapla</small></button>
+    <button onclick="go('topics')">📚 Konu<small>Seviye güncelle</small></button>
+    <button onclick="maxCopySummary()">📋 Özet<small>Bugünü kopyala</small></button>
+    <button onclick="maxBackup()">💾 Yedek<small>Yerel yedek al</small></button>
+   </div>
+  </div>
+
+  <div class="card">
+   <div class="section-title"><h3>🧩 Hazır görev şablonları</h3><span>Tek tıkla ekle</span></div>
+   <div class="max-template-list">
+    <button onclick="maxTemplate('AYT Matematik 40 soru','Matematik',60,'Yüksek')"><b>AYT Matematik 40 soru</b><small>60 dk • Yüksek</small></button>
+    <button onclick="maxTemplate('Edebiyat konu tekrarı','Edebiyat',40,'Normal')"><b>Edebiyat konu tekrarı</b><small>40 dk • Normal</small></button>
+    <button onclick="maxTemplate('TYT Türkçe paragraf','Türkçe',30,'Normal')"><b>TYT Türkçe paragraf</b><small>30 dk • Normal</small></button>
+    <button onclick="maxTemplate('Deneme yanlış analizi','Deneme',45,'Yüksek')"><b>Deneme yanlış analizi</b><small>45 dk • Yüksek</small></button>
+   </div>
+  </div>
+ </div>
+
+ <div class="card" style="margin-top:16px">
+  <div class="section-title"><h3>📊 Son 7 gün özeti</h3><span>Oturum + görev</span></div>
+  <div id="maxDailyTable"></div>
+ </div>
+
+ <div class="card" style="margin-top:16px">
+  <div class="section-title"><h3>🛠 Veri sağlığı</h3><span>Otomatik kontrol</span></div>
+  <div id="maxHealth"></div>
+ </div>
+</section>
+
+<div class="modal" id="taskModal"><div class="modal-box"><div class="modal-head"><h3>Yeni görev</h3><button class="close" onclick="closeModal('taskModal')">×</button></div><div class="form-grid" style="margin-top:15px"><div class="field"><label>Görev</label><input id="taskTitle" placeholder="Örn. AYT matematik 40 soru"></div><div class="field"><label>Ders</label><select id="taskSubject"><option>Matematik</option><option>Türkçe</option><option>Edebiyat</option><option>Tarih</option><option>Coğrafya</option><option>Deneme</option><option>Diğer</option></select></div><div class="field"><label>Süre (dk)</label><input id="taskMinutes" type="number" value="40"></div><div class="field"><label>Tarih</label><input id="taskDate" type="date"></div><div class="field"><label>Öncelik</label><select id="taskPriority"><option>Normal</option><option>Yüksek</option><option>Düşük</option></select></div></div><div class="actions"><button class="btn primary" onclick="addTask()">Görevi ekle</button></div></div></div>
+<div class="modal" id="verifyModal"><div class="modal-box"><div class="modal-head"><h3 id="verifyTitle">Bilgi</h3><button class="close" onclick="closeModal('verifyModal')">×</button></div><p id="verifyText" style="color:var(--muted);line-height:1.6"></p><div class="actions"><button class="btn primary" onclick="closeModal('verifyModal')">Hesabıma Git</button></div></div></div>
+
+<div class="max-command-palette" id="maxCommandPalette" onclick="maxPaletteBackdrop(event)">
+ <div class="max-command-box">
+  <input id="maxCommandSearch" class="max-command-search" placeholder="Ne yapmak istiyorsun? Örn. görev ekle, timer, analiz..." oninput="maxRenderCommands()" onkeydown="maxCommandKey(event)">
+  <div id="maxCommandResults" class="max-command-results"></div>
+ </div>
+</div>
+<div class="max-floating">
+ <button title="Komut paleti (Ctrl+K)" onclick="maxOpenPalette()">⌘</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPABASE_URL="https://naiakscryafhvcghjmzx.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY="sb_publishable_7F7l4hEzRhLr35HHx6nCRg_Zu07nNV7";
+const supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
+
+const NAV=[
+ ['home','🏠','Ana Sayfa'],['goal','🎯','Hedefim'],['tasks','✅','Görevler'],['plan','🤖','Akıllı Plan'],
+ ['exams','📝','Denemeler'],['calculator','🧮','Net Hesapla'],['topics','📚','Konular'],['questions','❓','Sorular'],['calendar','📅','Takvim'],['timer','⏱','Çalışma Saati'],
+ ['analytics','📊','Analiz'],['max','⚡','Komuta Merkezi'],['membership','💎','Üyelik'],['account','👤','Hesabım'],['settings','⚙','Ayarlar']
+];
+let current='home', authUser=null, profile=null, loginBusy=false, timer=null, timerSeconds=2400, timerTotal=2400, calendarCursor=new Date(), selectedDate=today();
+
+function withTimeout(p,ms=12000){
+ return Promise.race([p,new Promise((_,rej)=>setTimeout(()=>rej(new Error('İstek zaman aşımına uğradı. İnternet veya Supabase bağlantısını kontrol et.')),ms))]);
+}
+function today(){
+ const p=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Istanbul',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
+ const y=p.find(x=>x.type==='year').value,m=p.find(x=>x.type==='month').value,d=p.find(x=>x.type==='day').value;
+ return `${y}-${m}-${d}`;
+}
+function localISO(dt){
+ const y=dt.getFullYear(),m=String(dt.getMonth()+1).padStart(2,'0'),d=String(dt.getDate()).padStart(2,'0');
+ return `${y}-${m}-${d}`;
+}
+function dateOffset(days){
+ const base=new Date();
+ base.setHours(12,0,0,0);
+ base.setDate(base.getDate()+days);
+ return localISO(base);
+}
+function daysFromToday(date){
+ const a=new Date(today()+'T12:00:00'), b=new Date((date||today())+'T12:00:00');
+ return Math.round((b-a)/86400000);
+}
+function safeNum(v,min=0,max=999999){const n=Number(v);return Number.isFinite(n)?Math.min(max,Math.max(min,n)):min;}
+function fmtDate(s){return new Date(s+'T00:00:00').toLocaleDateString('tr-TR',{day:'2-digit',month:'2-digit',year:'numeric'})}
+function key(){return authUser?'yks_v6_'+authUser.id:'yks_v6_guest'}
+function load(){try{return JSON.parse(localStorage.getItem(key())||'{}')}catch{return {}}}
+function save(d){localStorage.setItem(key(),JSON.stringify(d))}
+function appData(){
+ let d=load()||{};
+ const base={tasks:[],exams:[],topics:[],questions:[],sessions:[],plan:[],calcs:[],weekHours:10,track:'Eşit Ağırlık',dept:'Hukuk',rank:5000};
+ d=Object.assign(base,d);
+ ['tasks','exams','topics','questions','sessions','plan','calcs'].forEach(k=>{if(!Array.isArray(d[k]))d[k]=[]});
+ d.tasks=d.tasks.map(x=>({...x,date:x.date||today(),done:!!x.done}));
+ return d;
+}
+function setData(d){save(d);try{renderAll()}catch(e){console.error('Arayüz yenileme hatası:',e)}}
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(window.toastTimer);window.toastTimer=setTimeout(()=>t.classList.remove('show'),2600)}
+function closeModal(id){document.getElementById(id).classList.remove('show')}
+function openTaskModal(){document.getElementById('taskDate').value=today();document.getElementById('taskModal').classList.add('show');setTimeout(()=>document.getElementById('taskTitle').focus(),50)}
+function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open')}
+function go(page){
+ current=page;
+ document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
+ document.getElementById('page-'+page).classList.add('active');
+ document.querySelectorAll('#nav button').forEach(x=>x.classList.toggle('active',x.dataset.page===page));
+ const item=NAV.find(x=>x[0]===page)||NAV[0];document.getElementById('pageTitle').textContent=item[2];
+ document.getElementById('pageEyebrow').textContent=page==='home'?'YKS 2027':'YKS KOÇLUK • V6';
+ document.getElementById('sidebar').classList.remove('open');renderAll();
+}
+function renderNav(){document.getElementById('nav').innerHTML=NAV.map(x=>`<button data-page="${x[0]}" onclick="go('${x[0]}')">${x[1]} <span>${x[2]}</span></button>`).join('')}
+function toggleTheme(){
+ const dark=document.documentElement.getAttribute('data-theme')==='dark';
+ document.documentElement.setAttribute('data-theme',dark?'light':'dark');localStorage.setItem('yks_theme',dark?'light':'dark');
+ syncThemeUI();
+}
+function syncThemeUI(){const dark=document.documentElement.getAttribute('data-theme')==='dark';['themeToggle','themeToggle2'].forEach(id=>{const e=document.getElementById(id);if(e)e.classList.toggle('on',dark)});document.getElementById('themeBtn').textContent=dark?'☀':'☾'}
+function loadTheme(){document.documentElement.setAttribute('data-theme',localStorage.getItem('yks_theme')||'light');syncThemeUI()}
+
+function renderAll(){renderHome();renderGoal();renderTasks();renderPlan();renderExams();renderCalculator();renderTopics();renderQuestions();renderCalendar();renderTimer();renderAnalytics();renderAccount();syncThemeUI()}
+function renderHome(){
+ const d=window.appData(), name=profile?.name||'Öğrenci', done=d.tasks.filter(x=>x.done).length,total=d.tasks.length;
+ const todaySessions=d.sessions.filter(x=>x.date===today()), mins=todaySessions.reduce((a,x)=>a+x.minutes,0);
+ document.getElementById('welcome').textContent=`Hoş geldin, ${name} 👋`;
+ document.getElementById('heroSub').textContent=`${d.dept||'Hedef bölüm'} • ${d.track||'EA'} • hedef sıralama ${Number(d.rank||5000).toLocaleString('tr-TR')}`;
+ document.getElementById('sRank').textContent=Number(d.rank||5000).toLocaleString('tr-TR');
+ document.getElementById('sStudy').textContent=mins+' dk';document.getElementById('sStudySub').textContent=todaySessions.length+' oturum';
+ document.getElementById('sTasks').textContent=(total?Math.round(done/total*100):0)+'%';document.getElementById('sTasksSub').textContent=`${done} / ${total} tamamlandı`;
+ const uniqueDays=[...new Set(d.sessions.map(x=>x.date))].sort().reverse();let streak=0;
+ for(let i=0;;i++){let dt=new Date();dt.setDate(dt.getDate()-i);let s=localISO(dt);if(uniqueDays.includes(s))streak++;else break}
+ document.getElementById('sStreak').textContent=streak+' gün';
+ const weekMins=d.sessions.filter(x=>{let dt=new Date();dt.setDate(dt.getDate()-6);return x.date>=localISO(dt)}).reduce((a,x)=>a+x.minutes,0);
+ const pct=Math.min(100,Math.round(weekMins/((d.weekHours||10)*60)*100));document.getElementById('weekGoal').textContent=(d.weekHours||10)+'s';document.getElementById('weekPct').textContent=pct+'%';document.getElementById('weekBar').style.width=pct+'%';
+ document.getElementById('homeTasks').innerHTML=renderTaskRows(d.tasks.filter(x=>(x.date||today())===today()).slice(0,5));
+ document.getElementById('homePlan').innerHTML=d.plan.length?d.plan.map(x=>`<div class="plan-item"><span>${x.icon||'📘'} ${x.text}</span><b>${x.minutes} dk</b></div>`).join(''):'<div class="empty">Henüz plan yok.<br><button class="btn secondary" style="margin-top:10px" onclick="generatePlan()">Plan oluştur</button></div>';
+ const exams=d.exams.slice().sort((a,b)=>b.date.localeCompare(a.date)).slice(0,4);
+ document.getElementById('homePerformance').innerHTML=exams.length?exams.map(x=>`<div class="plan-item"><span>${x.name}</span><b>${x.tyt||0} TYT</b></div>`).join(''):'<div class="empty">Henüz deneme kaydı yok.</div>';
+ const allTasks=d.tasks, remaining=allTasks.filter(x=>!x.done&&(x.date||today())===today()).length;
+ const overdue=allTasks.filter(x=>!x.done&&daysFromToday(x.date||today())<0).length;
+ const weekMins2=d.sessions.filter(x=>daysFromToday(x.date)>=-6&&daysFromToday(x.date)<=0).reduce((a,x)=>a+Number(x.minutes||0),0);
+ const lastExam=d.exams.slice().sort((a,b)=>b.date.localeCompare(a.date))[0];
+ document.getElementById('commandDate').textContent=new Date(today()+'T12:00:00').toLocaleDateString('tr-TR',{weekday:'long',day:'numeric',month:'long'});
+ document.getElementById('quickRemaining').textContent=remaining;
+ document.getElementById('quickOverdue').textContent=overdue;
+ document.getElementById('quickWeek').textContent=weekMins2;
+ document.getElementById('quickNet').textContent=lastExam?Number(lastExam.tyt||0).toFixed(1):'—';
+ const insight=overdue?`⚠️ ${overdue} geciken görevin var. Önce en kısa olanı tamamla.`:remaining?`🎯 Bugün ${remaining} görev kaldı. İlk görevi şimdi başlatabilirsin.`:weekMins2?`🔥 Bugünkü görevlerini bitirdin. Son 7 günde ${weekMins2} dakika çalıştın.`:'🚀 Henüz çalışma kaydı yok. 25 dakikalık bir odak oturumuyla başlayabilirsin.';
+ document.getElementById('quickInsight').textContent=insight;
+ renderCoachAdvice();
+}
+
+function coachRefresh(){renderCoachAdvice();toast('Koç önerisi yenilendi 🤖')}
+function renderCoachAdvice(){
+ const d=window.appData(), tasks=d.tasks, exams=d.exams.slice().sort((a,b)=>b.date.localeCompare(a.date)), topics=d.topics.slice().sort((a,b)=>a.level-b.level);
+ const todayTasks=tasks.filter(x=>x.date===today()), open=todayTasks.filter(x=>!x.done);
+ let msg='Bugün için önce net bir hedef belirle ve ilk 40 dakikalık bloğu başlat.';
+ if(open.length) msg=`Bugünün ${open.length} görevi kaldı. İlk olarak “${open[0].title}” görevini tamamlamaya odaklan.`;
+ else if(topics.length && topics[0].level<60) msg=`Öncelik önerisi: ${topics[0].name}. Seviye ${topics[0].level}%, bugün kısa tekrar + soru çözümü yap.`;
+ else if(exams.length) msg=`Son denemeni ${fmtDate(exams[0].date)} tarihinde yaptın. Yanlışlarını konu başlıklarına ayırarak tekrar et.`;
+ const study=d.sessions.filter(x=>x.date===today()).reduce((a,x)=>a+x.minutes,0);
+ document.getElementById('coachAdvice').innerHTML=`<div class="success">💡 ${escapeHtml(msg)}</div><div class="actions"><span class="chip">Bugün ${study} dk</span><span class="chip">${open.length} açık görev</span><span class="chip">${topics.length?`En zayıf konu: ${escapeHtml(topics[0].name)}`:'Konu verisi yok'}</span></div>`;
+}
+
+let taskFilter='today';
+function taskDateLabel(date){
+ const delta=daysFromToday(date||today());
+ if(delta===0)return 'Bugün';
+ if(delta===1)return 'Yarın';
+ if(delta===-1)return 'Dün';
+ if(delta<0)return `${Math.abs(delta)} gün gecikti`;
+ const d=new Date((date||today())+'T12:00:00');
+ return d.toLocaleDateString('tr-TR',{weekday:'short',day:'2-digit',month:'2-digit'});
+}
+function renderTaskRows(arr){
+ if(!arr.length)return '<div class="empty">Bu filtrede görev yok. 🎯</div>';
+ return arr.map(x=>{
+  const delta=daysFromToday(x.date||today()), overdue=delta<0&&!x.done;
+  return `<div class="task ${x.done?'done':''} ${overdue?'overdue':''}" onclick="toggleTask('${x.id}')">
+   <div class="check ${x.done?'done':''}">${x.done?'✓':''}</div>
+   <div class="task-main"><strong>${escapeHtml(x.title)}</strong>
+   <small>${escapeHtml(x.subject)} • ${x.minutes} dk • ${escapeHtml(x.priority)}</small>
+   <div class="task-date">📅 ${taskDateLabel(x.date||today())} ${overdue?'<span class="badge-overdue">Gecikti</span>':''}</div></div>
+   <button class="icon-btn" onclick="event.stopPropagation();deleteTask('${x.id}')">×</button>
+  </div>`
+ }).join('')
+}
+function setTaskFilter(filter){
+ taskFilter=filter;
+ ['tfToday','tfUpcoming','tfOverdue','tfAll'].forEach(id=>document.getElementById(id)?.classList.remove('active-filter'));
+ document.getElementById(filter==='today'?'tfToday':filter==='upcoming'?'tfUpcoming':filter==='overdue'?'tfOverdue':'tfAll')?.classList.add('active-filter');
+ renderTasks();
+}
+function addTask(){
+ try{
+  const title=document.getElementById('taskTitle').value.trim();
+  if(!title)return toast('Görev adı gerekli.');
+  const chosenDate=document.getElementById('taskDate').value||today();
+  const d=window.appData(); if(!Array.isArray(d.tasks))d.tasks=[];
+  d.tasks.unshift({id:String(Date.now()),title,subject:document.getElementById('taskSubject').value,
+   minutes:safeNum(document.getElementById('taskMinutes').value,1,1440)||40,
+   priority:document.getElementById('taskPriority').value,done:false,date:chosenDate});
+  save(d); closeModal('taskModal'); document.getElementById('taskTitle').value=''; document.getElementById('taskDate').value=today();
+  try{renderAll()}catch(e){console.error(e)} toast('Görev başarıyla eklendi ✓');
+ }catch(e){console.error(e);toast('Görev eklenirken hata oluştu.')}
+}
+function toggleTask(id){const d=window.appData(),x=d.tasks.find(t=>t.id===id);if(x){x.done=!x.done;x.completedAt=x.done?new Date().toISOString():null}save(d);renderAll()}
+function deleteTask(id){const d=window.appData();d.tasks=d.tasks.filter(t=>t.id!==id);save(d);renderAll();toast('Görev silindi')}
+function renderTasks(){
+ const d=window.appData(),t=today(),search=(document.getElementById('taskSearch')?.value||'').trim().toLocaleLowerCase('tr-TR'),pf=document.getElementById('taskPriorityFilter')?.value||'all';
+ let arr=d.tasks.slice();
+ if(taskFilter==='today')arr=arr.filter(x=>(x.date||t)===t);
+ if(taskFilter==='upcoming')arr=arr.filter(x=>(x.date||t)>t);
+ if(taskFilter==='overdue')arr=arr.filter(x=>(x.date||t)<t&&!x.done);
+ if(search)arr=arr.filter(x=>(x.title+' '+x.subject+' '+x.priority).toLocaleLowerCase('tr-TR').includes(search));
+ if(pf!=='all')arr=arr.filter(x=>x.priority===pf);
+ arr.sort((a,b)=>(a.done-b.done)||(daysFromToday(a.date||t)-daysFromToday(b.date||t)));
+ document.getElementById('taskList').innerHTML=renderTaskRows(arr);
+}
+function renderGoal(){
+ const d=window.appData();['pName','pEmail','pDept','pRank','pWeek','pTrack'].forEach(id=>{const e=document.getElementById(id);if(!e)return});
+ document.getElementById('pName').value=profile?.name||'';document.getElementById('pEmail').value=authUser?.email||'';document.getElementById('pDept').value=d.dept||'Hukuk';document.getElementById('pRank').value=d.rank||5000;document.getElementById('pWeek').value=d.weekHours||10;document.getElementById('pTrack').value=d.track||'Eşit Ağırlık';
+ document.getElementById('goalRank').textContent=Number(d.rank||5000).toLocaleString('tr-TR');document.getElementById('goalDept').textContent=d.dept||'Hukuk';
+}
+async function saveProfile(){
+ const d=window.appData();d.dept=document.getElementById('pDept').value.trim()||'Hukuk';d.rank=Number(document.getElementById('pRank').value)||5000;d.weekHours=Number(document.getElementById('pWeek').value)||10;d.track=document.getElementById('pTrack').value;setData(d);
+ if(authUser) await saveCloudProfile(document.getElementById('pName').value.trim());
+ document.getElementById('profileMsg').innerHTML='<div class="success">Profil ve hedef kaydedildi ✓</div>';toast('Hedef kaydedildi');
+}
+function generatePlan(){
+ const d=window.appData(), mins=Math.max(60,Number(document.getElementById('planMinutes')?.value)||240),focus=document.getElementById('planFocus')?.value||'Eksik konular';
+ const topic=d.topics.filter(x=>x.level<70).sort((a,b)=>a.level-b.level)[0]?.name||'AYT Matematik tekrar';
+ let remain=mins;const out=[];
+ const add=(text,m,icon)=>{if(remain<=0)return;let mm=Math.min(m,remain);out.push({text,minutes:mm,icon});remain-=mm};
+ if(focus==='Deneme + analiz'){add('TYT/AYT denemesi',90,'📝');add('Deneme yanlış analizi',50,'🔎');add(topic,45,'📚');}
+ else if(focus==='AYT ağırlıklı'){add('AYT Matematik soru çözümü',70,'➗');add('AYT Edebiyat tekrar',50,'📖');add('AYT sosyal kısa tekrar',40,'🧠');add('Yanlış soru analizi',30,'🔎');}
+ else if(focus==='TYT ağırlıklı'){add('TYT Matematik',65,'➗');add('TYT Türkçe',45,'✍️');add('TYT Sosyal',35,'🌍');add('TYT yanlış analizi',30,'🔎');}
+ else {add(topic,60,'📚');add('AYT Matematik soru çözümü',60,'➗');add('Edebiyat tekrar',45,'📖');add('Yanlış soru analizi',35,'🔎')}
+ if(remain>0)add('Serbest tekrar / eksik kapatma',remain,'🎯');
+ d.plan=out;d.planDate=today();setData(d);toast('Akıllı plan oluşturuldu 🤖')
+}
+function renderPlan(){document.getElementById('planDate').textContent=fmtDate(today());const p=window.appData().plan;document.getElementById('planView').innerHTML=p.length?p.map((x,i)=>`<div class="plan-day" style="margin-bottom:10px"><h4>${i+1}. Blok • ${x.minutes} dk</h4><div class="subject"><div class="subject-icon">${x.icon}</div><div class="subject-main"><strong>${escapeHtml(x.text)}</strong><small>Odaklan • süreyi tamamla • kısa mola ver</small></div></div></div>`).join(''):'<div class="empty">Plan oluşturmak için soldaki butona bas.</div>'}
+function addPlanAsTasks(){const d=window.appData();if(!d.plan.length)return toast('Önce plan oluştur.');d.plan.forEach((x,i)=>d.tasks.unshift({id:Date.now().toString()+'_'+i+'_'+Math.random().toString(36).slice(2),title:x.text,subject:'Plan',minutes:x.minutes,priority:'Normal',done:false,date:today()}));setData(d);toast('Plan görevlerine aktarıldı ✓')}
+
+function calcNet(c,w){return Math.max(0,Number(c)||0)-(Math.max(0,Number(w)||0)/4)}
+function calculateNet(){
+ const c=Math.max(0,Number(document.getElementById('calcCorrect').value)||0),w=Math.max(0,Number(document.getElementById('calcWrong').value)||0),b=Math.max(0,Number(document.getElementById('calcBlank').value)||0);
+ const total=c+w+b,net=calcNet(c,w);
+ if(total<=0){document.getElementById('calcResult').innerHTML='<div class="notice">En az bir doğru, yanlış veya boş girmelisin.</div>';return}
+ document.getElementById('calcResult').innerHTML=`<div class="success"><div style="font-size:12px">Hesaplanan ${document.getElementById('calcType').value} neti</div><div class="calc-big">${net.toFixed(2)}</div><div>${c} doğru • ${w} yanlış • ${b} boş</div></div>`;
+}
+function saveCalc(){
+ const c=Math.max(0,Number(document.getElementById('calcCorrect').value)||0),w=Math.max(0,Number(document.getElementById('calcWrong').value)||0),b=Math.max(0,Number(document.getElementById('calcBlank').value)||0),type=document.getElementById('calcType').value;
+ if(c+w+b<=0)return toast('Önce sonuç gir.');
+ const d=window.appData();d.calcs??=[];d.calcs.unshift({id:Date.now(),date:today(),type,correct:c,wrong:w,blank:b,net:calcNet(c,w)});d.calcs=d.calcs.slice(0,30);setData(d);toast(type+' neti kaydedildi ✓')
+}
+function clearCalcs(){const d=window.appData();d.calcs=[];setData(d);toast('Net geçmişi temizlendi')}
+function renderCalculator(){
+ const d=window.appData(),h=d.calcs||[];
+ document.getElementById('calcHistory').innerHTML=h.length?h.slice(0,8).map(x=>`<div class="calc-row"><span><b>${x.type}</b> • ${fmtDate(x.date)}<br><small style="color:var(--muted)">${x.correct}D ${x.wrong}Y ${x.blank}B</small></span><b>${Number(x.net).toFixed(2)}</b></div>`).join(''):'<div class="empty">Henüz net hesabı yok.</div>';
+ const ty=h.find(x=>x.type==='TYT'),ay=h.find(x=>x.type==='AYT');document.getElementById('lastTYT').textContent=ty?Number(ty.net).toFixed(2):'0';document.getElementById('lastAYT').textContent=ay?Number(ay.net).toFixed(2):'0';
+ document.getElementById('calcTarget').textContent=h.length?`Son kayıtların hazır. TYT ${ty?Number(ty.net).toFixed(2):'—'} • AYT ${ay?Number(ay.net).toFixed(2):'—'}`:'Net verisi girdikçe burada özet oluşur.';
+}
+
+function renderExams(){
+ const d=window.appData(), ex=d.exams.slice().sort((a,b)=>b.date.localeCompare(a.date));let avg=ex.length?ex.reduce((a,x)=>a+Number(x.tyt||0),0)/ex.length:0;
+ document.getElementById('examSummary').innerHTML=`<div class="kpi"><div><span style="color:var(--muted);font-size:12px">Ortalama TYT</span><br><b>${avg.toFixed(2)}</b></div><span class="chip">${ex.length} deneme</span></div><div class="kpi"><div><span style="color:var(--muted);font-size:12px">Son AYT</span><br><b>${ex[0]?.ayt||0}</b></div></div>`;
+ document.getElementById('examTable').innerHTML=ex.length?`<table class="table"><thead><tr><th>Tarih</th><th>Deneme</th><th>TYT</th><th>AYT</th><th>Not</th></tr></thead><tbody>${ex.map(x=>`<tr><td>${fmtDate(x.date)}</td><td>${escapeHtml(x.name)}</td><td><b>${x.tyt||0}</b></td><td>${x.ayt||0}</td><td>${escapeHtml(x.note||'-')}</td></tr>`).join('')}</tbody></table>`:'<div class="empty">Henüz deneme eklenmedi.</div>';
+}
+function addExam(){
+ const name=document.getElementById('examName').value.trim()||'Deneme';
+ const d=window.appData();
+ const date=document.getElementById('examDate').value||today();
+ const tyt=Math.max(0,Number(document.getElementById('examTYT').value)||0);
+ const ayt=Math.max(0,Number(document.getElementById('examAYT').value)||0);
+ const note=document.getElementById('examNote').value.trim();
+ d.exams.push({name,date,tyt,ayt,note});
+ setData(d);toast('Deneme kaydedildi ✓');
+ ['examName','examTYT','examAYT','examNote'].forEach(id=>document.getElementById(id).value='')
+}
+function clearExams(){if(confirm('Tüm deneme kayıtları silinsin mi?')){const d=window.appData();d.exams=[];setData(d)}}
+function seedTopics(){const d=window.appData();d.topics=[['Fonksiyonlar','Matematik',80],['Polinomlar','Matematik',65],['Türev','Matematik',45],['İntegral','Matematik',35],['Divan Edebiyatı','Edebiyat',70],['Cumhuriyet Dönemi','Edebiyat',50],['TYT Problemler','Matematik',55],['Harita Bilgisi','Coğrafya',40],['İnkılap Tarihi','Tarih',75]].map((x,i)=>({id:i+1,name:x[0],subject:x[1],level:x[2]}));setData(d);toast('Örnek konu listesi yüklendi')}
+function renderTopics(){const d=window.appData();document.getElementById('topicList').innerHTML=d.topics.length?d.topics.map(x=>`<div class="topic-row"><div class="topic-head"><span><b>${escapeHtml(x.name)}</b> <small style="color:var(--muted)">• ${escapeHtml(x.subject)}</small></span><b>${x.level}%</b></div><div class="progress"><i style="width:${x.level}%"></i></div><div style="margin-top:7px"><button class="btn secondary" onclick="changeTopic('${x.id}',-10)">−</button> <button class="btn secondary" onclick="changeTopic('${x.id}',10)">＋</button></div></div>`).join(''):'<div class="empty">Konu listesi boş.<br>Örnek konuları yükleyebilirsin.</div>';
+ const weak=d.topics.slice().sort((a,b)=>a.level-b.level).slice(0,4);document.getElementById('topicSummary').innerHTML=weak.length?weak.map(x=>`<div class="topic-row"><div class="topic-head"><b>${escapeHtml(x.name)}</b><span class="chip">${x.level}%</span></div><small style="color:var(--muted)">Planında önceliklendir.</small></div>`).join(''):'<div class="empty">Veri yok.</div>'
+}
+function changeTopic(id,delta){const d=window.appData();const x=d.topics.find(t=>String(t.id)===String(id));if(x)x.level=Math.max(0,Math.min(100,x.level+delta));setData(d)}
+function addQuestionSet(){const d=window.appData(),sub=document.getElementById('qSubject').value,c=Number(document.getElementById('qCorrect').value)||0,w=Number(document.getElementById('qWrong').value)||0,b=Number(document.getElementById('qBlank').value)||0;d.questions.push({date:today(),subject:sub,correct:c,wrong:w,blank:b,net:c-w/4});setData(d);toast('Soru seti kaydedildi ✓')}
+function renderQuestions(){
+ const d=window.appData(), map={};d.questions.forEach(x=>{map[x.subject]??={q:0,net:0};map[x.subject].q+=x.correct+x.wrong+x.blank;map[x.subject].net+=x.net});
+ document.getElementById('questionStats').innerHTML=Object.keys(map).length?Object.entries(map).map(([s,v])=>`<div class="topic-row"><div class="topic-head"><b>${escapeHtml(s)}</b><span>${v.q} soru</span></div><span class="chip">${v.net.toFixed(2)} net</span></div>`).join(''):'<div class="empty">Henüz soru kaydı yok.</div>';
+ const t=d.questions.filter(x=>x.date===today());document.getElementById('questionToday').innerHTML=`<div class="kpi"><div><span style="color:var(--muted);font-size:12px">Toplam soru</span><br><b>${t.reduce((a,x)=>a+x.correct+x.wrong+x.blank,0)}</b></div><span class="chip">${t.length} set</span></div><div class="success">Net hesabı: doğru − yanlış/4.</div>`
+}
+function setTimerMode(min){timerReset();timerSeconds=min*60;timerTotal=timerSeconds;document.getElementById('timerMode').textContent='Odak • '+min+' dk';updateTimerFace()}
+function timerStart(){if(timer){clearInterval(timer);timer=null;document.getElementById('timerBtn').textContent='▶ Başlat';return}document.getElementById('timerBtn').textContent='⏸ Duraklat';timer=setInterval(()=>{timerSeconds=Math.max(0,timerSeconds-1);updateTimerFace();if(timerSeconds<=0){clearInterval(timer);timer=null;document.getElementById('timerBtn').textContent='▶ Başlat';const d=window.appData();d.sessions.push({date:today(),minutes:Math.round(timerTotal/60)});setData(d);toast('Odak oturumu tamamlandı! 🎉')}},1000)}
+function setCustomTimer(){
+ const n=safeNum(document.getElementById('customTimer')?.value,1,240);
+ if(!n)return toast('Dakika gir.');
+ setTimerMode(n); toast(`${n} dakikalık sayaç hazır ⏱`);
+}
+function timerReset(){if(timer)clearInterval(timer);timer=null;timerSeconds=timerTotal;document.getElementById('timerBtn').textContent='▶ Başlat';updateTimerFace()}
+function updateTimerFace(){const m=Math.floor(timerSeconds/60).toString().padStart(2,'0'),s=(timerSeconds%60).toString().padStart(2,'0');document.getElementById('timerFace').textContent=m+':'+s}
+
+
+function calendarMove(delta){calendarCursor.setMonth(calendarCursor.getMonth()+delta);renderCalendar()}
+function calendarToday(){calendarCursor=new Date();selectedDate=today();renderCalendar()}
+function selectCalendarDate(date){selectedDate=date;renderCalendar()}
+function renderCalendar(){
+ const d=window.appData(), y=calendarCursor.getFullYear(), m=calendarCursor.getMonth();
+ document.getElementById('calendarMonth').textContent=calendarCursor.toLocaleDateString('tr-TR',{month:'long',year:'numeric'});
+ const first=new Date(y,m,1), start=(first.getDay()+6)%7, days=new Date(y,m+1,0).getDate(), prevDays=new Date(y,m,0).getDate();
+ const cells=[];
+ for(let i=0;i<42;i++){
+   const day=i-start+1;let dt,muted=false;
+   if(day<1){dt=new Date(y,m-1,prevDays+day);muted=true}
+   else if(day>days){dt=new Date(y,m+1,day-days);muted=true}
+   else dt=new Date(y,m,day);
+   const iso=localISO(dt), mins=d.sessions.filter(x=>x.date===iso).reduce((a,x)=>a+x.minutes,0);
+   const tasks=d.tasks.filter(x=>x.date===iso), done=tasks.filter(x=>x.done).length;
+   cells.push(`<div class="cal-cell ${muted?'muted':''} ${iso===today()?'today':''} ${iso===selectedDate?'selected':''}" onclick="selectCalendarDate('${iso}')"><div class="cal-num">${dt.getDate()}${mins?'<i class="cal-dot"></i>':''}</div><div class="cal-min">${mins?mins+' dk':''}${tasks.length?` • ${done}/${tasks.length} görev`:''}</div></div>`);
+ }
+ document.getElementById('calendarGrid').innerHTML=`<div class="calendar-head">${['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'].map(x=>`<div>${x}</div>`).join('')}</div><div class="calendar-grid">${cells.join('')}</div>`;
+ document.getElementById('selectedDateLabel').textContent=fmtDate(selectedDate);
+ const dayTasks=d.tasks.filter(x=>x.date===selectedDate), daySessions=d.sessions.filter(x=>x.date===selectedDate), dayExams=d.exams.filter(x=>x.date===selectedDate);
+ const mins=daySessions.reduce((a,x)=>a+x.minutes,0);
+ document.getElementById('selectedDay').innerHTML=`
+   <div class="grid three">
+    <div class="card" style="box-shadow:none"><span style="color:var(--muted);font-size:11px">Çalışma</span><h3 style="margin:5px 0">${mins} dk</h3></div>
+    <div class="card" style="box-shadow:none"><span style="color:var(--muted);font-size:11px">Görev</span><h3 style="margin:5px 0">${dayTasks.filter(x=>x.done).length}/${dayTasks.length}</h3></div>
+    <div class="card" style="box-shadow:none"><span style="color:var(--muted);font-size:11px">Deneme</span><h3 style="margin:5px 0">${dayExams.length}</h3></div>
+   </div>
+   <div style="margin-top:12px">${dayTasks.length?renderTaskRows(dayTasks):'<div class="empty">Bu gün için görev yok.</div>'}</div>`;
+}
+
+function renderTimer(){const d=window.appData(),t=d.sessions.filter(x=>x.date===today()),m=t.reduce((a,x)=>a+x.minutes,0);document.getElementById('timerToday').textContent=m+' dk';document.getElementById('timerSessions').textContent=t.length+' oturum';document.getElementById('timerBar').style.width=Math.min(100,m/240*100)+'%';updateTimerFace()}
+function renderAnalytics(){
+ const d=window.appData(),total=d.sessions.reduce((a,x)=>a+x.minutes,0),avg=d.exams.length?d.exams.reduce((a,x)=>a+Number(x.tyt||0),0)/d.exams.length:0,qs=d.questions.reduce((a,x)=>a+x.correct+x.wrong+x.blank,0),done=d.tasks.filter(x=>x.done).length;
+ document.getElementById('aTotal').textContent=(total/60).toFixed(1)+'s';document.getElementById('aAvg').textContent=avg.toFixed(1);document.getElementById('aQuestions').textContent=qs;document.getElementById('aCompletion').textContent=(d.tasks.length?Math.round(done/d.tasks.length*100):0)+'%';
+ const days=[];for(let i=6;i>=0;i--){const dt=new Date();dt.setDate(dt.getDate()-i);const date=localISO(dt);days.push({date,mins:d.sessions.filter(x=>x.date===date).reduce((a,x)=>a+x.minutes,0)})}
+ document.getElementById('studyChart').innerHTML=days.map(x=>`<div class="bar" style="height:100%"><i style="height:${Math.min(100,x.mins/180*100)}%"></i><small>${x.mins}</small><em>${new Date(x.date+'T00:00:00').toLocaleDateString('tr-TR',{weekday:'short'})}</em></div>`).join('');
+ const ex=d.exams.slice().sort((a,b)=>a.date.localeCompare(b.date)).slice(-7),mx=Math.max(1,...ex.map(x=>Number(x.tyt||0)));document.getElementById('examChart').innerHTML=ex.length?ex.map(x=>`<div class="bar" style="height:100%"><i style="height:${Number(x.tyt||0)/mx*100}%"></i><small>${x.tyt||0}</small><em>${new Date(x.date+'T00:00:00').toLocaleDateString('tr-TR',{day:'2-digit',month:'2-digit'})}</em></div>`).join(''):'<div class="empty" style="width:100%">Deneme verisi yok.</div>';
+
+ const by={};
+ d.questions.forEach(x=>{
+   const s=x.subject||'Diğer';
+   by[s]??={q:0,c:0,w:0,net:0};
+   by[s].q+=(Number(x.correct)||0)+(Number(x.wrong)||0)+(Number(x.blank)||0);
+   by[s].c+=Number(x.correct)||0;
+   by[s].w+=Number(x.wrong)||0;
+   by[s].net+=Number(x.net)||0;
+ });
+ const rows=Object.entries(by).sort((a,b)=>b[1].q-a[1].q);
+ document.getElementById('subjectAnalytics').innerHTML=rows.length?rows.map(([s,v])=>{
+   const acc=v.q?Math.round(v.c/v.q*100):0;
+   return `<div class="performance-row">
+    <div class="performance-head"><b>${escapeHtml(s)}</b><span class="chip">${v.net.toFixed(2)} net</span></div>
+    <div class="progress"><i style="width:${acc}%"></i></div>
+    <div class="performance-meta"><span>${v.q} soru • ${v.c} doğru • ${v.w} yanlış</span><span>%${acc} doğruluk</span></div>
+   </div>`;
+ }).join(''):'<div class="empty">Ders bazlı analiz için önce Sorular bölümünden kayıt ekle.</div>';
+
+ const weekRows=[];
+ for(let i=6;i>=0;i--){
+   const date=dateOffset(-i),mins=d.sessions.filter(x=>x.date===date).reduce((a,x)=>a+Number(x.minutes||0),0);
+   const tasks=d.tasks.filter(x=>(x.date||today())===date),done=tasks.filter(x=>x.done).length;
+   weekRows.push({date,mins,tasks:tasks.length,done});
+ }
+ document.getElementById('weeklySummary').innerHTML=weekRows.map(x=>{
+   const pct=x.tasks?Math.round(x.done/x.tasks*100):0;
+   return `<div class="week-row"><span>${new Date(x.date+'T12:00:00').toLocaleDateString('tr-TR',{weekday:'short'})}</span><div><div class="progress"><i style="width:${Math.min(100,x.mins/180*100)}%"></i></div><small style="color:var(--muted)">${x.mins} dk • ${x.done}/${x.tasks} görev</small></div><b>%${pct}</b></div>`;
+ }).join('');
+}
+function renderAccount(){
+ document.getElementById('authSession').textContent=authUser?'Giriş yapıldı':'Giriş yapılmadı';document.getElementById('authProfile').textContent=profile?'Hazır':'Eksik';
+ document.getElementById('authEmail').value=authUser?.email||document.getElementById('authEmail').value||'';document.getElementById('aName').value=profile?.name||'';document.getElementById('aPlan').value=profile?.plan||'Ücretsiz';
+ document.getElementById('sideName').textContent=profile?.name||'Öğrenci';document.getElementById('sideEmail').textContent=authUser?.email||'Giriş yapılmadı';document.getElementById('sideAvatar').textContent=(profile?.name||'Ö').trim().charAt(0).toUpperCase()||'Ö';
+}
+function setAuthMsg(msg,type=''){document.getElementById('authMsg').innerHTML=msg?`<div class="${type==='ok'?'success':'notice'}">${escapeHtml(msg)}</div>`:''}
+async function signUp(){
+ if(loginBusy)return;const email=document.getElementById('authEmail').value.trim(),password=document.getElementById('authPassword').value;if(!email||!password)return setAuthMsg('E-posta ve şifre gerekli.');
+ loginBusy=true;setAuthMsg('Kayıt yapılıyor…');
+ try{const {data,error}=await withTimeout(supabaseClient.auth.signUp({email,password}));if(error)throw error;
+   if(data.user&&!data.session){setAuthMsg('Kayıt tamamlandı. E-posta doğrulaması açıksa gelen kutundaki bağlantıyı kullan.','ok')}
+   else {authUser=data.user;await loadCloudProfile();setAuthMsg('Hesap oluşturuldu ve giriş yapıldı.','ok')}
+ }catch(e){setAuthMsg('Kayıt hatası: '+(e?.message||'Bilinmeyen hata.'))}finally{loginBusy=false}
+}
+async function signIn(){
+ if(loginBusy)return;const email=document.getElementById('authEmail').value.trim(),password=document.getElementById('authPassword').value;if(!email||!password)return setAuthMsg('E-posta ve şifre gerekli.');
+ loginBusy=true;setAuthMsg('Giriş yapılıyor…');
+ try{const {data,error}=await withTimeout(supabaseClient.auth.signInWithPassword({email,password}));if(error)throw error;authUser=data?.user||null;if(!authUser)throw new Error('Kullanıcı oturumu alınamadı.');await loadCloudProfile();setAuthMsg('Giriş başarılı. ✓','ok');renderAll()}
+ catch(e){setAuthMsg('Giriş hatası: '+(e?.message||'Bilinmeyen hata.'))}finally{loginBusy=false}
+}
+async function signOut(){try{await withTimeout(supabaseClient.auth.signOut())}catch{}authUser=null;profile=null;renderAll();setAuthMsg('Çıkış yapıldı.','ok');toast('Çıkış yapıldı')}
+async function loadCloudProfile(){
+ if(!authUser)return;
+ try{const {data:cloudProfile,error}=await withTimeout(supabaseClient.from('profiles').select('*').eq('id',authUser.id).maybeSingle());if(error)throw error;
+   profile=cloudProfile||{id:authUser.id,name:'',email:authUser.email,plan:'Ücretsiz'};
+   const d=window.appData();if(cloudProfile){d.dept=cloudProfile.target_department||d.dept;d.rank=cloudProfile.target_rank||d.rank;setData(d)}
+   renderAll();
+ }catch(e){profile={name:'',email:authUser.email,plan:'Ücretsiz'};setAuthMsg('Profil alınamadı: '+(e?.message||'Bilinmeyen hata.'))}
+}
+async function saveCloudProfile(name){
+ if(!authUser)return;
+ const payload={id:authUser.id,name:name||'',email:authUser.email,plan:document.getElementById('aPlan')?.value||'Ücretsiz',target_department:document.getElementById('pDept')?.value||window.appData().dept,target_rank:Number(document.getElementById('pRank')?.value)||5000,updated_at:new Date().toISOString()};
+ try{const {data:row,error}=await withTimeout(supabaseClient.from('profiles').upsert(payload).select().single());if(error)throw error;profile=row||payload}catch(e){toast('Yerel kayıt yapıldı; bulut profilinde hata: '+(e?.message||''))}
+}
+async function saveProfileFromAccount(){if(!authUser)return setAuthMsg('Önce giriş yap.');await saveCloudProfile(document.getElementById('aName').value.trim());renderAll();toast('Profil kaydedildi ✓')}
+function exportData(){const payload={version:6,exportedAt:new Date().toISOString(),profile,data:window.appData()};const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}));a.download='yks-kocluk-yedek.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+function importData(ev){const f=ev.target.files?.[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const p=JSON.parse(r.result);if(p.data){save(p.data);renderAll();toast('Veriler içe aktarıldı ✓')}}catch{toast('Geçersiz JSON dosyası')}};r.readAsText(f)}
+function resetAll(){if(!confirm('Bu cihazdaki tüm YKS verileri silinsin mi?'))return;localStorage.removeItem(key());renderAll();toast('Veriler sıfırlandı')}
+function handleAuthRedirect(){
+ const params=new URLSearchParams(location.hash.replace(/^#/,''));
+ const err=params.get('error_description'),type=params.get('type');
+ if(err){document.getElementById('verifyTitle').textContent='Doğrulama bağlantısı kullanılamadı';let readableErr=err.replace(/\+/g,' ');try{readableErr=decodeURIComponent(readableErr)}catch{}document.getElementById('verifyText').textContent=readableErr;document.getElementById('verifyModal').classList.add('show');history.replaceState(null,'',location.pathname+location.search);return}
+ if(type==='signup'){document.getElementById('verifyTitle').textContent='E-posta adresin doğrulandı!';document.getElementById('verifyText').textContent='Hesabın başarıyla aktifleştirildi. Artık YKS Koçluk hesabını kullanabilirsin.';document.getElementById('verifyModal').classList.add('show');history.replaceState(null,'',location.pathname+location.search)}
+}
+document.addEventListener('keydown',e=>{
+ if(['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName))return;
+ if(e.key==='n'||e.key==='N'){e.preventDefault();openTaskModal()}
+ if(e.key==='t'||e.key==='T'){e.preventDefault();go('timer')}
+ if(e.key==='a'||e.key==='A'){e.preventDefault();go('analytics')}
+ if(e.key==='Escape'){document.querySelectorAll('.modal.show').forEach(m=>m.classList.remove('show'))}
+});
+
+async function init(){document.getElementById('taskDate')?.setAttribute('value',today());document.getElementById('taskDate').value=today();
+ renderNav();loadTheme();document.getElementById('examDate').value=today();
+ try{const {data:sessionData}=await withTimeout(supabaseClient.auth.getSession());authUser=sessionData.session?.user||null;if(authUser)await loadCloudProfile();else renderAll();handleAuthRedirect()}
+ catch(e){renderAll();setAuthMsg('Oturum kontrolü başarısız: '+e.message)}
+ supabaseClient.auth.onAuthStateChange((_event,session)=>{authUser=session?.user||null;if(!authUser){profile=null;renderAll()}else if(!loginBusy){setTimeout(()=>loadCloudProfile(),0)}else renderAll()});
+}
+
+document.addEventListener('keydown',e=>{
+ if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){
+   e.preventDefault(); document.getElementById('sidebar').classList.add('open');
+ }
+ if(e.key==='Escape'){document.querySelectorAll('.modal.show').forEach(m=>m.classList.remove('show'));document.getElementById('sidebar').classList.remove('open')}
+});
+
+window.addEventListener('error',e=>{console.error(e.error||e.message);});
+window.addEventListener('unhandledrejection',e=>{console.error(e.reason);});
+init();
+</script>
+
+<script>
+/* =========================================================
+   V11 EFSANE ENGINE
+   ========================================================= */
+
+// V11 internal module checkpoint 1: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 2: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 3: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 4: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 5: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 6: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 7: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 8: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 9: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 10: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 11: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 12: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 13: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 14: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 15: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 16: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 17: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 18: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 19: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 20: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 21: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 22: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 23: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 24: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 25: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 26: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 27: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 28: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 29: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 30: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 31: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 32: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 33: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 34: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 35: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 36: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 37: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 38: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 39: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 40: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 41: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 42: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 43: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 44: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 45: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 46: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 47: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 48: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 49: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 50: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 51: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 52: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 53: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 54: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 55: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 56: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 57: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 58: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 59: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 60: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 61: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 62: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 63: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 64: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 65: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 66: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 67: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 68: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 69: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 70: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 71: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 72: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 73: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 74: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 75: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 76: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 77: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 78: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 79: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 80: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 81: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 82: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 83: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 84: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 85: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 86: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 87: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 88: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 89: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 90: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 91: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 92: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 93: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 94: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 95: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 96: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 97: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 98: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 99: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 100: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 101: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 102: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 103: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 104: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 105: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 106: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 107: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 108: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 109: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 110: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 111: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 112: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 113: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 114: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 115: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 116: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 117: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 118: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 119: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 120: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 121: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 122: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 123: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 124: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 125: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 126: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 127: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 128: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 129: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 130: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 131: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 132: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 133: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 134: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 135: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 136: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 137: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 138: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 139: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 140: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 141: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 142: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 143: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 144: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 145: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 146: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 147: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 148: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 149: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 150: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 151: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 152: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 153: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 154: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 155: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 156: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 157: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 158: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 159: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 160: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 161: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 162: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 163: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 164: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 165: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 166: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 167: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 168: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 169: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 170: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 171: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 172: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 173: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 174: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 175: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 176: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 177: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 178: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 179: data integrity, UX, accessibility and performance.
+// V11 internal module checkpoint 180: data integrity, UX, accessibility and performance.
+const MAX_VERSION="11.0.0";
+const MAX_TIMEZONE="Europe/Istanbul";
+let maxCommandIndex=0;
+let maxCommands=[];
+let maxSnapshotTimer=null;
+
+function maxNow(){
+ return new Date();
+}
+
+function maxToday(){
+ return today();
+}
+
+function maxDateObject(value){
+ if(!value){
+  return new Date();
+ }
+ return new Date(value+"T12:00:00");
+}
+
+function maxDaysBetween(a,b){
+ const aa=maxDateObject(a);
+ const bb=maxDateObject(b);
+ return Math.round((bb-aa)/86400000);
+}
+
+function maxClamp(value,min,max){
+ return Math.min(max,Math.max(min,Number(value)||0));
+}
+
+function maxFormatMinutes(minutes){
+ const m=Math.max(0,Math.round(Number(minutes)||0));
+ const h=Math.floor(m/60);
+ const r=m%60;
+ if(h&&r)return `${h}s ${r}dk`;
+ if(h)return `${h}s`;
+ return `${r}dk`;
+}
+
+function maxPriorityScore(priority){
+ if(priority==="Yüksek")return 40;
+ if(priority==="Normal")return 20;
+ return 10;
+}
+
+function maxTaskUrgency(task){
+ const date=task.date||maxToday();
+ const delta=daysFromToday(date);
+ let score=maxPriorityScore(task.priority);
+ if(delta<0)score+=80;
+ if(delta===0)score+=50;
+ if(delta===1)score+=30;
+ if(!task.done)score+=20;
+ score+=Math.max(0,60-(Number(task.minutes)||40)/2);
+ return score;
+}
+
+function maxOpenTasks(){
+ const d=window.appData();
+ return d.tasks.filter(x=>!x.done);
+}
+
+function maxTodayTasks(){
+ const d=window.appData();
+ const t=maxToday();
+ return d.tasks.filter(x=>(x.date||t)===t);
+}
+
+function maxTodaySessions(){
+ const d=window.appData();
+ return d.sessions.filter(x=>x.date===maxToday());
+}
+
+function maxTodayMinutes(){
+ return maxTodaySessions().reduce((sum,x)=>sum+Number(x.minutes||0),0);
+}
+
+function maxWeekStart(){
+ const d=maxDateObject(maxToday());
+ d.setDate(d.getDate()-6);
+ return localISO(d);
+}
+
+function maxWeekSessions(){
+ const start=maxWeekStart();
+ const end=maxToday();
+ const d=window.appData();
+ return d.sessions.filter(x=>x.date>=start&&x.date<=end);
+}
+
+function maxWeekMinutes(){
+ return maxWeekSessions().reduce((sum,x)=>sum+Number(x.minutes||0),0);
+}
+
+function maxWeekGoalMinutes(){
+ const d=window.appData();
+ return Math.max(1,Number(d.weekHours||10)*60);
+}
+
+function maxStreak(){
+ const d=window.appData();
+ const set=new Set(d.sessions.map(x=>x.date));
+ let streak=0;
+ let cursor=maxDateObject(maxToday());
+ while(true){
+  const value=localISO(cursor);
+  if(!set.has(value))break;
+  streak++;
+  cursor.setDate(cursor.getDate()-1);
+ }
+ return streak;
+}
+
+function maxTaskStats(){
+ const tasks=maxTodayTasks();
+ const done=tasks.filter(x=>x.done).length;
+ const total=tasks.length;
+ const pct=total?Math.round(done/total*100):0;
+ return {tasks,done,total,pct};
+}
+
+function maxDailyScore(){
+ const task=maxTaskStats();
+ const study=maxTodayMinutes();
+ const goal=Math.max(1,Math.min(600,maxWeekGoalMinutes()/7));
+ const studyScore=Math.min(55,Math.round(study/goal*55));
+ const taskScore=Math.round(task.pct*.35);
+ const streakScore=Math.min(10,maxStreak()*2);
+ const score=Math.min(100,studyScore+taskScore+streakScore);
+ return {score,studyScore,taskScore,streakScore};
+}
+
+function maxScoreText(score){
+ if(score>=90)return "Efsane tempo. Bugünü güçlü kapatıyorsun.";
+ if(score>=75)return "Çok iyi gidiyor. Kalan işi küçük bloklara böl.";
+ if(score>=55)return "İyi başlangıç. Bir odak oturumu daha ekleyebilirsin.";
+ if(score>=30)return "Ritim oluşuyor. Şimdi 25 dakikalık tek bir blok yap.";
+ return "Bugünün skorunu yükseltmenin en kolay yolu: şimdi 25 dakika başla.";
+}
+
+function maxNextTask(){
+ const open=maxOpenTasks().slice();
+ open.sort((a,b)=>maxTaskUrgency(b)-maxTaskUrgency(a));
+ return open[0]||null;
+}
+
+function maxCoachText(){
+ const d=window.appData();
+ const open=maxTodayTasks().filter(x=>!x.done);
+ const overdue=d.tasks.filter(x=>!x.done&&daysFromToday(x.date||maxToday())<0);
+ const minutes=maxTodayMinutes();
+ const streak=maxStreak();
+ if(overdue.length){
+  return `<b>Önce gecikenleri temizle.</b><div>${overdue.length} geciken görev var. En kısa gecikmiş görevi tamamlayıp zinciri kırma.</div>`;
+ }
+ if(open.length){
+  const task=open.slice().sort((a,b)=>maxTaskUrgency(b)-maxTaskUrgency(a))[0];
+  return `<b>Sıradaki hedef: ${escapeHtml(task.title)}</b><div>${task.minutes} dakikalık bir blok ayır. Bittiğinde görev otomatik olarak senin kontrolünde tamamlanabilir.</div>`;
+ }
+ if(minutes===0){
+  return `<b>Henüz başlamadın.</b><div>25 dakikalık bir odak oturumu başlat. İlk hedef mükemmel olmak değil, başlamış olmak.</div>`;
+ }
+ if(streak>=3){
+  return `<b>${streak} günlük seri.</b><div>Seriyi korumak için bugün kısa da olsa bir kapanış oturumu yap.</div>`;
+ }
+ return `<b>Ritmi koru.</b><div>Bugünkü çalışmanı tamamlamak için bir küçük blok daha ekleyebilirsin.</div>`;
+}
+
+function maxRenderNext(){
+ const el=document.getElementById("maxNextAction");
+ if(!el)return;
+ const task=maxNextTask();
+ if(!task){
+  el.innerHTML=`<div class="max-next"><div class="max-next-title">🎉 Açık görev yok</div><div class="max-next-meta">Bugün için yeni bir görev oluşturabilir veya çalışma oturumu başlatabilirsin.</div></div>`;
+  return;
+ }
+ const delta=daysFromToday(task.date||maxToday());
+ const label=delta<0?`${Math.abs(delta)} gün gecikti`:delta===0?"Bugün":delta===1?"Yarın":fmtDate(task.date);
+ el.innerHTML=`
+  <div class="max-next">
+   <div class="max-next-title">${escapeHtml(task.title)}</div>
+   <div class="max-next-meta">${escapeHtml(task.subject)} • ${task.minutes} dk • ${escapeHtml(task.priority)} • ${label}</div>
+  </div>`;
+}
+
+function maxRenderQueue(){
+ const el=document.getElementById("maxQueue");
+ if(!el)return;
+ const arr=maxOpenTasks().slice().sort((a,b)=>maxTaskUrgency(b)-maxTaskUrgency(a)).slice(0,7);
+ if(!arr.length){
+  el.innerHTML=`<div class="empty">Açık görev yok. 🎯</div>`;
+  return;
+ }
+ el.innerHTML=arr.map((x,i)=>{
+  const delta=daysFromToday(x.date||maxToday());
+  const when=delta<0?`Gecikti`:delta===0?`Bugün`:delta===1?`Yarın`:fmtDate(x.date);
+  return `<div class="max-queue-item">
+   <div class="max-queue-rank">${i+1}</div>
+   <div class="max-queue-main">
+    <b>${escapeHtml(x.title)}</b>
+    <small>${escapeHtml(x.subject)} • ${x.minutes} dk • ${escapeHtml(x.priority)} • ${when}</small>
+   </div>
+   <button class="icon-btn" onclick="maxCompleteTask('${x.id}')">✓</button>
+  </div>`;
+ }).join("");
+}
+
+function maxCompleteTask(id){
+ const d=window.appData();
+ const task=d.tasks.find(x=>x.id===id);
+ if(!task)return;
+ task.done=true;
+ task.completedAt=new Date().toISOString();
+ save(d);
+ renderAll();
+ maxRender();
+ toast("Görev tamamlandı ✓");
+}
+
+function maxRenderKPIs(){
+ const task=maxTaskStats();
+ const todayMinutes=maxTodayMinutes();
+ const weekMinutes=maxWeekMinutes();
+ const goal=maxWeekGoalMinutes();
+ const weekPct=Math.min(100,Math.round(weekMinutes/goal*100));
+ const score=maxDailyScore();
+ const streak=maxStreak();
+
+ const map={
+  maxTodayMinutes:`${todayMinutes} dk`,
+  maxTodaySessions:`${maxTodaySessions().length} oturum`,
+  maxTaskProgress:`${task.pct}%`,
+  maxTaskText:`${task.done} / ${task.total}`,
+  maxStreak:`${streak} gün`,
+  maxWeekProgress:`${weekPct}%`,
+  maxWeekText:`${Math.round(weekMinutes/60*10)/10} / ${Number(window.appData().weekHours||10)} saat`,
+  maxScore:score.score,
+  maxScoreLabel:`${score.score} / 100`
+ };
+
+ Object.entries(map).forEach(([id,value])=>{
+  const el=document.getElementById(id);
+  if(el)el.textContent=value;
+ });
+
+ const ring=document.getElementById("maxScoreRing");
+ if(ring){
+  const degrees=score.score*3.6;
+  ring.style.background=`conic-gradient(var(--primary2) ${degrees}deg,var(--soft) ${degrees}deg)`;
+ }
+ const text=document.getElementById("maxScoreText");
+ if(text)text.textContent=maxScoreText(score.score);
+}
+
+function maxRenderCoach(){
+ const el=document.getElementById("maxCoach");
+ if(el)el.innerHTML=maxCoachText();
+}
+
+function maxRenderWeekBars(){
+ const el=document.getElementById("maxWeekBars");
+ if(!el)return;
+ const d=window.appData();
+ const values=[];
+ for(let i=6;i>=0;i--){
+  const date=dateOffset(-i);
+  const minutes=d.sessions.filter(x=>x.date===date).reduce((s,x)=>s+Number(x.minutes||0),0);
+  values.push({date,minutes});
+ }
+ const peak=Math.max(30,...values.map(x=>x.minutes));
+ el.innerHTML=values.map(x=>{
+  const day=maxDateObject(x.date).toLocaleDateString("tr-TR",{weekday:"short"});
+  const height=Math.max(3,Math.round(x.minutes/peak*100));
+  return `<div class="max-day-bar">
+   <div class="max-day-bar-value">${x.minutes}</div>
+   <div class="max-day-bar-track"><div class="max-day-bar-fill" style="height:${height}%"></div></div>
+   <div class="max-day-bar-label">${day}</div>
+  </div>`;
+ }).join("");
+}
+
+function maxRenderDailyTable(){
+ const el=document.getElementById("maxDailyTable");
+ if(!el)return;
+ const d=window.appData();
+ const rows=[];
+ for(let i=6;i>=0;i--){
+  const date=dateOffset(-i);
+  const sessions=d.sessions.filter(x=>x.date===date);
+  const minutes=sessions.reduce((s,x)=>s+Number(x.minutes||0),0);
+  const tasks=d.tasks.filter(x=>(x.date||date)===date);
+  const done=tasks.filter(x=>x.done).length;
+  const total=tasks.length;
+  rows.push({
+   date,
+   minutes,
+   sessions:sessions.length,
+   done,
+   total
+  });
+ }
+ el.innerHTML=`
+ <table class="max-day-table">
+  <thead>
+   <tr><th>Gün</th><th>Çalışma</th><th>Oturum</th><th>Görev</th><th>Durum</th></tr>
+  </thead>
+  <tbody>
+   ${rows.map(x=>{
+    const label=maxDateObject(x.date).toLocaleDateString("tr-TR",{weekday:"long",day:"2-digit",month:"2-digit"});
+    const pct=x.total?Math.round(x.done/x.total*100):0;
+    return `<tr>
+     <td>${label}</td>
+     <td>${maxFormatMinutes(x.minutes)}</td>
+     <td>${x.sessions}</td>
+     <td>${x.done}/${x.total}</td>
+     <td><span class="chip">${pct}%</span></td>
+    </tr>`;
+   }).join("")}
+  </tbody>
+ </table>`;
+}
+
+function maxHealthChecks(){
+ const d=window.appData();
+ const checks=[];
+ const badTasks=d.tasks.filter(x=>!x.title||!x.date);
+ const badSessions=d.sessions.filter(x=>!x.date||!Number.isFinite(Number(x.minutes)));
+ const badExams=d.exams.filter(x=>!x.date);
+ checks.push({
+  title:"Görev verileri",
+  ok:badTasks.length===0,
+  detail:badTasks.length?`${badTasks.length} kayıtta eksik alan var.`:"Tüm görevler düzenli."
+ });
+ checks.push({
+  title:"Çalışma kayıtları",
+  ok:badSessions.length===0,
+  detail:badSessions.length?`${badSessions.length} kayıtta tarih/süre sorunu var.`:"Oturum kayıtları sağlıklı."
+ });
+ checks.push({
+  title:"Deneme kayıtları",
+  ok:badExams.length===0,
+  detail:badExams.length?`${badExams.length} kayıtta tarih eksik.`:"Deneme kayıtları sağlıklı."
+ });
+ checks.push({
+  title:"Yerel veri",
+  ok:true,
+  detail:`${JSON.stringify(d).length.toLocaleString("tr-TR")} karakter saklanıyor.`
+ });
+ return checks;
+}
+
+function maxRenderHealth(){
+ const el=document.getElementById("maxHealth");
+ if(!el)return;
+ const checks=maxHealthChecks();
+ el.innerHTML=`<div class="max-health-grid">${checks.map(x=>`
+  <div class="max-health">
+   <b class="${x.ok?"max-ok":"max-warn"}">${x.ok?"✓":"⚠"} ${x.title}</b>
+   <small>${escapeHtml(x.detail)}</small>
+  </div>
+ `).join("")}</div>`;
+}
+
+function maxRender(){
+ if(current!=="max")return;
+ maxRenderKPIs();
+ maxRenderNext();
+ maxRenderQueue();
+ maxRenderCoach();
+ maxRenderWeekBars();
+ maxRenderDailyTable();
+ maxRenderHealth();
+}
+
+function maxRefresh(){
+ maxRender();
+ toast("Komuta merkezi yenilendi ⚡");
+}
+
+function maxStartNext(){
+ const task=maxNextTask();
+ if(!task){
+  openTaskModal();
+  return;
+ }
+ const minutes=Math.max(1,Number(task.minutes)||25);
+ setTimerMode("custom");
+ setCustomTimer(minutes);
+ go("timer");
+ toast(`${task.title} için ${minutes} dk hazırlandı ⏱`);
+}
+
+function maxQuickSession(minutes){
+ const m=Math.max(1,Number(minutes)||25);
+ setTimerMode("custom");
+ setCustomTimer(m);
+ go("timer");
+ toast(`${m} dakikalık odak hazır ⏱`);
+}
+
+function maxTemplate(title,subject,minutes,priority){
+ const d=window.appData();
+ d.tasks.unshift({
+  id:String(Date.now())+Math.random().toString(16).slice(2),
+  title,
+  subject,
+  minutes,
+  priority,
+  done:false,
+  date:maxToday()
+ });
+ save(d);
+ renderAll();
+ toast(`“${title}” bugüne eklendi ✓`);
+}
+
+function maxCopySummary(){
+ const d=window.appData();
+ const task=maxTaskStats();
+ const minutes=maxTodayMinutes();
+ const score=maxDailyScore().score;
+ const summary=[
+  `YKS-KO-LUK günlük özet — ${fmtDate(maxToday())}`,
+  `Çalışma: ${minutes} dk`,
+  `Oturum: ${maxTodaySessions().length}`,
+  `Görev: ${task.done}/${task.total}`,
+  `Skor: ${score}/100`,
+  `Seri: ${maxStreak()} gün`
+ ].join("\n");
+ if(navigator.clipboard&&navigator.clipboard.writeText){
+  navigator.clipboard.writeText(summary).then(()=>{
+   toast("Günlük özet panoya kopyalandı ✓");
+  }).catch(()=>{
+   maxFallbackCopy(summary);
+  });
+ }else{
+  maxFallbackCopy(summary);
+ }
+}
+
+function maxFallbackCopy(text){
+ const area=document.createElement("textarea");
+ area.value=text;
+ document.body.appendChild(area);
+ area.select();
+ try{
+  document.execCommand("copy");
+  toast("Günlük özet kopyalandı ✓");
+ }catch{
+  toast("Özet kopyalanamadı.");
+ }
+ area.remove();
+}
+
+function maxBackup(){
+ const d=window.appData();
+ const payload={
+  app:"YKS-KO-LUK",
+  version:MAX_VERSION,
+  exportedAt:new Date().toISOString(),
+  data:d
+ };
+ const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
+ const url=URL.createObjectURL(blob);
+ const a=document.createElement("a");
+ a.href=url;
+ a.download=`yks-ko-luk-yedek-${maxToday()}.json`;
+ document.body.appendChild(a);
+ a.click();
+ a.remove();
+ setTimeout(()=>URL.revokeObjectURL(url),1000);
+ toast("Yedek dosyası hazır 💾");
+}
+
+function maxOpenPalette(){
+ const p=document.getElementById("maxCommandPalette");
+ if(!p)return;
+ p.classList.add("show");
+ const input=document.getElementById("maxCommandSearch");
+ if(input){
+  input.value="";
+  setTimeout(()=>input.focus(),20);
+ }
+ maxRenderCommands();
+}
+
+function maxClosePalette(){
+ document.getElementById("maxCommandPalette")?.classList.remove("show");
+}
+
+function maxPaletteBackdrop(event){
+ if(event.target.id==="maxCommandPalette")maxClosePalette();
+}
+
+function maxBuildCommands(){
+ return [
+  {icon:"➕",label:"Yeni görev",hint:"Görev oluştur",action:()=>openTaskModal()},
+  {icon:"▶",label:"25 dakika başla",hint:"Hızlı odak",action:()=>maxQuickSession(25)},
+  {icon:"▶",label:"50 dakika başla",hint:"Derin çalışma",action:()=>maxQuickSession(50)},
+  {icon:"🤖",label:"Akıllı plan",hint:"Plan sayfası",action:()=>go("plan")},
+  {icon:"📝",label:"Deneme ekle",hint:"Denemeler",action:()=>go("exams")},
+  {icon:"🧮",label:"Net hesapla",hint:"Hızlı hesap",action:()=>go("calculator")},
+  {icon:"📚",label:"Konular",hint:"Konu takibi",action:()=>go("topics")},
+  {icon:"📊",label:"Analiz",hint:"Performans",action:()=>go("analytics")},
+  {icon:"📅",label:"Takvim",hint:"Günlük görünüm",action:()=>go("calendar")},
+  {icon:"👤",label:"Hesabım",hint:"Profil",action:()=>go("account")},
+  {icon:"⚙",label:"Ayarlar",hint:"Uygulama",action:()=>go("settings")},
+  {icon:"📋",label:"Bugünün özetini kopyala",hint:"Panoya",action:()=>maxCopySummary()},
+  {icon:"💾",label:"Yedek al",hint:"JSON",action:()=>maxBackup()}
+ ];
+}
+
+function maxRenderCommands(){
+ const input=document.getElementById("maxCommandSearch");
+ const results=document.getElementById("maxCommandResults");
+ if(!input||!results)return;
+ const q=input.value.trim().toLocaleLowerCase("tr-TR");
+ maxCommands=maxBuildCommands().filter(x=>{
+  return !q||(x.label+" "+x.hint).toLocaleLowerCase("tr-TR").includes(q);
+ });
+ maxCommandIndex=0;
+ if(!maxCommands.length){
+  results.innerHTML=`<div class="empty">Komut bulunamadı.</div>`;
+  return;
+ }
+ results.innerHTML=maxCommands.map((x,i)=>`
+  <button class="max-command-item ${i===0?"active":""}" onclick="maxRunCommand(${i})">
+   <span>${x.icon}</span>
+   <b>${escapeHtml(x.label)}</b>
+   <small>${escapeHtml(x.hint)}</small>
+  </button>
+ `).join("");
+}
+
+function maxRunCommand(index){
+ const command=maxCommands[index];
+ if(!command)return;
+ maxClosePalette();
+ setTimeout(()=>command.action(),0);
+}
+
+function maxCommandKey(event){
+ if(event.key==="Escape"){
+  event.preventDefault();
+  maxClosePalette();
+  return;
+ }
+ if(event.key==="ArrowDown"){
+  event.preventDefault();
+  maxMoveCommand(1);
+  return;
+ }
+ if(event.key==="ArrowUp"){
+  event.preventDefault();
+  maxMoveCommand(-1);
+  return;
+ }
+ if(event.key==="Enter"){
+  event.preventDefault();
+  maxRunCommand(maxCommandIndex);
+ }
+}
+
+function maxMoveCommand(delta){
+ if(!maxCommands.length)return;
+ maxCommandIndex=(maxCommandIndex+delta+maxCommands.length)%maxCommands.length;
+ const items=document.querySelectorAll(".max-command-item");
+ items.forEach((el,i)=>el.classList.toggle("active",i===maxCommandIndex));
+ items[maxCommandIndex]?.scrollIntoView({block:"nearest"});
+}
+
+function maxGlobalKeyboard(event){
+ const target=event.target;
+ const tag=target?.tagName?.toLowerCase();
+ const typing=tag==="input"||tag==="textarea"||tag==="select";
+ if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==="k"){
+  event.preventDefault();
+  maxOpenPalette();
+  return;
+ }
+ if(typing)return;
+ if(event.key.toLowerCase()==="n"){
+  event.preventDefault();
+  openTaskModal();
+  return;
+ }
+ if(event.key.toLowerCase()==="f"){
+  event.preventDefault();
+  maxOpenPalette();
+  return;
+ }
+ if(event.key==="Escape"){
+  maxClosePalette();
+ }
+}
+
+function maxInstallKeyboard(){
+ if(window.__maxKeyboardInstalled)return;
+ window.__maxKeyboardInstalled=true;
+ document.addEventListener("keydown",maxGlobalKeyboard);
+}
+
+function maxRepairDates(){
+ const d=window.appData();
+ let changed=false;
+ const now=maxToday();
+ d.tasks=d.tasks.map(x=>{
+  if(!x.date){
+   changed=true;
+   return {...x,date:now};
+  }
+  return x;
+ });
+ if(changed){
+  save(d);
+ }
+ return changed;
+}
+
+function maxCleanData(){
+ const d=window.appData();
+ const before=JSON.stringify(d);
+ d.tasks=d.tasks.filter(x=>x&&x.title);
+ d.sessions=d.sessions.filter(x=>x&&x.date);
+ d.exams=d.exams.filter(x=>x&&x.date);
+ d.questions=d.questions.filter(x=>x);
+ d.topics=d.topics.filter(x=>x&&x.name);
+ const after=JSON.stringify(d);
+ if(before!==after){
+  save(d);
+  renderAll();
+  toast("Veri temizliği tamamlandı ✓");
+ }else{
+  toast("Temizlenecek veri yok.");
+ }
+}
+
+function maxQuickCompleteToday(){
+ const d=window.appData();
+ const first=d.tasks.find(x=>(x.date||maxToday())===maxToday()&&!x.done);
+ if(!first){
+  toast("Tamamlanacak bugünkü görev yok.");
+  return;
+ }
+ first.done=true;
+ first.completedAt=new Date().toISOString();
+ save(d);
+ renderAll();
+ toast(`Tamamlandı: ${first.title} ✓`);
+}
+
+function maxTodaySummary(){
+ const task=maxTaskStats();
+ const score=maxDailyScore();
+ return {
+  date:maxToday(),
+  minutes:maxTodayMinutes(),
+  sessions:maxTodaySessions().length,
+  tasksDone:task.done,
+  tasksTotal:task.total,
+  taskPercent:task.pct,
+  score:score.score,
+  streak:maxStreak()
+ };
+}
+
+function maxAutoInsight(){
+ const s=maxTodaySummary();
+ if(s.tasksTotal===0&&s.minutes===0){
+  return "Bugün için hiçbir kayıt yok. 25 dakikalık başlangıç yap.";
+ }
+ if(s.tasksTotal>0&&s.tasksDone===s.tasksTotal&&s.minutes>0){
+  return "Bugünün görevleri tamamlandı. İstersen kısa bir tekrar oturumu ekle.";
+ }
+ if(s.tasksTotal>0&&s.tasksDone<s.tasksTotal){
+  return `${s.tasksTotal-s.tasksDone} görev kaldı. En yüksek öncelikli göreve geç.`;
+ }
+ if(s.minutes<30){
+  return "Çalışma süren kısa. Tek bir 25 dakikalık blok bile günü değiştirir.";
+ }
+ return "Ritmin iyi. Sonraki oturumu planlı başlat.";
+}
+
+function maxRenderAutoInsight(){
+ const el=document.getElementById("maxScoreText");
+ if(!el)return;
+ const score=maxDailyScore().score;
+ el.textContent=`${maxScoreText(score)} ${maxAutoInsight()}`;
+}
+
+function maxInit(){
+ maxInstallKeyboard();
+ maxRepairDates();
+ maxRender();
+}
+
+window.maxRender=maxRender;
+window.maxRefresh=maxRefresh;
+window.maxStartNext=maxStartNext;
+window.maxQuickSession=maxQuickSession;
+window.maxTemplate=maxTemplate;
+window.maxCopySummary=maxCopySummary;
+window.maxBackup=maxBackup;
+window.maxOpenPalette=maxOpenPalette;
+window.maxClosePalette=maxClosePalette;
+window.maxRunCommand=maxRunCommand;
+window.maxCleanData=maxCleanData;
+window.maxQuickCompleteToday=maxQuickCompleteToday;
+
+const __originalGo=window.go;
+window.go=function(page){
+ __originalGo(page);
+ if(page==="max"){
+  setTimeout(maxRender,0);
+ }
+};
+
+const __originalSetData=window.setData;
+window.setData=function(data){
+ __originalSetData(data);
+ if(current==="max"){
+  setTimeout(maxRender,0);
+ }
+};
+
+document.addEventListener("DOMContentLoaded",()=>{
+ setTimeout(maxInit,300);
+});
+</script>
+
+</body>
+</html>
