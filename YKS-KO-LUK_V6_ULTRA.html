@@ -1,0 +1,448 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#173b73">
+<title>YKS Koçluk — V6 Ultra</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+ --bg:#f5f7fb;--card:#fff;--text:#142033;--muted:#6b778b;--line:#e2e8f0;
+ --primary:#173b73;--primary2:#2e67b5;--soft:#eaf2ff;--ok:#13845b;--okbg:#e8f7f0;
+ --warn:#a96f00;--warnbg:#fff6da;--bad:#c43b4b;--badbg:#fff0f2;
+ --shadow:0 12px 35px rgba(20,32,51,.08);--radius:20px;
+}
+[data-theme="dark"]{
+ --bg:#0d1420;--card:#131d2b;--text:#eef4ff;--muted:#9eacc0;--line:#273548;
+ --primary:#6ea5ff;--primary2:#8bb8ff;--soft:#172941;--ok:#45c995;--okbg:#123126;
+ --warn:#e7b657;--warnbg:#332a12;--bad:#ff7483;--badbg:#35171d;
+ --shadow:0 15px 40px rgba(0,0,0,.25);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer}
+.app{display:flex;min-height:100vh}
+.sidebar{width:260px;position:fixed;inset:0 auto 0 0;background:var(--card);border-right:1px solid var(--line);padding:20px 14px;z-index:20;display:flex;flex-direction:column}
+.brand{display:flex;align-items:center;gap:11px;padding:8px 10px 22px}
+.brand-icon{width:42px;height:42px;border-radius:13px;background:linear-gradient(135deg,var(--primary),var(--primary2));display:grid;place-items:center;color:white;font-size:22px;box-shadow:0 8px 20px rgba(46,103,181,.22)}
+.brand strong{font-size:18px}.brand small{display:block;color:var(--muted);font-size:11px;margin-top:2px}
+.nav{display:grid;gap:5px}.nav button{border:0;background:transparent;color:var(--muted);text-align:left;padding:11px 12px;border-radius:12px;display:flex;gap:10px;align-items:center;font-weight:700}
+.nav button:hover{background:var(--soft);color:var(--primary)}.nav button.active{background:var(--soft);color:var(--primary)}
+.sidebar-bottom{margin-top:auto}.mini-user{border:1px solid var(--line);border-radius:16px;padding:12px;background:var(--bg)}
+.avatar{width:34px;height:34px;border-radius:11px;background:var(--soft);display:grid;place-items:center;font-weight:900;color:var(--primary)}
+.userline{display:flex;align-items:center;gap:9px}.userline div:last-child{min-width:0}.userline strong,.userline span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.userline span{font-size:11px;color:var(--muted)}
+.main{margin-left:260px;width:calc(100% - 260px);padding:24px 28px 60px}
+.topbar{display:flex;justify-content:space-between;align-items:center;gap:15px;margin-bottom:24px}
+.mobile-menu{display:none}.eyebrow{color:var(--primary2);font-weight:800;font-size:12px;text-transform:uppercase;letter-spacing:.08em}
+h1{font-size:28px;margin:3px 0 0}.top-actions{display:flex;gap:9px;align-items:center}
+.icon-btn,.btn{border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:12px;padding:10px 13px;font-weight:800}
+.icon-btn{width:42px;height:42px;padding:0}.btn.primary{background:var(--primary);border-color:var(--primary);color:white}.btn.secondary{background:var(--soft);border-color:transparent;color:var(--primary)}.btn.danger{color:var(--bad);background:var(--badbg);border-color:transparent}
+.page{display:none}.page.active{display:block}
+.hero{background:linear-gradient(135deg,var(--primary),#285f9f);color:#fff;border-radius:26px;padding:26px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.hero:after{content:"";position:absolute;width:220px;height:220px;border-radius:50%;background:rgba(255,255,255,.08);right:-60px;top:-90px}
+.hero h2{font-size:26px;margin:0 0 7px}.hero p{margin:0;color:#dbe8ff}.hero-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:20px}.hero .btn{background:#fff;color:var(--primary);border-color:#fff}
+.grid{display:grid;gap:16px}.stats{grid-template-columns:repeat(4,minmax(0,1fr));margin:18px 0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow)}
+.stat .label{font-size:12px;color:var(--muted);font-weight:800}.stat .value{font-size:27px;font-weight:900;margin-top:6px}.stat .sub{font-size:12px;color:var(--muted);margin-top:4px}
+.cols{grid-template-columns:1.35fr .85fr}.two{grid-template-columns:1fr 1fr}.three{grid-template-columns:repeat(3,1fr)}
+.section-title{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:0 0 14px}.section-title h3{margin:0;font-size:17px}.section-title span{font-size:12px;color:var(--muted)}
+.progress{height:9px;border-radius:99px;background:var(--line);overflow:hidden}.progress>i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--primary2),#5c9cf0)}
+.kpi{display:flex;justify-content:space-between;align-items:end;gap:10px;margin-bottom:10px}.kpi b{font-size:24px}
+.task{display:flex;align-items:center;gap:11px;padding:12px 0;border-bottom:1px solid var(--line)}.task:last-child{border-bottom:0}.check{width:22px;height:22px;border-radius:7px;border:2px solid var(--line);display:grid;place-items:center;flex:0 0 auto}.check.done{background:var(--ok);border-color:var(--ok);color:white}.task-main{min-width:0;flex:1}.task-main strong{display:block}.task-main small{color:var(--muted)}.task.done .task-main strong{text-decoration:line-through;color:var(--muted)}
+.chip{display:inline-flex;align-items:center;gap:5px;padding:5px 8px;border-radius:999px;background:var(--soft);color:var(--primary);font-size:11px;font-weight:800}
+.table{width:100%;border-collapse:collapse}.table th,.table td{text-align:left;padding:11px 8px;border-bottom:1px solid var(--line);font-size:13px}.table th{font-size:11px;color:var(--muted);text-transform:uppercase}
+.empty{text-align:center;padding:30px 12px;color:var(--muted)}
+.form-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:13px}.field label{display:block;font-size:12px;font-weight:800;margin:0 0 6px}.field input,.field select,.field textarea{width:100%;border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:12px;padding:11px 12px;outline:none}.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--primary2);box-shadow:0 0 0 3px rgba(46,103,181,.1)}
+.actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:14px}
+.plan-day{border:1px solid var(--line);border-radius:15px;padding:14px}.plan-day h4{margin:0 0 10px}.plan-item{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px dashed var(--line);font-size:13px}.plan-item:last-child{border-bottom:0}
+.subject{display:flex;align-items:center;gap:12px}.subject-icon{width:42px;height:42px;border-radius:13px;background:var(--soft);display:grid;place-items:center;font-size:20px}.subject-main{flex:1}.subject-main strong{display:block}.subject-main small{color:var(--muted)}
+.topic-row{padding:13px 0;border-bottom:1px solid var(--line)}.topic-row:last-child{border-bottom:0}.topic-head{display:flex;justify-content:space-between;gap:10px;margin-bottom:7px}
+.timer{text-align:center;padding:28px}.timer-face{font-size:68px;font-weight:900;letter-spacing:-.05em;margin:10px 0}.timer-mode{font-weight:800;color:var(--primary2)}
+.chart{display:flex;align-items:end;gap:8px;height:160px;padding-top:15px}.bar{flex:1;min-width:10px;position:relative;background:var(--soft);border-radius:9px 9px 3px 3px}.bar i{display:block;position:absolute;bottom:0;left:0;right:0;border-radius:9px 9px 3px 3px;background:var(--primary2)}.bar small{position:absolute;top:-18px;left:50%;transform:translateX(-50%);font-size:9px;color:var(--muted)}.bar em{position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);font-size:9px;color:var(--muted);font-style:normal}
+.notice{padding:12px 14px;border-radius:13px;background:var(--warnbg);color:var(--warn);font-size:12px}.success{padding:12px 14px;border-radius:13px;background:var(--okbg);color:var(--ok);font-size:12px}
+.modal{position:fixed;inset:0;background:rgba(8,16,28,.55);display:none;place-items:center;padding:20px;z-index:80}.modal.show{display:grid}.modal-box{width:min(560px,100%);background:var(--card);border:1px solid var(--line);border-radius:22px;padding:22px;box-shadow:0 30px 80px rgba(0,0,0,.25)}.modal-head{display:flex;justify-content:space-between;gap:10px;align-items:center}.modal-head h3{margin:0}.close{border:0;background:transparent;color:var(--muted);font-size:25px}
+.toast{position:fixed;right:22px;bottom:22px;z-index:100;background:var(--text);color:var(--card);padding:12px 15px;border-radius:13px;box-shadow:var(--shadow);display:none;max-width:360px;font-size:13px;font-weight:700}.toast.show{display:block}
+.authbox{max-width:700px}.auth-status{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:15px 0}.status{border:1px solid var(--line);border-radius:14px;padding:12px}.status b{display:block;font-size:12px}.status span{font-size:12px;color:var(--muted)}
+.switch{display:flex;justify-content:space-between;align-items:center;padding:13px 0;border-bottom:1px solid var(--line)}.switch:last-child{border:0}.toggle{width:46px;height:26px;border-radius:99px;background:var(--line);border:0;padding:3px}.toggle i{display:block;width:20px;height:20px;background:#fff;border-radius:50%;transition:.2s}.toggle.on{background:var(--ok)}.toggle.on i{transform:translateX(20px)}
+@media(max-width:1050px){.stats{grid-template-columns:repeat(2,1fr)}.cols{grid-template-columns:1fr}.three{grid-template-columns:1fr 1fr}}
+@media(max-width:760px){
+ .sidebar{transform:translateX(-100%);transition:.2s;width:270px}.sidebar.open{transform:none}.main{margin-left:0;width:100%;padding:16px 14px 45px}.mobile-menu{display:block}.topbar{align-items:flex-start}.top-actions .btn{display:none}.form-grid,.two,.three{grid-template-columns:1fr}.stats{grid-template-columns:1fr 1fr}.hero{padding:21px}.hero h2{font-size:22px}.timer-face{font-size:54px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="sidebar" id="sidebar">
+  <div class="brand"><div class="brand-icon">🎓</div><div><strong>YKS Koçluk</strong><small>V6 Ultra • Öğrenci paneli</small></div></div>
+  <nav class="nav" id="nav"></nav>
+  <div class="sidebar-bottom">
+    <div class="mini-user">
+      <div class="userline"><div class="avatar" id="sideAvatar">Ö</div><div><strong id="sideName">Öğrenci</strong><span id="sideEmail">Giriş yapılmadı</span></div></div>
+    </div>
+  </div>
+</aside>
+
+<main class="main">
+<header class="topbar">
+  <div style="display:flex;gap:10px;align-items:center">
+    <button class="icon-btn mobile-menu" onclick="toggleSidebar()">☰</button>
+    <div><div class="eyebrow" id="pageEyebrow">YKS 2027</div><h1 id="pageTitle">Ana Sayfa</h1></div>
+  </div>
+  <div class="top-actions"><button class="btn secondary" onclick="go('account')">👤 Hesabım</button><button class="icon-btn" onclick="toggleTheme()" id="themeBtn">☾</button></div>
+</header>
+
+<section class="page active" id="page-home">
+  <div class="hero">
+    <div class="eyebrow" style="color:#cfe1ff">Kişisel çalışma merkezi</div>
+    <h2 id="welcome">Hoş geldin, Öğrenci 👋</h2>
+    <p id="heroSub">Hedefini belirle, günlük planını oluştur ve ilerlemeni tek panelden takip et.</p>
+    <div class="hero-actions"><button class="btn" onclick="generatePlan()">🤖 Akıllı Planımı Oluştur</button><button class="btn" onclick="openTaskModal()">＋ Görev Ekle</button><button class="btn" onclick="go('timer')">⏱ Çalışmaya Başla</button></div>
+  </div>
+  <div class="grid stats">
+    <div class="card stat"><div class="label">🎯 HEDEF SIRALAMA</div><div class="value" id="sRank">5.000</div><div class="sub">EA • Hukuk</div></div>
+    <div class="card stat"><div class="label">📚 BUGÜN</div><div class="value" id="sStudy">0 dk</div><div class="sub" id="sStudySub">0 oturum</div></div>
+    <div class="card stat"><div class="label">✅ GÖREV</div><div class="value" id="sTasks">0%</div><div class="sub" id="sTasksSub">0 / 0 tamamlandı</div></div>
+    <div class="card stat"><div class="label">🔥 SERİ</div><div class="value" id="sStreak">0 gün</div><div class="sub">Çalışma serin</div></div>
+  </div>
+  <div class="grid cols">
+    <div class="card"><div class="section-title"><h3>Bugünün görevleri</h3><button class="btn secondary" onclick="openTaskModal()">＋ Ekle</button></div><div id="homeTasks"></div></div>
+    <div class="card"><div class="section-title"><h3>Hedef durumu</h3><span>Bu hafta</span></div><div class="kpi"><div><span style="color:var(--muted);font-size:12px">Haftalık hedef</span><br><b id="weekGoal">10s</b></div><span class="chip" id="weekPct">0%</span></div><div class="progress"><i id="weekBar" style="width:0%"></i></div><div style="height:15px"></div><div class="success">💡 Her gün küçük ama düzenli ilerleme, deneme sonuçlarının daha anlamlı olmasını sağlar.</div></div>
+  </div>
+  <div class="grid two" style="margin-top:16px">
+    <div class="card"><div class="section-title"><h3>📌 Akıllı plan</h3><span>Öneri</span></div><div id="homePlan"></div></div>
+    <div class="card"><div class="section-title"><h3>📈 Son performans</h3><span>TYT + AYT</span></div><div id="homePerformance"></div></div>
+  </div>
+</section>
+
+<section class="page" id="page-goal">
+ <div class="grid two">
+  <div class="card"><div class="section-title"><h3>🎯 Hedefim</h3><span>Kişisel hedef</span></div>
+   <div class="form-grid">
+    <div class="field"><label>Ad Soyad</label><input id="pName" placeholder="Ad Soyad"></div>
+    <div class="field"><label>E-posta</label><input id="pEmail" disabled></div>
+    <div class="field"><label>Alan</label><select id="pTrack"><option>Eşit Ağırlık</option><option>Sayısal</option><option>Sözel</option><option>TYT</option></select></div>
+    <div class="field"><label>Hedef bölüm</label><input id="pDept" placeholder="Hukuk"></div>
+    <div class="field"><label>Hedef sıralama</label><input id="pRank" type="number" value="5000"></div>
+    <div class="field"><label>Haftalık çalışma hedefi (saat)</label><input id="pWeek" type="number" value="10"></div>
+   </div>
+   <div class="actions"><button class="btn primary" onclick="saveProfile()">💾 Hedefi Kaydet</button></div>
+   <div id="profileMsg" style="margin-top:12px"></div>
+  </div>
+  <div class="card"><div class="section-title"><h3>🏁 Hedef panosu</h3></div>
+   <div class="kpi"><div><span style="color:var(--muted);font-size:12px">Hedef sıralama</span><br><b id="goalRank">5.000</b></div><span class="chip" id="goalDept">Hukuk</span></div>
+   <div class="progress"><i id="goalBar" style="width:35%"></i></div>
+   <p style="color:var(--muted);font-size:12px">Bu çubuk motivasyon amaçlıdır; gerçek sıralama tahmini değildir.</p>
+   <div class="notice">⚠️ Hedef sıralamayı düzenli deneme sonuçlarınla birlikte değerlendir.</div>
+  </div>
+ </div>
+</section>
+
+<section class="page" id="page-tasks">
+ <div class="card"><div class="section-title"><h3>✅ Görevler</h3><button class="btn primary" onclick="openTaskModal()">＋ Yeni görev</button></div><div id="taskList"></div></div>
+</section>
+
+<section class="page" id="page-plan">
+ <div class="grid two">
+  <div class="card"><div class="section-title"><h3>🤖 Akıllı Plan</h3><span>Tek tıkla üret</span></div>
+   <p style="color:var(--muted);font-size:13px">Hedef alanın, son denemelerin ve konu seviyelerin üzerinden günlük bir taslak oluşturur.</p>
+   <div class="form-grid">
+    <div class="field"><label>Günlük süre (dk)</label><input id="planMinutes" type="number" value="240"></div>
+    <div class="field"><label>Öncelik</label><select id="planFocus"><option>Eksik konular</option><option>Deneme + analiz</option><option>AYT ağırlıklı</option><option>TYT ağırlıklı</option></select></div>
+   </div>
+   <div class="actions"><button class="btn primary" onclick="generatePlan()">✨ Plan Oluştur</button><button class="btn" onclick="addPlanAsTasks()">📋 Görevlerime aktar</button></div>
+  </div>
+  <div class="card"><div class="section-title"><h3>Bugünün planı</h3><span id="planDate"></span></div><div id="planView"></div></div>
+ </div>
+</section>
+
+<section class="page" id="page-exams">
+ <div class="grid two">
+  <div class="card"><div class="section-title"><h3>📝 Deneme ekle</h3></div>
+   <div class="form-grid">
+    <div class="field"><label>Deneme</label><input id="examName" placeholder="Örn. TYT Genel Deneme"></div>
+    <div class="field"><label>Tarih</label><input id="examDate" type="date"></div>
+    <div class="field"><label>TYT net</label><input id="examTYT" type="number" step=".25" placeholder="70"></div>
+    <div class="field"><label>AYT net</label><input id="examAYT" type="number" step=".25" placeholder="45"></div>
+    <div class="field"><label>Not</label><input id="examNote" placeholder="En zorlandığım bölüm..."></div>
+   </div>
+   <div class="actions"><button class="btn primary" onclick="addExam()">＋ Denemeyi kaydet</button></div>
+  </div>
+  <div class="card"><div class="section-title"><h3>📈 Özet</h3></div><div id="examSummary"></div></div>
+ </div>
+ <div class="card" style="margin-top:16px"><div class="section-title"><h3>Son denemeler</h3><button class="btn danger" onclick="clearExams()">Temizle</button></div><div id="examTable"></div></div>
+</section>
+
+<section class="page" id="page-topics">
+ <div class="grid two">
+  <div class="card"><div class="section-title"><h3>📚 Konu takip</h3><button class="btn secondary" onclick="seedTopics()">Örnek konuları yükle</button></div><div id="topicList"></div></div>
+  <div class="card"><div class="section-title"><h3>🎯 Öncelik haritası</h3></div><div id="topicSummary"></div></div>
+ </div>
+</section>
+
+<section class="page" id="page-questions">
+ <div class="card"><div class="section-title"><h3>❓ Soru merkezi</h3><span>Hızlı kayıt</span></div>
+  <div class="form-grid">
+   <div class="field"><label>Ders</label><select id="qSubject"><option>Matematik</option><option>Türkçe</option><option>Edebiyat</option><option>Tarih</option><option>Coğrafya</option><option>Geometri</option></select></div>
+   <div class="field"><label>Doğru</label><input id="qCorrect" type="number" value="0"></div>
+   <div class="field"><label>Yanlış</label><input id="qWrong" type="number" value="0"></div>
+   <div class="field"><label>Boş</label><input id="qBlank" type="number" value="0"></div>
+  </div>
+  <div class="actions"><button class="btn primary" onclick="addQuestionSet()">📌 Seti kaydet</button></div>
+ </div>
+ <div class="grid two" style="margin-top:16px"><div class="card"><div class="section-title"><h3>Ders bazlı toplam</h3></div><div id="questionStats"></div></div><div class="card"><div class="section-title"><h3>Bugünün özeti</h3></div><div id="questionToday"></div></div></div>
+</section>
+
+<section class="page" id="page-timer">
+ <div class="grid two">
+  <div class="card timer"><div class="timer-mode" id="timerMode">Odak</div><div class="timer-face" id="timerFace">40:00</div><div class="actions" style="justify-content:center"><button class="btn primary" onclick="timerStart()" id="timerBtn">▶ Başlat</button><button class="btn" onclick="timerReset()">↺ Sıfırla</button></div><div style="margin-top:15px"><button class="btn secondary" onclick="setTimerMode(25)">25 dk</button> <button class="btn secondary" onclick="setTimerMode(40)">40 dk</button> <button class="btn secondary" onclick="setTimerMode(60)">60 dk</button></div></div>
+  <div class="card"><div class="section-title"><h3>⏱ Bugünkü çalışma</h3></div><div class="kpi"><div><span style="color:var(--muted);font-size:12px">Toplam</span><br><b id="timerToday">0 dk</b></div><span class="chip" id="timerSessions">0 oturum</span></div><div class="progress"><i id="timerBar" style="width:0%"></i></div><p style="font-size:12px;color:var(--muted)">Sayaç tamamlandığında çalışma süren otomatik kaydedilir.</p></div>
+ </div>
+</section>
+
+<section class="page" id="page-analytics">
+ <div class="grid stats">
+  <div class="card stat"><div class="label">TOPLAM ÇALIŞMA</div><div class="value" id="aTotal">0s</div><div class="sub">Kayıtlı oturumlar</div></div>
+  <div class="card stat"><div class="label">ORT. DENEME</div><div class="value" id="aAvg">0</div><div class="sub">TYT net</div></div>
+  <div class="card stat"><div class="label">SORU</div><div class="value" id="aQuestions">0</div><div class="sub">Kayıtlı soru</div></div>
+  <div class="card stat"><div class="label">GÖREV</div><div class="value" id="aCompletion">0%</div><div class="sub">Tamamlanma</div></div>
+ </div>
+ <div class="grid two">
+  <div class="card"><div class="section-title"><h3>Son 7 gün çalışma</h3><span>dakika</span></div><div class="chart" id="studyChart"></div></div>
+  <div class="card"><div class="section-title"><h3>Deneme trendi</h3><span>TYT</span></div><div class="chart" id="examChart"></div></div>
+ </div>
+</section>
+
+<section class="page" id="page-membership">
+ <div class="hero"><div class="eyebrow" style="color:#cfe1ff">Üyelik</div><h2>YKS Koçluk Pro</h2><p>Şimdilik ücretsiz altyapıyı kullanıyorsun. Üyelik ekranı ürün yapısı için hazırlandı.</p></div>
+ <div class="grid three" style="margin-top:16px">
+  <div class="card"><h3>🆓 Ücretsiz</h3><p style="color:var(--muted);font-size:13px">Temel görev, deneme, konu ve çalışma takibi.</p><span class="chip">Aktif</span></div>
+  <div class="card"><h3>⚡ Pro</h3><p style="color:var(--muted);font-size:13px">Gelişmiş analiz, sınırsız plan ve kişiselleştirme.</p><span class="chip">Yakında</span></div>
+  <div class="card"><h3>🤖 AI Koç</h3><p style="color:var(--muted);font-size:13px">Daha gelişmiş öneri ve çalışma planları.</p><span class="chip">Yakında</span></div>
+ </div>
+</section>
+
+<section class="page" id="page-account">
+ <div class="card authbox">
+  <div class="section-title"><h3>👤 Hesabım</h3><span>Supabase Auth</span></div>
+  <div class="notice">🔐 Şifren bu HTML dosyasında tutulmaz. Kimlik doğrulama Supabase Auth tarafından yönetilir.</div>
+  <div class="auth-status"><div class="status"><b>Oturum</b><span id="authSession">Giriş yapılmadı</span></div><div class="status"><b>Profil</b><span id="authProfile">Hazır değil</span></div><div class="status"><b>Veri</b><span>Bu cihazda</span></div></div>
+  <div class="form-grid">
+   <div class="field"><label>Hesap e-postası</label><input id="authEmail" type="email" placeholder="ornek@mail.com"></div>
+   <div class="field"><label>Şifre</label><input id="authPassword" type="password" placeholder="••••••••"></div>
+  </div>
+  <div class="actions"><button class="btn primary" onclick="signUp()">📝 Kayıt ol</button><button class="btn secondary" onclick="signIn()">🔑 Giriş yap</button><button class="btn" onclick="signOut()">Çıkış yap</button></div>
+  <div id="authMsg" style="margin-top:12px"></div>
+  <hr style="border:0;border-top:1px solid var(--line);margin:20px 0">
+  <div class="section-title"><h3>Profil</h3></div>
+  <div class="form-grid">
+   <div class="field"><label>Ad Soyad</label><input id="aName" placeholder="Ad Soyad"></div>
+   <div class="field"><label>Plan</label><input id="aPlan" value="Ücretsiz"></div>
+  </div>
+  <div class="actions"><button class="btn primary" onclick="saveProfileFromAccount()">💾 Profili kaydet</button></div>
+ </div>
+ <div class="grid two" style="margin-top:16px">
+  <div class="card"><div class="section-title"><h3>💾 Veri yedeği</h3></div><p style="font-size:13px;color:var(--muted)">Çalışma verilerini JSON dosyası olarak dışarı aktar veya daha sonra geri yükle.</p><div class="actions"><button class="btn" onclick="exportData()">⬇ Dışa aktar</button><label class="btn" style="display:inline-flex;align-items:center">⬆ İçe aktar<input type="file" accept="application/json" onchange="importData(event)" hidden></label></div></div>
+  <div class="card"><div class="section-title"><h3>⚙ Görünüm</h3></div><div class="switch"><span>Koyu tema</span><button class="toggle" id="themeToggle" onclick="toggleTheme()"><i></i></button></div><div class="switch"><span>Verileri yerel sakla</span><span class="chip">Açık</span></div></div>
+ </div>
+</section>
+
+<section class="page" id="page-settings">
+ <div class="card"><div class="section-title"><h3>⚙ Ayarlar</h3></div>
+  <div class="switch"><div><b>Koyu tema</b><br><small style="color:var(--muted)">Göz yormayan gece görünümü</small></div><button class="toggle" id="themeToggle2" onclick="toggleTheme()"><i></i></button></div>
+  <div class="switch"><div><b>Verileri sıfırla</b><br><small style="color:var(--muted)">Bu cihazdaki görev, deneme, konu ve sayaç verilerini siler.</small></div><button class="btn danger" onclick="resetAll()">Sıfırla</button></div>
+ </div>
+</section>
+</main>
+</div>
+
+<div class="modal" id="taskModal"><div class="modal-box"><div class="modal-head"><h3>Yeni görev</h3><button class="close" onclick="closeModal('taskModal')">×</button></div><div class="form-grid" style="margin-top:15px"><div class="field"><label>Görev</label><input id="taskTitle" placeholder="Örn. AYT matematik 40 soru"></div><div class="field"><label>Ders</label><select id="taskSubject"><option>Matematik</option><option>Türkçe</option><option>Edebiyat</option><option>Tarih</option><option>Coğrafya</option><option>Deneme</option><option>Diğer</option></select></div><div class="field"><label>Süre (dk)</label><input id="taskMinutes" type="number" value="40"></div><div class="field"><label>Öncelik</label><select id="taskPriority"><option>Normal</option><option>Yüksek</option><option>Düşük</option></select></div></div><div class="actions"><button class="btn primary" onclick="addTask()">Görevi ekle</button></div></div></div>
+<div class="modal" id="verifyModal"><div class="modal-box"><div class="modal-head"><h3 id="verifyTitle">Bilgi</h3><button class="close" onclick="closeModal('verifyModal')">×</button></div><p id="verifyText" style="color:var(--muted);line-height:1.6"></p><div class="actions"><button class="btn primary" onclick="closeModal('verifyModal')">Hesabıma Git</button></div></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPABASE_URL="https://naiakscryafhvcghjmzx.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY="sb_publishable_7F7l4hEzRhLr35HHx6nCRg_Zu07nNV7";
+const supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
+
+const NAV=[
+ ['home','🏠','Ana Sayfa'],['goal','🎯','Hedefim'],['tasks','✅','Görevler'],['plan','🤖','Akıllı Plan'],
+ ['exams','📝','Denemeler'],['topics','📚','Konular'],['questions','❓','Sorular'],['timer','⏱','Çalışma Saati'],
+ ['analytics','📊','Analiz'],['membership','💎','Üyelik'],['account','👤','Hesabım'],['settings','⚙','Ayarlar']
+];
+let current='home', authUser=null, profile=null, loginBusy=false, timer=null, timerSeconds=2400, timerTotal=2400;
+
+function withTimeout(p,ms=12000){
+ return Promise.race([p,new Promise((_,rej)=>setTimeout(()=>rej(new Error('İstek zaman aşımına uğradı. İnternet veya Supabase bağlantısını kontrol et.')),ms))]);
+}
+function today(){return new Date().toISOString().slice(0,10)}
+function fmtDate(s){return new Date(s+'T00:00:00').toLocaleDateString('tr-TR',{day:'2-digit',month:'2-digit',year:'numeric'})}
+function key(){return authUser?'yks_v6_'+authUser.id:'yks_v6_guest'}
+function load(){try{return JSON.parse(localStorage.getItem(key())||'{}')}catch{return {}}}
+function save(d){localStorage.setItem(key(),JSON.stringify(d))}
+function data(){let d=load();return Object.assign({tasks:[],exams:[],topics:[],questions:[],sessions:[],plan:[],weekHours:10,track:'Eşit Ağırlık',dept:'Hukuk',rank:5000},d)}
+function setData(d){save(d);renderAll()}
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(window.toastTimer);window.toastTimer=setTimeout(()=>t.classList.remove('show'),2600)}
+function closeModal(id){document.getElementById(id).classList.remove('show')}
+function openTaskModal(){document.getElementById('taskModal').classList.add('show');setTimeout(()=>document.getElementById('taskTitle').focus(),50)}
+function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open')}
+function go(page){
+ current=page;
+ document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
+ document.getElementById('page-'+page).classList.add('active');
+ document.querySelectorAll('#nav button').forEach(x=>x.classList.toggle('active',x.dataset.page===page));
+ const item=NAV.find(x=>x[0]===page)||NAV[0];document.getElementById('pageTitle').textContent=item[2];
+ document.getElementById('pageEyebrow').textContent=page==='home'?'YKS 2027':'YKS KOÇLUK • V6';
+ document.getElementById('sidebar').classList.remove('open');renderAll();
+}
+function renderNav(){document.getElementById('nav').innerHTML=NAV.map(x=>`<button data-page="${x[0]}" onclick="go('${x[0]}')">${x[1]} <span>${x[2]}</span></button>`).join('')}
+function toggleTheme(){
+ const dark=document.documentElement.getAttribute('data-theme')==='dark';
+ document.documentElement.setAttribute('data-theme',dark?'light':'dark');localStorage.setItem('yks_theme',dark?'light':'dark');
+ syncThemeUI();
+}
+function syncThemeUI(){const dark=document.documentElement.getAttribute('data-theme')==='dark';['themeToggle','themeToggle2'].forEach(id=>{const e=document.getElementById(id);if(e)e.classList.toggle('on',dark)});document.getElementById('themeBtn').textContent=dark?'☀':'☾'}
+function loadTheme(){document.documentElement.setAttribute('data-theme',localStorage.getItem('yks_theme')||'light');syncThemeUI()}
+
+function renderAll(){renderHome();renderGoal();renderTasks();renderPlan();renderExams();renderTopics();renderQuestions();renderTimer();renderAnalytics();renderAccount();syncThemeUI()}
+function renderHome(){
+ const d=data(), name=profile?.name||'Öğrenci', done=d.tasks.filter(x=>x.done).length,total=d.tasks.length;
+ const todaySessions=d.sessions.filter(x=>x.date===today()), mins=todaySessions.reduce((a,x)=>a+x.minutes,0);
+ document.getElementById('welcome').textContent=`Hoş geldin, ${name} 👋`;
+ document.getElementById('heroSub').textContent=`${d.dept||'Hedef bölüm'} • ${d.track||'EA'} • hedef sıralama ${Number(d.rank||5000).toLocaleString('tr-TR')}`;
+ document.getElementById('sRank').textContent=Number(d.rank||5000).toLocaleString('tr-TR');
+ document.getElementById('sStudy').textContent=mins+' dk';document.getElementById('sStudySub').textContent=todaySessions.length+' oturum';
+ document.getElementById('sTasks').textContent=(total?Math.round(done/total*100):0)+'%';document.getElementById('sTasksSub').textContent=`${done} / ${total} tamamlandı`;
+ const uniqueDays=[...new Set(d.sessions.map(x=>x.date))].sort().reverse();let streak=0;
+ for(let i=0;;i++){let dt=new Date();dt.setDate(dt.getDate()-i);let s=dt.toISOString().slice(0,10);if(uniqueDays.includes(s))streak++;else break}
+ document.getElementById('sStreak').textContent=streak+' gün';
+ const weekMins=d.sessions.filter(x=>{let dt=new Date();dt.setDate(dt.getDate()-6);return x.date>=dt.toISOString().slice(0,10)}).reduce((a,x)=>a+x.minutes,0);
+ const pct=Math.min(100,Math.round(weekMins/((d.weekHours||10)*60)*100));document.getElementById('weekGoal').textContent=(d.weekHours||10)+'s';document.getElementById('weekPct').textContent=pct+'%';document.getElementById('weekBar').style.width=pct+'%';
+ document.getElementById('homeTasks').innerHTML=renderTaskRows(d.tasks.slice(0,5));
+ document.getElementById('homePlan').innerHTML=d.plan.length?d.plan.map(x=>`<div class="plan-item"><span>${x.icon||'📘'} ${x.text}</span><b>${x.minutes} dk</b></div>`).join(''):'<div class="empty">Henüz plan yok.<br><button class="btn secondary" style="margin-top:10px" onclick="generatePlan()">Plan oluştur</button></div>';
+ const exams=d.exams.slice().sort((a,b)=>b.date.localeCompare(a.date)).slice(0,4);
+ document.getElementById('homePerformance').innerHTML=exams.length?exams.map(x=>`<div class="plan-item"><span>${x.name}</span><b>${x.tyt||0} TYT</b></div>`).join(''):'<div class="empty">Henüz deneme kaydı yok.</div>';
+}
+function renderTaskRows(arr){
+ if(!arr.length)return '<div class="empty">Bugün için görev yok. 🎯</div>';
+ return arr.map(x=>`<div class="task ${x.done?'done':''}" onclick="toggleTask('${x.id}')"><div class="check ${x.done?'done':''}">${x.done?'✓':''}</div><div class="task-main"><strong>${escapeHtml(x.title)}</strong><small>${escapeHtml(x.subject)} • ${x.minutes} dk • ${escapeHtml(x.priority)}</small></div><button class="icon-btn" onclick="event.stopPropagation();deleteTask('${x.id}')">×</button></div>`).join('')
+}
+function escapeHtml(s){return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function addTask(){
+ const title=document.getElementById('taskTitle').value.trim();if(!title)return toast('Görev adı gerekli.');
+ const d=data();d.tasks.unshift({id:Date.now().toString(),title,subject:document.getElementById('taskSubject').value,minutes:Number(document.getElementById('taskMinutes').value)||40,priority:document.getElementById('taskPriority').value,done:false,date:today()});setData(d);document.getElementById('taskTitle').value='';closeModal('taskModal');toast('Görev eklendi ✓')
+}
+function toggleTask(id){const d=data();const x=d.tasks.find(t=>t.id===id);if(x)x.done=!x.done;setData(d)}
+function deleteTask(id){const d=data();d.tasks=d.tasks.filter(t=>t.id!==id);setData(d);toast('Görev silindi')}
+function renderTasks(){document.getElementById('taskList').innerHTML=renderTaskRows(data().tasks)}
+function renderGoal(){
+ const d=data();['pName','pEmail','pDept','pRank','pWeek','pTrack'].forEach(id=>{const e=document.getElementById(id);if(!e)return});
+ document.getElementById('pName').value=profile?.name||'';document.getElementById('pEmail').value=authUser?.email||'';document.getElementById('pDept').value=d.dept||'Hukuk';document.getElementById('pRank').value=d.rank||5000;document.getElementById('pWeek').value=d.weekHours||10;document.getElementById('pTrack').value=d.track||'Eşit Ağırlık';
+ document.getElementById('goalRank').textContent=Number(d.rank||5000).toLocaleString('tr-TR');document.getElementById('goalDept').textContent=d.dept||'Hukuk';
+}
+async function saveProfile(){
+ const d=data();d.dept=document.getElementById('pDept').value.trim()||'Hukuk';d.rank=Number(document.getElementById('pRank').value)||5000;d.weekHours=Number(document.getElementById('pWeek').value)||10;d.track=document.getElementById('pTrack').value;setData(d);
+ if(authUser) await saveCloudProfile(document.getElementById('pName').value.trim());
+ document.getElementById('profileMsg').innerHTML='<div class="success">Profil ve hedef kaydedildi ✓</div>';toast('Hedef kaydedildi');
+}
+function generatePlan(){
+ const d=data(), mins=Math.max(60,Number(document.getElementById('planMinutes')?.value)||240),focus=document.getElementById('planFocus')?.value||'Eksik konular';
+ const topic=d.topics.filter(x=>x.level<70).sort((a,b)=>a.level-b.level)[0]?.name||'AYT Matematik tekrar';
+ let remain=mins;const out=[];
+ const add=(text,m,icon)=>{if(remain<=0)return;let mm=Math.min(m,remain);out.push({text,minutes:mm,icon});remain-=mm};
+ if(focus==='Deneme + analiz'){add('TYT/AYT denemesi',90,'📝');add('Deneme yanlış analizi',50,'🔎');add(topic,45,'📚');}
+ else if(focus==='AYT ağırlıklı'){add('AYT Matematik soru çözümü',70,'➗');add('AYT Edebiyat tekrar',50,'📖');add('AYT sosyal kısa tekrar',40,'🧠');add('Yanlış soru analizi',30,'🔎');}
+ else if(focus==='TYT ağırlıklı'){add('TYT Matematik',65,'➗');add('TYT Türkçe',45,'✍️');add('TYT Sosyal',35,'🌍');add('TYT yanlış analizi',30,'🔎');}
+ else {add(topic,60,'📚');add('AYT Matematik soru çözümü',60,'➗');add('Edebiyat tekrar',45,'📖');add('Yanlış soru analizi',35,'🔎')}
+ if(remain>0)add('Serbest tekrar / eksik kapatma',remain,'🎯');
+ d.plan=out;d.planDate=today();setData(d);toast('Akıllı plan oluşturuldu 🤖')
+}
+function renderPlan(){document.getElementById('planDate').textContent=fmtDate(today());const p=data().plan;document.getElementById('planView').innerHTML=p.length?p.map((x,i)=>`<div class="plan-day" style="margin-bottom:10px"><h4>${i+1}. Blok • ${x.minutes} dk</h4><div class="subject"><div class="subject-icon">${x.icon}</div><div class="subject-main"><strong>${escapeHtml(x.text)}</strong><small>Odaklan • süreyi tamamla • kısa mola ver</small></div></div></div>`).join(''):'<div class="empty">Plan oluşturmak için soldaki butona bas.</div>'}
+function addPlanAsTasks(){const d=data();if(!d.plan.length)return toast('Önce plan oluştur.');d.plan.forEach(x=>d.tasks.unshift({id:Date.now().toString()+Math.random(),title:x.text,subject:'Plan',minutes:x.minutes,priority:'Normal',done:false,date:today()}));setData(d);toast('Plan görevlerine aktarıldı ✓')}
+function renderExams(){
+ const d=data(), ex=d.exams.slice().sort((a,b)=>b.date.localeCompare(a.date));let avg=ex.length?ex.reduce((a,x)=>a+Number(x.tyt||0),0)/ex.length:0;
+ document.getElementById('examSummary').innerHTML=`<div class="kpi"><div><span style="color:var(--muted);font-size:12px">Ortalama TYT</span><br><b>${avg.toFixed(2)}</b></div><span class="chip">${ex.length} deneme</span></div><div class="kpi"><div><span style="color:var(--muted);font-size:12px">Son AYT</span><br><b>${ex[0]?.ayt||0}</b></div></div>`;
+ document.getElementById('examTable').innerHTML=ex.length?`<table class="table"><thead><tr><th>Tarih</th><th>Deneme</th><th>TYT</th><th>AYT</th><th>Not</th></tr></thead><tbody>${ex.map(x=>`<tr><td>${fmtDate(x.date)}</td><td>${escapeHtml(x.name)}</td><td><b>${x.tyt||0}</b></td><td>${x.ayt||0}</td><td>${escapeHtml(x.note||'-')}</td></tr>`).join('')}</tbody></table>`:'<div class="empty">Henüz deneme eklenmedi.</div>';
+}
+function addExam(){
+ const name=document.getElementById('examName').value.trim()||'Deneme';const d=data();d.exams.push({name,date:document.getElementById('examDate').value||today(),tyt:Number(document.getElementById('examTYT').value)||0,ayt:Number(document.getElementById('examAYT').value)||0,note:document.getElementById('examNote').value.trim()});setData(d);toast('Deneme kaydedildi ✓');['examName','examTYT','examAYT','examNote'].forEach(id=>document.getElementById(id).value='')}
+function clearExams(){if(confirm('Tüm deneme kayıtları silinsin mi?')){const d=data();d.exams=[];setData(d)}}
+function seedTopics(){const d=data();d.topics=[['Fonksiyonlar','Matematik',80],['Polinomlar','Matematik',65],['Türev','Matematik',45],['İntegral','Matematik',35],['Divan Edebiyatı','Edebiyat',70],['Cumhuriyet Dönemi','Edebiyat',50],['TYT Problemler','Matematik',55],['Harita Bilgisi','Coğrafya',40],['İnkılap Tarihi','Tarih',75]].map((x,i)=>({id:i+1,name:x[0],subject:x[1],level:x[2]}));setData(d);toast('Örnek konu listesi yüklendi')}
+function renderTopics(){const d=data();document.getElementById('topicList').innerHTML=d.topics.length?d.topics.map(x=>`<div class="topic-row"><div class="topic-head"><span><b>${escapeHtml(x.name)}</b> <small style="color:var(--muted)">• ${escapeHtml(x.subject)}</small></span><b>${x.level}%</b></div><div class="progress"><i style="width:${x.level}%"></i></div><div style="margin-top:7px"><button class="btn secondary" onclick="changeTopic('${x.id}',-10)">−</button> <button class="btn secondary" onclick="changeTopic('${x.id}',10)">＋</button></div></div>`).join(''):'<div class="empty">Konu listesi boş.<br>Örnek konuları yükleyebilirsin.</div>';
+ const weak=d.topics.slice().sort((a,b)=>a.level-b.level).slice(0,4);document.getElementById('topicSummary').innerHTML=weak.length?weak.map(x=>`<div class="topic-row"><div class="topic-head"><b>${escapeHtml(x.name)}</b><span class="chip">${x.level}%</span></div><small style="color:var(--muted)">Planında önceliklendir.</small></div>`).join(''):'<div class="empty">Veri yok.</div>'
+}
+function changeTopic(id,delta){const d=data();const x=d.topics.find(t=>String(t.id)===String(id));if(x)x.level=Math.max(0,Math.min(100,x.level+delta));setData(d)}
+function addQuestionSet(){const d=data(),sub=document.getElementById('qSubject').value,c=Number(document.getElementById('qCorrect').value)||0,w=Number(document.getElementById('qWrong').value)||0,b=Number(document.getElementById('qBlank').value)||0;d.questions.push({date:today(),subject:sub,correct:c,wrong:w,blank:b,net:c-w/4});setData(d);toast('Soru seti kaydedildi ✓')}
+function renderQuestions(){
+ const d=data(), map={};d.questions.forEach(x=>{map[x.subject]??={q:0,net:0};map[x.subject].q+=x.correct+x.wrong+x.blank;map[x.subject].net+=x.net});
+ document.getElementById('questionStats').innerHTML=Object.keys(map).length?Object.entries(map).map(([s,v])=>`<div class="topic-row"><div class="topic-head"><b>${escapeHtml(s)}</b><span>${v.q} soru</span></div><span class="chip">${v.net.toFixed(2)} net</span></div>`).join(''):'<div class="empty">Henüz soru kaydı yok.</div>';
+ const t=d.questions.filter(x=>x.date===today());document.getElementById('questionToday').innerHTML=`<div class="kpi"><div><span style="color:var(--muted);font-size:12px">Toplam soru</span><br><b>${t.reduce((a,x)=>a+x.correct+x.wrong+x.blank,0)}</b></div><span class="chip">${t.length} set</span></div><div class="success">Net hesabı: doğru − yanlış/4.</div>`
+}
+function setTimerMode(min){timerReset();timerSeconds=min*60;timerTotal=timerSeconds;document.getElementById('timerMode').textContent='Odak • '+min+' dk';updateTimerFace()}
+function timerStart(){if(timer){clearInterval(timer);timer=null;document.getElementById('timerBtn').textContent='▶ Başlat';return}document.getElementById('timerBtn').textContent='⏸ Duraklat';timer=setInterval(()=>{timerSeconds--;updateTimerFace();if(timerSeconds<=0){clearInterval(timer);timer=null;document.getElementById('timerBtn').textContent='▶ Başlat';const d=data();d.sessions.push({date:today(),minutes:Math.round(timerTotal/60)});setData(d);toast('Odak oturumu tamamlandı! 🎉')}},1000)}
+function timerReset(){if(timer)clearInterval(timer);timer=null;timerSeconds=timerTotal;document.getElementById('timerBtn').textContent='▶ Başlat';updateTimerFace()}
+function updateTimerFace(){const m=Math.floor(timerSeconds/60).toString().padStart(2,'0'),s=(timerSeconds%60).toString().padStart(2,'0');document.getElementById('timerFace').textContent=m+':'+s}
+function renderTimer(){const d=data(),t=d.sessions.filter(x=>x.date===today()),m=t.reduce((a,x)=>a+x.minutes,0);document.getElementById('timerToday').textContent=m+' dk';document.getElementById('timerSessions').textContent=t.length+' oturum';document.getElementById('timerBar').style.width=Math.min(100,m/240*100)+'%';updateTimerFace()}
+function renderAnalytics(){
+ const d=data(),total=d.sessions.reduce((a,x)=>a+x.minutes,0),avg=d.exams.length?d.exams.reduce((a,x)=>a+Number(x.tyt||0),0)/d.exams.length:0,qs=d.questions.reduce((a,x)=>a+x.correct+x.wrong+x.blank,0),done=d.tasks.filter(x=>x.done).length;
+ document.getElementById('aTotal').textContent=(total/60).toFixed(1)+'s';document.getElementById('aAvg').textContent=avg.toFixed(1);document.getElementById('aQuestions').textContent=qs;document.getElementById('aCompletion').textContent=(d.tasks.length?Math.round(done/d.tasks.length*100):0)+'%';
+ const days=[];for(let i=6;i>=0;i--){const dt=new Date();dt.setDate(dt.getDate()-i);const date=dt.toISOString().slice(0,10);days.push({date,mins:d.sessions.filter(x=>x.date===date).reduce((a,x)=>a+x.minutes,0)})}
+ document.getElementById('studyChart').innerHTML=days.map(x=>`<div class="bar" style="height:100%"><i style="height:${Math.min(100,x.mins/180*100)}%"></i><small>${x.mins}</small><em>${new Date(x.date+'T00:00:00').toLocaleDateString('tr-TR',{weekday:'short'})}</em></div>`).join('');
+ const ex=d.exams.slice().sort((a,b)=>a.date.localeCompare(b.date)).slice(-7),mx=Math.max(1,...ex.map(x=>Number(x.tyt||0)));document.getElementById('examChart').innerHTML=ex.length?ex.map(x=>`<div class="bar" style="height:100%"><i style="height:${Number(x.tyt||0)/mx*100}%"></i><small>${x.tyt||0}</small><em>${new Date(x.date+'T00:00:00').toLocaleDateString('tr-TR',{day:'2-digit',month:'2-digit'})}</em></div>`).join(''):'<div class="empty" style="width:100%">Deneme verisi yok.</div>'
+}
+function renderAccount(){
+ document.getElementById('authSession').textContent=authUser?'Giriş yapıldı':'Giriş yapılmadı';document.getElementById('authProfile').textContent=profile?'Hazır':'Eksik';
+ document.getElementById('authEmail').value=authUser?.email||document.getElementById('authEmail').value||'';document.getElementById('aName').value=profile?.name||'';document.getElementById('aPlan').value=profile?.plan||'Ücretsiz';
+ document.getElementById('sideName').textContent=profile?.name||'Öğrenci';document.getElementById('sideEmail').textContent=authUser?.email||'Giriş yapılmadı';document.getElementById('sideAvatar').textContent=(profile?.name||'Ö').trim().charAt(0).toUpperCase()||'Ö';
+}
+function setAuthMsg(msg,type=''){document.getElementById('authMsg').innerHTML=msg?`<div class="${type==='ok'?'success':'notice'}">${escapeHtml(msg)}</div>`:''}
+async function signUp(){
+ if(loginBusy)return;const email=document.getElementById('authEmail').value.trim(),password=document.getElementById('authPassword').value;if(!email||!password)return setAuthMsg('E-posta ve şifre gerekli.');
+ loginBusy=true;setAuthMsg('Kayıt yapılıyor…');
+ try{const {data,error}=await withTimeout(supabaseClient.auth.signUp({email,password}));if(error)throw error;
+   if(data.user&&!data.session){setAuthMsg('Kayıt tamamlandı. E-posta doğrulaması açıksa gelen kutundaki bağlantıyı kullan.','ok')}
+   else {authUser=data.user;await loadCloudProfile();setAuthMsg('Hesap oluşturuldu ve giriş yapıldı.','ok')}
+ }catch(e){setAuthMsg('Kayıt hatası: '+(e?.message||'Bilinmeyen hata.'))}finally{loginBusy=false}
+}
+async function signIn(){
+ if(loginBusy)return;const email=document.getElementById('authEmail').value.trim(),password=document.getElementById('authPassword').value;if(!email||!password)return setAuthMsg('E-posta ve şifre gerekli.');
+ loginBusy=true;setAuthMsg('Giriş yapılıyor…');
+ try{const {data,error}=await withTimeout(supabaseClient.auth.signInWithPassword({email,password}));if(error)throw error;authUser=data?.user||null;if(!authUser)throw new Error('Kullanıcı oturumu alınamadı.');await loadCloudProfile();setAuthMsg('Giriş başarılı. ✓','ok');renderAll()}
+ catch(e){setAuthMsg('Giriş hatası: '+(e?.message||'Bilinmeyen hata.'))}finally{loginBusy=false}
+}
+async function signOut(){try{await withTimeout(supabaseClient.auth.signOut())}catch{}authUser=null;profile=null;renderAll();setAuthMsg('Çıkış yapıldı.','ok');toast('Çıkış yapıldı')}
+async function loadCloudProfile(){
+ if(!authUser)return;
+ try{const {data,error}=await withTimeout(supabaseClient.from('profiles').select('*').eq('id',authUser.id).maybeSingle());if(error)throw error;
+   profile=data||{id:authUser.id,name:'',email:authUser.email,plan:'Ücretsiz'};
+   const d=data();if(data){d.dept=data.target_department||d.dept;d.rank=data.target_rank||d.rank;setData(d)}
+   renderAll();
+ }catch(e){profile={name:'',email:authUser.email,plan:'Ücretsiz'};setAuthMsg('Profil alınamadı: '+(e?.message||'Bilinmeyen hata.'))}
+}
+async function saveCloudProfile(name){
+ if(!authUser)return;
+ const payload={id:authUser.id,name:name||'',email:authUser.email,plan:document.getElementById('aPlan')?.value||'Ücretsiz',target_department:document.getElementById('pDept')?.value||data().dept,target_rank:Number(document.getElementById('pRank')?.value)||5000,updated_at:new Date().toISOString()};
+ try{const {data:row,error}=await withTimeout(supabaseClient.from('profiles').upsert(payload).select().single());if(error)throw error;profile=row}catch(e){toast('Yerel kayıt yapıldı; bulut profilinde hata: '+(e?.message||''))}
+}
+async function saveProfileFromAccount(){if(!authUser)return setAuthMsg('Önce giriş yap.');await saveCloudProfile(document.getElementById('aName').value.trim());renderAll();toast('Profil kaydedildi ✓')}
+function exportData(){const payload={version:6,exportedAt:new Date().toISOString(),profile,data:data()};const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}));a.download='yks-kocluk-yedek.json';a.click();URL.revokeObjectURL(a.href)}
+function importData(ev){const f=ev.target.files?.[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const p=JSON.parse(r.result);if(p.data){save(p.data);renderAll();toast('Veriler içe aktarıldı ✓')}}catch{toast('Geçersiz JSON dosyası')}};r.readAsText(f)}
+function resetAll(){if(!confirm('Bu cihazdaki tüm YKS verileri silinsin mi?'))return;localStorage.removeItem(key());renderAll();toast('Veriler sıfırlandı')}
+function handleAuthRedirect(){
+ const params=new URLSearchParams(location.hash.replace(/^#/,''));
+ const err=params.get('error_description'),type=params.get('type');
+ if(err){document.getElementById('verifyTitle').textContent='Doğrulama bağlantısı kullanılamadı';document.getElementById('verifyText').textContent=decodeURIComponent(err.replace(/\+/g,' '));document.getElementById('verifyModal').classList.add('show');history.replaceState(null,'',location.pathname+location.search);return}
+ if(type==='signup'){document.getElementById('verifyTitle').textContent='E-posta adresin doğrulandı!';document.getElementById('verifyText').textContent='Hesabın başarıyla aktifleştirildi. Artık YKS Koçluk hesabını kullanabilirsin.';document.getElementById('verifyModal').classList.add('show');history.replaceState(null,'',location.pathname+location.search)}
+}
+async function init(){
+ renderNav();loadTheme();document.getElementById('examDate').value=today();
+ try{const {data:sessionData}=await withTimeout(supabaseClient.auth.getSession());authUser=sessionData.session?.user||null;if(authUser)await loadCloudProfile();else renderAll();handleAuthRedirect()}
+ catch(e){renderAll();setAuthMsg('Oturum kontrolü başarısız: '+e.message)}
+ supabaseClient.auth.onAuthStateChange((_event,session)=>{authUser=session?.user||null;if(!authUser)profile=null;else setTimeout(()=>loadCloudProfile(),0);renderAll()});
+}
+init();
+</script>
+</body>
+</html>
