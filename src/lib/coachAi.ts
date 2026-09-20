@@ -42,15 +42,33 @@ function fromPacked(raw: unknown, fallbackPlan?: PlanBlock[]) {
   return { txt, plan, model };
 }
 
+function safeModelError(raw: string, status?: number) {
+  const msg = raw.trim();
+  if (!msg) return status ? `Model yanıt vermedi (HTTP ${status}).` : 'Model yanıt vermedi.';
+  if (/AIza|sk-|Bearer\s|api[_-]?key/i.test(msg)) {
+    return status ? `Model yanıt vermedi (HTTP ${status}).` : 'Model yanıt vermedi.';
+  }
+  return msg.length > 180 ? `${msg.slice(0, 177)}…` : msg;
+}
+
 async function invokeAi(body: Record<string, unknown>, ms: number): Promise<{ ok: true; data: unknown; model: string } | { ok: false; error: string }> {
-  if (!supabase || !supabaseUrl || !supabaseAnonKey) {
-    return { ok: false, error: 'Sunucu bağlantısı yok. Hesabım’dan giriş yapıp tekrar dene.' };
+  if (!supabaseUrl && !supabaseAnonKey) {
+    return { ok: false, error: 'Supabase ayarı yok: VITE_SUPABASE_URL ve VITE_SUPABASE_ANON_KEY build’de boş. Gerçek model çağrılamaz.' };
+  }
+  if (!supabaseUrl) {
+    return { ok: false, error: 'Supabase URL eksik (VITE_SUPABASE_URL). Vercel Production’a ekleyip yeniden yayınla.' };
+  }
+  if (!supabaseAnonKey) {
+    return { ok: false, error: 'Supabase anon key eksik (VITE_SUPABASE_ANON_KEY). Vercel Production’a ekleyip yeniden yayınla.' };
+  }
+  if (!supabase) {
+    return { ok: false, error: 'Supabase istemcisi oluşmadı. URL ve anon key’i kontrol et.' };
   }
 
   const { data: sessionData } = await supabase.auth.getSession();
   const token = sessionData.session?.access_token;
   if (!token) {
-    return { ok: false, error: 'Gerçek koç için Hesabım’dan giriş yap.' };
+    return { ok: false, error: 'Oturum yok. Gerçek model için Hesabım’dan giriş yap; yerel koç yedek çalışır.' };
   }
 
   try {
@@ -78,13 +96,19 @@ async function invokeAi(body: Record<string, unknown>, ms: number): Promise<{ ok
     if (res.ok && rec && (rec.reply || rec.plan || rec.schedule)) {
       return { ok: true, data: rec, model: String(rec.model || 'Bulut koç') };
     }
-    if (rec?.error) return { ok: false, error: String(rec.error) };
     if (res.status === 401) return { ok: false, error: 'Oturum doğrulanamadı. Hesabım’dan tekrar giriş yap.' };
-    return { ok: false, error: `Model yanıt vermedi (HTTP ${res.status}).` };
+    if (res.status === 404) return { ok: false, error: 'student-ai fonksiyonu bulunamadı (HTTP 404). Supabase Edge Function yayında olmayabilir.' };
+    if (res.status === 503) return { ok: false, error: safeModelError(String(rec?.error || 'Sunucu model anahtarı yok'), 503) };
+    if (rec?.error) return { ok: false, error: safeModelError(String(rec.error), res.status) };
+    if (!res.ok) return { ok: false, error: `student-ai yanıt vermedi (HTTP ${res.status}).` };
+    return { ok: false, error: 'Model boş yanıt döndü.' };
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Bulut koç hata';
-    if (msg.toLowerCase().includes('abort')) return { ok: false, error: 'İstek zaman aşımına uğradı.' };
-    return { ok: false, error: msg };
+    if (msg.toLowerCase().includes('abort')) return { ok: false, error: 'İstek zaman aşımına uğradı (student-ai).' };
+    if (/Failed to fetch|NetworkError|Load failed/i.test(msg)) {
+      return { ok: false, error: 'student-ai adresine ağ bağlantısı kurulamadı.' };
+    }
+    return { ok: false, error: safeModelError(msg) };
   }
 }
 

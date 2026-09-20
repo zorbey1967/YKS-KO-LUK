@@ -5,7 +5,6 @@ import { examCountdown } from '../lib/insights';
 import { examTitle } from '../lib/stage';
 import { SITE_NAME } from '../lib/site';
 import { isSupabaseConfigured } from '../lib/supabase';
-import { BrandLogo } from './BrandLogo';
 import type { ReactNode } from 'react';
 
 export function Layout({ children }: { children: ReactNode }) {
@@ -24,7 +23,7 @@ export function Layout({ children }: { children: ReactNode }) {
       {menuOpen && <div className="sidebar-backdrop" onClick={() => setMenuOpen(false)} />}
       <aside className={`sidebar ${menuOpen ? 'open' : ''}`}>
         <div className="brand">
-          <BrandLogo size={42} />
+          <div className="brand-icon" aria-hidden="true">🎓</div>
           <div className="brand-copy">
             <strong>{SITE_NAME}</strong>
             <small>{examTitle(data)} çalışma paneli</small>
@@ -56,7 +55,6 @@ export function Layout({ children }: { children: ReactNode }) {
             <button className="icon-btn mobile-menu" type="button" onClick={() => setMenuOpen(!menuOpen)} aria-label="Menü">
               ☰
             </button>
-            <BrandLogo size={32} className="brand-logo topbar-logo" />
             <div>
               <div className="eyebrow">{SITE_NAME}</div>
               <h1>{item.label}</h1>

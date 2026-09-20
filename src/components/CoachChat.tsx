@@ -4,7 +4,6 @@ import { COACH_CHIPS, coachSnapshot, type CoachSnap } from '../lib/coach';
 import { askCoach, type CoachSource } from '../lib/coachAi';
 import { today, uid } from '../lib/util';
 import { displayAge, displayText } from '../lib/types';
-import { BrandLogo } from './BrandLogo';
 
 type Msg = { who: 'user' | 'bot'; text: string; source?: CoachSource; model?: string };
 
@@ -93,18 +92,13 @@ export function CoachChat() {
 
   return (
     <>
-      <button className="fab" type="button" aria-label="E-Koç" onClick={() => setOpen((v) => !v)}>
-        <BrandLogo size={28} className="brand-logo fab-logo" />
-      </button>
+      <button className="fab" type="button" aria-label="E-Koç" onClick={() => setOpen((v) => !v)}>🤖</button>
       {open && (
         <section className="chat-panel" aria-label="E-Koç sohbet">
           <div className="section-title" style={{ padding: '12px 14px', margin: 0, borderBottom: '1px solid rgba(255,255,255,.1)' }}>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <BrandLogo size={28} className="brand-logo" />
-              <div>
-                <b>E-Koç</b>
-                <div style={{ fontSize: 11, opacity: 0.7 }}>{snap.exam} • {displayText(snap.grade)} • {displayAge(snap.age)}</div>
-              </div>
+            <div>
+              <b>E-Koç</b>
+              <div style={{ fontSize: 11, opacity: 0.7 }}>{snap.exam} • {displayText(snap.grade)} • {displayAge(snap.age)}</div>
             </div>
             <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
               <button className="chip" type="button" style={{ background: 'rgba(255,255,255,.12)', color: '#fff' }} onClick={() => { setOpen(false); go('settings'); }}>Ayarlar</button>

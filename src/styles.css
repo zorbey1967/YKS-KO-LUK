@@ -18,8 +18,7 @@ button{cursor:pointer}
 .app{display:flex;min-height:100vh}
 .sidebar{width:260px;position:fixed;inset:0 auto 0 0;background:var(--card);border-right:1px solid var(--line);padding:20px 14px;z-index:20;display:flex;flex-direction:column}
 .brand{display:flex;align-items:center;gap:11px;padding:8px 10px 22px;min-width:0}
-.brand-logo{width:42px;height:42px;border-radius:13px;flex:0 0 auto;display:block;object-fit:cover;box-shadow:0 6px 16px rgba(23,59,115,.28)}
-.brand-logo.topbar-logo{width:32px;height:32px;border-radius:10px}
+.brand-icon{width:42px;height:42px;border-radius:13px;background:linear-gradient(135deg,var(--primary),var(--primary2));display:grid;place-items:center;color:white;font-size:22px;flex:0 0 auto;box-shadow:0 8px 20px rgba(46,103,181,.22)}
 .brand-copy{min-width:0}
 .brand strong{font-size:16px;line-height:1.2;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .brand small{display:block;color:var(--muted);font-size:11px;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -128,8 +127,7 @@ h1{font-size:28px;margin:3px 0 0}h2{margin:0 0 7px}h3{margin:0}
 .skip-link:focus{transform:translateY(0)}
 .search{flex:1;min-width:180px}
 .fab,.chat-panel{position:fixed;z-index:60}
-.fab{right:20px;bottom:20px;width:54px;height:54px;border:0;border-radius:18px;background:#173b73;color:#fff;font-size:23px;box-shadow:0 10px 30px rgba(0,0,0,.22);display:grid;place-items:center;padding:0}
-.fab-logo{width:28px;height:28px;border-radius:8px;box-shadow:none}
+.fab{right:20px;bottom:20px;width:54px;height:54px;border:0;border-radius:18px;background:#141418;color:#fff;font-size:23px;box-shadow:0 10px 30px rgba(0,0,0,.22);display:grid;place-items:center;padding:0}
 .chat-panel{right:20px;bottom:86px;width:min(380px,calc(100vw - 28px));height:min(500px,calc(100vh - 120px));display:flex;flex-direction:column;border-radius:22px;background:rgba(20,20,24,.92);color:#fff;overflow:hidden}
 .chat-msgs{flex:1;overflow:auto;padding:12px}
 .chat-msg{max-width:88%;padding:9px 11px;border-radius:14px;margin:7px 0;font-size:13px;white-space:pre-wrap}
@@ -191,5 +189,4 @@ h1{font-size:28px;margin:3px 0 0}h2{margin:0 0 7px}h3{margin:0}
   .question-text{font-size:19px}
   .hero{padding:20px 16px}
   .calc-live{flex-direction:column;align-items:flex-start}
-  .topbar-logo{width:28px;height:28px}
 }
