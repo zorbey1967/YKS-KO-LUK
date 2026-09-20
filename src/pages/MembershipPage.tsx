@@ -33,7 +33,7 @@ export function MembershipPage() {
       <div className="hero">
         <div className="eyebrow" style={{ color: '#cfe1ff' }}>Üyelik</div>
         <h2>14 gün dene, kart yok</h2>
-        <p>Hesap planı sunucuda: {serverPlan}. Yerel deneme yalnızca arayüz içindir; otomatik tahsilat bağlanmaz.</p>
+        <p>Hesap planı sunucuda: {serverPlan}. Gerçek ödeme, kart çekimi ve otomatik tahsilat bağlı değil; buradaki deneme yalnızca arayüz içindir.</p>
       </div>
       <div className="notice" style={{ marginTop: 16 }}>{info.badge} — {info.text}</div>
       <div className="grid three" style={{ marginTop: 16 }}>

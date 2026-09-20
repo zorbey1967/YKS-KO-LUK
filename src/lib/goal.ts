@@ -20,7 +20,7 @@ export const DEPT_PRESETS = [
 ];
 
 export function clampAge(n: number) {
-  if (!Number.isFinite(n)) return 17;
+  if (!Number.isFinite(n) || n <= 0) return 0;
   return Math.min(65, Math.max(6, Math.round(n)));
 }
 
@@ -33,10 +33,10 @@ export function applyGoal(data: AppData, draft: GoalDraft): AppData {
     grade,
     age: clampAge(draft.age),
     track,
-    dept: draft.dept.trim() || data.dept,
-    rank: Number.isFinite(draft.rank) ? Math.max(0, Math.round(draft.rank)) : data.rank,
+    dept: draft.dept.trim(),
+    rank: Number.isFinite(draft.rank) ? Math.max(0, Math.round(draft.rank)) : 0,
     weekHours: Number.isFinite(draft.weekHours) ? Math.max(1, draft.weekHours) : data.weekHours,
-    examDate: draft.examDate || data.examDate,
+    examDate: draft.examDate || '',
   };
 }
 

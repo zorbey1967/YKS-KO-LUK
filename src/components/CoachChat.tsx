@@ -3,14 +3,18 @@ import { useApp } from '../context/AppContext';
 import { COACH_CHIPS, coachSnapshot, type CoachSnap } from '../lib/coach';
 import { askCoach, type CoachSource } from '../lib/coachAi';
 import { today, uid } from '../lib/util';
+import { displayAge, displayText } from '../lib/types';
+import { BrandLogo } from './BrandLogo';
 
 type Msg = { who: 'user' | 'bot'; text: string; source?: CoachSource; model?: string };
 
-const CHAT_KEY = 'yks_v7_chat';
+function chatKey(userId?: string) {
+  return userId ? `yks_v7_chat_${userId}` : 'yks_v7_chat';
+}
 
-function loadMsgs(): Msg[] {
+function loadMsgs(userId?: string): Msg[] {
   try {
-    const raw = JSON.parse(localStorage.getItem(CHAT_KEY) || '[]');
+    const raw = JSON.parse(localStorage.getItem(chatKey(userId)) || '[]');
     if (Array.isArray(raw) && raw.length) return raw.slice(-40);
   } catch { /* ignore */ }
   return [];
@@ -24,13 +28,13 @@ export function CoachChat() {
   const [busy, setBusy] = useState(false);
   const [lastPlan, setLastPlan] = useState<{ text: string; minutes: number; icon: string }[] | undefined>();
   const [msgs, setMsgs] = useState<Msg[]>(() => {
-    const saved = loadMsgs();
+    const saved = loadMsgs(user?.id);
     if (saved.length) return saved;
     return [{
       who: 'bot',
       source: user ? 'ai' : 'local',
       text: user
-        ? `Selam${profile?.name ? ` ${profile.name.split(' ')[0]}` : ''}. Gerçek koç sunucuda. ${snap.grade}, ${snap.age} yaş, ${snap.dept}. Ne çalışalım?`
+        ? `Selam${profile?.name ? ` ${profile.name.split(' ')[0]}` : ''}. Gerçek koç sunucuda. ${displayText(snap.grade)}, ${displayAge(snap.age)}, ${displayText(snap.dept)}. Ne çalışalım?`
         : `Selam${profile?.name ? ` ${profile.name.split(' ')[0]}` : ''}. Giriş yoksa yerel koç yazar. Gerçek model için Hesabım’dan giriş yap.`,
     }];
   });
@@ -43,9 +47,9 @@ export function CoachChat() {
   }, []);
 
   useEffect(() => {
-    try { localStorage.setItem(CHAT_KEY, JSON.stringify(msgs.slice(-40))); } catch { /* ignore */ }
+    try { localStorage.setItem(chatKey(user?.id), JSON.stringify(msgs.slice(-40))); } catch { /* ignore */ }
     box.current?.scrollTo({ top: box.current.scrollHeight, behavior: 'smooth' });
-  }, [msgs, busy]);
+  }, [msgs, busy, user?.id]);
 
   async function send(text?: string) {
     const q = (text ?? input).trim();
@@ -89,13 +93,18 @@ export function CoachChat() {
 
   return (
     <>
-      <button className="fab" type="button" aria-label="E-Koç" onClick={() => setOpen((v) => !v)}>🤖</button>
+      <button className="fab" type="button" aria-label="E-Koç" onClick={() => setOpen((v) => !v)}>
+        <BrandLogo size={28} className="brand-logo fab-logo" />
+      </button>
       {open && (
         <section className="chat-panel" aria-label="E-Koç sohbet">
           <div className="section-title" style={{ padding: '12px 14px', margin: 0, borderBottom: '1px solid rgba(255,255,255,.1)' }}>
-            <div>
-              <b>E-Koç</b>
-              <div style={{ fontSize: 11, opacity: 0.7 }}>{snap.exam} • {snap.grade} • {snap.age} yaş</div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <BrandLogo size={28} className="brand-logo" />
+              <div>
+                <b>E-Koç</b>
+                <div style={{ fontSize: 11, opacity: 0.7 }}>{snap.exam} • {displayText(snap.grade)} • {displayAge(snap.age)}</div>
+              </div>
             </div>
             <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
               <button className="chip" type="button" style={{ background: 'rgba(255,255,255,.12)', color: '#fff' }} onClick={() => { setOpen(false); go('settings'); }}>Ayarlar</button>

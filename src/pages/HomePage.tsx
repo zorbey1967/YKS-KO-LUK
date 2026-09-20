@@ -8,10 +8,12 @@ import { ExamInsight } from '../components/ExamInsight';
 import { TaskRows } from '../components/TaskRows';
 import { examTitle } from '../lib/stage';
 import { today } from '../lib/util';
+import { displayAge, displayRank, displayText } from '../lib/types';
 
 export function HomePage({ onNewTask }: { onNewTask: () => void }) {
   const { data, setData, go, profile, toast, user } = useApp();
-  const name = profile?.name || 'Öğrenci';
+  const name = profile?.name || (user ? 'Öğrenci' : 'Misafir');
+  const profileIncomplete = !data.grade || data.age <= 0 || !data.track || !data.dept;
   const td = today();
   const todayTasks = data.tasks.filter((t) => t.date === td);
   const done = todayTasks.filter((t) => t.done).length;
@@ -40,8 +42,8 @@ export function HomePage({ onNewTask }: { onNewTask: () => void }) {
         <div className="eyebrow" style={{ color: '#cfe1ff' }}>Sınav temposu • {elite.phase}</div>
         <h2>Hoş geldin, {name} 👋</h2>
         <p>{user ? 'Giriş yaptın — bu panel yalnızca senin verin.' : 'Tek site, her öğrenci kendi hesabıyla girer. Kayıt olunca panelin sende kalır.'}</p>
-        <p>{data.grade} • {data.age} yaş • {data.dept} • {data.track} • hedef sıralama {Number(data.rank).toLocaleString('tr-TR')}</p>
-        <div className="countdown-pill">{count.past ? 'Sınav tarihi geçti' : `${examTitle(data)}’ye ${count.label}`} • {data.examDate}</div>
+        <p>{displayText(data.grade)} • {displayAge(data.age)} • {displayText(data.dept)} • {displayText(data.track)} • hedef sıralama {displayRank(data.rank)}</p>
+        <div className="countdown-pill">{data.examDate ? (count.past ? 'Sınav tarihi geçti' : `${examTitle(data)}’ye ${count.label}`) : 'Sınav tarihi belirtilmedi'}{data.examDate ? ` • ${data.examDate}` : ''}</div>
         <div className="hero-actions">
           <button className="btn" type="button" onClick={() => go('goal')}>🎯 Hedefi / yaşı değiştir</button>
           <button className="btn" type="button" onClick={() => go('plan')}>🤖 Akıllı Plan</button>
@@ -59,11 +61,17 @@ export function HomePage({ onNewTask }: { onNewTask: () => void }) {
         </div>
       ) : (
         <div className="success" style={{ marginTop: 16 }}>
-          E-Koç girişinle sunucuda çalışır. Model anahtarı tarayıcıda tutulmaz.
+          Giriş açık. E-Koç sohbeti hesabınla sunucuya gider; model anahtarı tarayıcıda tutulmaz.
         </div>
       )}
+      {profileIncomplete ? (
+        <div className="notice" style={{ marginTop: 12 }}>
+          Yaş, sınıf, alan ve hedef henüz belirtilmedi. Bu alanlar otomatik doldurulmaz.
+          <button className="btn primary" type="button" style={{ marginLeft: 8 }} onClick={() => go('goal')}>Profili doldur</button>
+        </div>
+      ) : null}
       <div className="grid stats">
-        <div className="card stat"><div className="label">🎯 HEDEF SIRALAMA</div><div className="value">{Number(data.rank).toLocaleString('tr-TR')}</div><div className="sub">{data.track} • {data.dept}</div></div>
+        <div className="card stat"><div className="label">🎯 HEDEF SIRALAMA</div><div className="value">{displayRank(data.rank)}</div><div className="sub">{displayText(data.track)} • {displayText(data.dept)}</div></div>
         <div className="card stat"><div className="label">📚 BUGÜN</div><div className="value">{mins} dk</div><div className="sub">{sessions.length} oturum</div></div>
         <div className="card stat"><div className="label">✅ GÖREV</div><div className="value">{todayTasks.length ? Math.round((done / todayTasks.length) * 100) : 0}%</div><div className="sub">{done} / {todayTasks.length} bugün</div></div>
         <div className="card stat"><div className="label">🔥 SERİ</div><div className="value">{streak} gün</div><div className="sub">Çalışma serin</div></div>

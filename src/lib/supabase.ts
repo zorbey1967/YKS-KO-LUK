@@ -14,6 +14,24 @@ export const supabase: SupabaseClient | null =
     })
     : null;
 
+/** User-facing text when the Vite-bundled URL/anon key are missing. Never includes secrets. */
+export const SUPABASE_UNAVAILABLE =
+  'Canlı ortamda Supabase ayarı yok. Giriş ve koç listesi şu an kapalı.';
+
+export function isSupabaseConfigured() {
+  return Boolean(supabase);
+}
+
+/** Short, secret-free copy. Distinguishes missing config from a failed request. */
+export function publicCloudError(e: unknown): string {
+  const msg = e instanceof Error ? e.message : '';
+  if (/zaman aşımı|timeout|Failed to fetch|NetworkError|Load failed|fetch/i.test(msg)) {
+    return 'Bağlantı hatası. Ağını kontrol edip yeniden dene.';
+  }
+  if (/İstek iptal/i.test(msg)) return 'İstek iptal edildi.';
+  return 'Bulut isteği tamamlanamadı.';
+}
+
 export function withTimeout<T>(p: PromiseLike<T>, ms = 12000, signal?: AbortSignal) {
   return new Promise<T>((resolve, reject) => {
     const t = setTimeout(() => reject(new Error('İstek zaman aşımına uğradı.')), ms);

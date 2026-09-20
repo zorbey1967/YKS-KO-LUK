@@ -1,6 +1,5 @@
 import type { AppData, Topic } from './types';
 import { emptyData } from './types';
-import { typicalAge } from './stage';
 
 export function storageKey(userId?: string | null) {
   return userId ? `yks_v7_${userId}` : 'yks_v7_guest';
@@ -10,13 +9,13 @@ export function normalizeData(raw: unknown): AppData {
   const d = emptyData();
   if (!raw || typeof raw !== 'object') return d;
   const x = raw as Partial<AppData>;
-  d.dept = String(x.dept || d.dept);
+  d.dept = x.dept == null ? d.dept : String(x.dept);
   d.rank = x.rank === undefined || x.rank === null || Number.isNaN(Number(x.rank)) ? d.rank : Math.max(0, Number(x.rank));
   d.weekHours = Number(x.weekHours) > 0 ? Number(x.weekHours) : d.weekHours;
-  d.track = String(x.track || d.track);
-  d.grade = String(x.grade || d.grade);
-  d.age = Number(x.age) > 0 ? Number(x.age) : typicalAge(d.grade);
-  d.examDate = String(x.examDate || d.examDate);
+  d.track = x.track == null ? d.track : String(x.track);
+  d.grade = x.grade == null ? d.grade : String(x.grade);
+  d.age = Number(x.age) > 0 ? Number(x.age) : 0;
+  d.examDate = x.examDate == null ? d.examDate : String(x.examDate);
   d.tasks = Array.isArray(x.tasks) ? x.tasks.filter((t) => t && t.title) : [];
   d.exams = Array.isArray(x.exams) ? x.exams.filter((e) => e && e.date) : [];
   d.topics = Array.isArray(x.topics) ? x.topics.filter((t) => t && t.name) : [];
@@ -44,10 +43,6 @@ export function loadData(userId?: string | null): AppData {
   try {
     const raw = localStorage.getItem(storageKey(userId));
     if (raw) return normalizeData(JSON.parse(raw));
-    if (userId) {
-      const guest = localStorage.getItem(storageKey(null));
-      if (guest) return normalizeData(JSON.parse(guest));
-    }
     const legacy = localStorage.getItem(userId ? `yks_v6_${userId}` : 'yks_v6_guest');
     if (legacy) return normalizeData(JSON.parse(legacy));
   } catch {

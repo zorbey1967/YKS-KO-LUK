@@ -1,0 +1,18 @@
+{
+  "name": "Öğrenci E-Koçluk",
+  "short_name": "E-Koçluk",
+  "description": "YKS ve okul öğrencileri için e-koçluk paneli.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f5f7fb",
+  "theme_color": "#173b73",
+  "lang": "tr",
+  "icons": [
+    {
+      "src": "/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 import type { AppData, PlanBlock } from './types';
 import { examCountdown, todaySchedule, weekMinutes, studyStreak } from './insights';
-import { examKind, examTitle, typicalAge } from './stage';
+import { examKind, examTitle } from './stage';
 import { curriculumForGrade } from './curriculum';
 import { eliteReport } from './elite';
 import { today } from './util';
@@ -66,7 +66,7 @@ export function coachSnapshot(data: AppData): CoachSnap {
     exam: examTitle(data),
     countdown: count.label,
     past: count.past,
-    age: data.age || typicalAge(data.grade),
+    age: data.age > 0 ? data.age : 0,
     grade: data.grade,
     track: data.track,
     dept: data.dept,
@@ -90,7 +90,7 @@ export function coachSnapshot(data: AppData): CoachSnap {
 export function coachContext(data: AppData) {
   const s = coachSnapshot(data);
   return [
-    `Öğrenci: ${s.grade}, ${s.age} yaş, alan ${s.track}, hedef ${s.dept} (sıra ${s.rank}).`,
+    `Öğrenci: ${s.grade || 'belirtilmedi'}, ${s.age > 0 ? `${s.age} yaş` : 'yaş belirtilmedi'}, alan ${s.track || 'belirtilmedi'}, hedef ${s.dept || 'belirtilmedi'} (sıra ${s.rank > 0 ? s.rank : 'belirtilmedi'}).`,
     `Sınav: ${s.exam} • ${s.past ? `tarih geçti (${s.countdown})` : `${s.countdown} kaldı`} • ${data.examDate}.`,
     `Bugün ${s.todayStudy} dk, ${s.open} açık görev${s.openTitle ? ` (ilk: ${s.openTitle})` : ''}, seri ${s.streak} gün, hafta ${s.weekMins} dk / hedef ${s.weekHours}s.`,
     s.weak.length ? `Zayıf konular: ${s.weak.join(', ')}.` : 'Konu seviyesi kaydı az.',
@@ -102,8 +102,8 @@ export function coachContext(data: AppData) {
 }
 
 function blockLen(age: number) {
-  if (age <= 9) return 20;
-  if (age <= 13) return 35;
+  if (age > 0 && age <= 9) return 20;
+  if (age > 0 && age <= 13) return 35;
   return 50;
 }
 
@@ -121,7 +121,7 @@ export function iconForTopic(title: string) {
 
 export function generatePlan(data: AppData, minutes: number, focus: string): PlanBlock[] {
   const s = coachSnapshot(data);
-  const mins = Math.max(s.age <= 9 ? 40 : 60, minutes || 240);
+  const mins = Math.max(s.age > 0 && s.age <= 9 ? 40 : 60, minutes || 180);
   const unit = blockLen(s.age);
   const weakName = s.weak[0]?.replace(/\s*\(%\d+\)/, '') || s.subjects[0] || 'Eksik konu';
   const weak2 = s.weak[1]?.replace(/\s*\(%\d+\)/, '') || s.subjects[1] || 'Tekrar';
@@ -142,7 +142,7 @@ export function generatePlan(data: AppData, minutes: number, focus: string): Pla
     }
   }
 
-  if (s.kind === 'Okul' && s.age <= 9) {
+  if (s.kind === 'Okul' && s.age > 0 && s.age <= 9) {
     add(`${weakName} (kısa, oyunlu)`, unit, '🎯');
     add('Okuma / hikâye', 15, '📖');
     add('Matematik pratik', unit, '➗');
@@ -194,7 +194,7 @@ export function generatePlan(data: AppData, minutes: number, focus: string): Pla
     add(s.kind === 'YKS' ? 'TYT/AYT soru çözümü' : 'Soru çözümü', unit, '➗');
     add('Yanlış soru analizi', 25, '🔎');
   }
-  if (remain > 0) add(s.age <= 9 ? 'Oyun / dinlenme + kısa tekrar' : 'Serbest tekrar / eksik kapatma', remain, '🎯');
+  if (remain > 0) add(s.age > 0 && s.age <= 9 ? 'Oyun / dinlenme + kısa tekrar' : 'Serbest tekrar / eksik kapatma', remain, '🎯');
   return out;
 }
 
@@ -243,7 +243,7 @@ export function chatReply(q: string, data: AppData): { text: string; plan?: Plan
   const unit = blockLen(s.age);
 
   if (/\b(selam|merhaba|hey|sa\b)/.test(t)) {
-    return { text: `Selam. ${s.grade}, ${s.age} yaş, hedef ${s.dept}. ${s.exam}’ye ${s.past ? 'tarih geçmiş' : s.countdown}. Ne çalışmak istiyorsun?` };
+    return { text: `Selam. ${s.grade || 'sınıf belirtilmedi'}, ${s.age > 0 ? `${s.age} yaş` : 'yaş belirtilmedi'}, hedef ${s.dept || 'belirtilmedi'}. ${s.exam}’ye ${s.past ? 'tarih geçmiş' : s.countdown}. Ne çalışmak istiyorsun?` };
   }
   if (t.includes('yoruld') || t.includes('motiv') || t.includes('çalışam') || t.includes('ertele')) {
     return { text: `${unit} dakikalık mini blok yeter: 2 dk hazırlık, ${unit - 7} dk tek konu, 5 dk kapanış. Telefonu başka odaya koy. Bitince 1 görevi işaretle — seri ${s.streak} gün.` };
@@ -281,7 +281,7 @@ export function chatReply(q: string, data: AppData): { text: string; plan?: Plan
   }
   if (t.includes('sınav') || t.includes('yks') || t.includes('kpss') || t.includes('kaç gün') || t.includes('hedef')) {
     return {
-      text: `Hedef ${s.dept} • sıra ${Number(s.rank).toLocaleString('tr-TR')} • ${s.exam} ${s.past ? `geçti (${s.countdown})` : `${s.countdown} kaldı`} (${data.examDate}). Yaş ${s.age}, sınıf ${s.grade}, alan ${s.track}. Hedefim sayfasından değiştirebilirsin.`,
+      text: `Hedef ${s.dept || 'belirtilmedi'} • sıra ${s.rank > 0 ? Number(s.rank).toLocaleString('tr-TR') : 'belirtilmedi'} • ${s.exam} ${s.past ? `geçti (${s.countdown})` : `${s.countdown} kaldı`} (${data.examDate || 'tarih belirtilmedi'}). Yaş ${s.age > 0 ? s.age : 'belirtilmedi'}, sınıf ${s.grade || 'belirtilmedi'}, alan ${s.track || 'belirtilmedi'}. Hedefim sayfasından değiştirebilirsin.`,
     };
   }
   if (t.includes('net') || t.includes('deneme')) {
@@ -324,7 +324,7 @@ export function chatReply(q: string, data: AppData): { text: string; plan?: Plan
   }
 
   return {
-    text: `Verine göre: ${s.grade} / ${s.age} yaş / ${s.dept} / ${s.exam} ${s.countdown}. Örnek yaz: “bugün 2 saat matematik”, “performansım”, “yanlışlarımı nasıl azaltırım”.`,
+    text: `Verine göre: ${s.grade || 'sınıf belirtilmedi'} / ${s.age > 0 ? `${s.age} yaş` : 'yaş belirtilmedi'} / ${s.dept || 'hedef belirtilmedi'} / ${s.exam} ${s.countdown}. Örnek yaz: “bugün 2 saat matematik”, “performansım”, “yanlışlarımı nasıl azaltırım”.`,
   };
 }
 

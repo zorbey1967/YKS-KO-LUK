@@ -20,7 +20,8 @@ export function TopicsPage() {
         <div className="section-title">
           <h3>📚 Müfredat</h3>
           <select value={data.grade} onChange={(e) => setData(applyGradeKeepAge(data, e.target.value))}>
-            {GRADES.map((g) => <option key={g}>{g}</option>)}
+            <option value="">Belirtilmedi</option>
+            {GRADES.map((g) => <option key={g} value={g}>{g}</option>)}
           </select>
         </div>
         <p style={{ color: 'var(--muted)', marginTop: 0 }}>

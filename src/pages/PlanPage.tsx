@@ -9,7 +9,7 @@ import { fmtDate, today, uid } from '../lib/util';
 export function PlanPage() {
   const { data, setData, toast } = useApp();
   const kind = examKind(data);
-  const [minutes, setMinutes] = useState(kind === 'Okul' ? (data.age <= 9 ? 60 : 120) : 240);
+  const [minutes, setMinutes] = useState(kind === 'Okul' ? (data.age > 0 && data.age <= 9 ? 60 : 120) : 240);
   const [focus, setFocus] = useState('Eksik konular');
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState('');

@@ -9,7 +9,7 @@ function fromState(name: string, data: AppData): GoalDraft {
   return {
     name,
     grade: data.grade,
-    age: clampAge(data.age || typicalAge(data.grade)),
+    age: data.age > 0 ? clampAge(data.age) : 0,
     track: data.track,
     dept: data.dept,
     rank: data.rank,
@@ -40,7 +40,7 @@ export function GoalEditor({ compact }: { compact?: boolean }) {
     toast('Hedef ve yaş kaydedildi');
   }
 
-  const suggested = typicalAge(draft.grade);
+  const suggested = draft.grade ? typicalAge(draft.grade) : 0;
 
   return (
     <div className="card">
@@ -48,6 +48,9 @@ export function GoalEditor({ compact }: { compact?: boolean }) {
         <h3>🎯 Hedefi ve yaşı değiştir</h3>
         {dirty ? <span className="chip">Kaydedilmedi</span> : <span>Kayıtlı</span>}
       </div>
+      <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: 0 }}>
+        Yaş, sınıf, alan ve hedefi sen yaz. Boş bırakılan alan “belirtilmedi” kalır; otomatik doldurulmaz.
+      </p>
       <div className="form-grid">
         <div className="field"><label>Ad Soyad</label><input value={draft.name} onChange={(e) => patch({ name: e.target.value })} placeholder="Adın" /></div>
         <div className="field">
@@ -56,36 +59,63 @@ export function GoalEditor({ compact }: { compact?: boolean }) {
             const grade = e.target.value;
             patch({ grade, track: grade === 'KPSS Adayı' ? 'KPSS' : draft.track });
           }}>
-            {GRADES.map((g) => <option key={g}>{g}</option>)}
+            <option value="">Belirtilmedi</option>
+            {GRADES.map((g) => <option key={g} value={g}>{g}</option>)}
           </select>
         </div>
         <div className="field">
           <label>Yaş</label>
           <div className="stepper" style={{ width: '100%' }}>
-            <button type="button" onClick={() => patch({ age: clampAge(draft.age - 1) })} aria-label="Yaşı azalt">−</button>
-            <input type="number" min={6} max={65} value={draft.age} onChange={(e) => patch({ age: clampAge(Number(e.target.value) || draft.age) })} />
-            <button type="button" onClick={() => patch({ age: clampAge(draft.age + 1) })} aria-label="Yaşı artır">+</button>
+            <button type="button" onClick={() => patch({ age: draft.age > 0 ? clampAge(draft.age - 1) : 0 })} aria-label="Yaşı azalt">−</button>
+            <input
+              type="number"
+              min={6}
+              max={65}
+              value={draft.age > 0 ? draft.age : ''}
+              placeholder="Belirtilmedi"
+              onChange={(e) => {
+                const raw = e.target.value;
+                if (raw === '') return patch({ age: 0 });
+                patch({ age: clampAge(Number(raw)) });
+              }}
+            />
+            <button type="button" onClick={() => patch({ age: clampAge((draft.age || 5) + 1) })} aria-label="Yaşı artır">+</button>
           </div>
-          <button className="btn secondary" type="button" style={{ marginTop: 8 }} onClick={() => patch({ age: suggested })}>
-            Sınıfa göre önerilen yaş: {suggested}
-          </button>
+          {suggested > 0 ? (
+            <button className="btn secondary" type="button" style={{ marginTop: 8 }} onClick={() => patch({ age: suggested })}>
+              Sınıfa göre önerilen yaş: {suggested}
+            </button>
+          ) : null}
         </div>
         <div className="field">
           <label>Alan</label>
           <select value={draft.track} onChange={(e) => patch({ track: e.target.value })}>
-            {TRACKS.map((t) => <option key={t}>{t}</option>)}
+            <option value="">Belirtilmedi</option>
+            {TRACKS.map((t) => <option key={t} value={t}>{t}</option>)}
           </select>
         </div>
         <div className="field" style={{ gridColumn: compact ? undefined : '1 / -1' }}>
           <label>Hedef bölüm / kadro</label>
-          <input value={draft.dept} onChange={(e) => patch({ dept: e.target.value })} placeholder="ör. Hukuk, Tıp, KPSS / Kamu" />
+          <input value={draft.dept} onChange={(e) => patch({ dept: e.target.value })} placeholder="Belirtilmedi" />
           <div className="chip-row" style={{ marginTop: 8 }}>
             {DEPT_PRESETS.map((d) => (
               <button key={d} className={`chip ${draft.dept === d ? 'on' : ''}`} type="button" onClick={() => patch({ dept: d })}>{d}</button>
             ))}
           </div>
         </div>
-        <div className="field"><label>Hedef sıralama / puan sırası</label><input type="number" min={0} value={draft.rank} onChange={(e) => patch({ rank: Number(e.target.value) || 0 })} /></div>
+        <div className="field">
+          <label>Hedef sıralama / puan sırası</label>
+          <input
+            type="number"
+            min={0}
+            value={draft.rank > 0 ? draft.rank : ''}
+            placeholder="Belirtilmedi"
+            onChange={(e) => {
+              const raw = e.target.value;
+              patch({ rank: raw === '' ? 0 : Number(e.target.value) || 0 });
+            }}
+          />
+        </div>
         <div className="field"><label>Haftalık hedef (saat)</label><input type="number" min={1} value={draft.weekHours} onChange={(e) => patch({ weekHours: Number(e.target.value) || 1 })} /></div>
         <div className="field"><label>Sınav tarihi</label><input type="date" value={draft.examDate} onChange={(e) => patch({ examDate: e.target.value })} /></div>
       </div>

@@ -2,6 +2,7 @@ import { useApp } from '../context/AppContext';
 import { eliteReport } from '../lib/elite';
 import { examCountdown } from '../lib/insights';
 import { examTitle, showsKpss, showsYks } from '../lib/stage';
+import { displayAge, displayText } from '../lib/types';
 
 export function ExamInsight() {
   const { data, go } = useApp();
@@ -60,7 +61,7 @@ export function ExamInsight() {
     <div className="card">
       <div className="section-title"><h3>📘 Okul takibi</h3><span>{examTitle(data)}</span></div>
       <p style={{ color: 'var(--muted)', fontSize: 13 }}>
-        {data.age || 0} yaş • {data.grade}. Program kısa bloklar ve okul derslerine göre üretilir. YKS analizi 11 ve 12. sınıfta açılır.
+        {displayAge(data.age)} • {displayText(data.grade)}. Program kısa bloklar ve okul derslerine göre üretilir. YKS analizi 11 ve 12. sınıfta açılır.
       </p>
       <div className="actions">
         <button className="btn secondary" type="button" onClick={() => go('topics')}>Müfredat</button>

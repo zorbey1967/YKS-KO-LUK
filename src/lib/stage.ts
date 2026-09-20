@@ -35,6 +35,7 @@ export function showsKpss(data: AppData) {
 }
 
 export function examTitle(data: AppData) {
+  if (!data.grade && !data.track) return 'Öğrenci';
   const k = examKind(data);
   if (k === 'KPSS') return 'KPSS';
   if (k === 'YKS') return 'YKS';
@@ -50,8 +51,8 @@ export function ageBand(age: number) {
 }
 
 export function suggestedDailyMinutes(age: number, kind: 'YKS' | 'KPSS' | 'Okul') {
-  if (age <= 9) return 60;
-  if (age <= 13) return 120;
+  if (age > 0 && age <= 9) return 60;
+  if (age > 0 && age <= 13) return 120;
   if (kind === 'KPSS') return 180;
   if (kind === 'YKS') return 240;
   return 150;

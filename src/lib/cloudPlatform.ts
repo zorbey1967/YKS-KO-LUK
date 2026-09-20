@@ -1,6 +1,6 @@
 import type { AppointmentStatus, CoachAccount, CoachAppointment, CoachDesk, CoachHomework, CoachPayment, CoachStatus, CoachStudent, CoachTrack, HumanCoach } from './coaches';
 import { COACH_TRACKS, emptyDesk } from './coaches';
-import { supabase, withTimeout } from './supabase';
+import { SUPABASE_UNAVAILABLE, publicCloudError, supabase, withTimeout } from './supabase';
 
 type LedgerKind = 'odeme' | 'iade';
 type LedgerStatus = 'bekliyor' | 'odendi' | 'iade';
@@ -105,7 +105,7 @@ function directoryToHuman(row: Record<string, unknown>): HumanCoach {
 }
 
 export async function fetchActiveCoaches(): Promise<{ ok: true; coaches: HumanCoach[] } | { ok: false; error: string }> {
-  if (!supabase) return { ok: false, error: 'Bulut bağlantısı yok.' };
+  if (!supabase) return { ok: false, error: SUPABASE_UNAVAILABLE };
   try {
     const { data, error } = await withTimeout(
       supabase.from('coach_directory').select('id,name,photo,track,focus,experience,bio,student_count,created_at'),
@@ -113,7 +113,7 @@ export async function fetchActiveCoaches(): Promise<{ ok: true; coaches: HumanCo
     if (error) throw error;
     return { ok: true, coaches: (data || []).map((r) => directoryToHuman(r as Record<string, unknown>)) };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : 'Koç listesi alınamadı.' };
+    return { ok: false, error: publicCloudError(e) };
   }
 }
 
@@ -126,7 +126,7 @@ export async function submitCoachApplication(input: {
   photo: string;
   studentCount: number;
 }): Promise<{ ok: true; id: string } | { ok: false; error: string; missing?: boolean }> {
-  if (!supabase) return { ok: false, error: 'Supabase yok.', missing: true };
+  if (!supabase) return { ok: false, error: SUPABASE_UNAVAILABLE, missing: true };
   const photo = input.photo.length > 180000 ? '' : input.photo;
   try {
     const { data, error } = await withTimeout(

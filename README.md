@@ -1,6 +1,8 @@
 # Öğrenci E-Koçluk
 
-YKS öğrencileri için kişisel çalışma paneli: görev, hedef, deneme, net, konu, soru bankası ve odak süresi.
+YKS ve okul öğrencileri için kişisel çalışma paneli: görev, hedef, deneme, net, konu, soru bankası ve odak süresi.
+
+Canlı adres: https://yks-ko-luk.vercel.app/
 
 ## Çalıştırma
 
@@ -13,23 +15,28 @@ Tarayıcı: `http://localhost:5173`
 
 ## Ortam
 
-`.env.example` dosyasını `.env` olarak kopyala:
+`.env.example` dosyasını `.env` olarak kopyala (yalnızca yerel geliştirme; GitHub’a koyma):
 
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_ANON_KEY` (yalnızca publishable/anon key)
+- `VITE_ADMIN_EMAIL` (yönetici paneli görünürlüğü; asıl yetki RLS)
 
-SQL şeması: `supabase/migrations/001_init.sql` — Supabase SQL editor’de bir kez çalıştır.
+Canlı yayın için aynı `VITE_*` değişkenlerini Vercel → Project → Settings → Environment Variables → Production’a ekle, ardından **Redeploy**. Vite bunları build anında gömer. `service_role` anahtarını Vercel’e veya frontend’e koyma.
+
+SQL şeması: `supabase/migrations/` — SQL Editor’de bilinçli uygulanır; uygulama otomatik SQL çalıştırmaz.
 
 ## Mimari
 
 - Vite + React + TypeScript
-- Yerel veri: `localStorage` (`yks_v7_*`), eski `yks_v6_*` yedekleri okunur
+- Yerel veri: `localStorage` (`yks_v7_*`)
 - Giriş: Supabase Auth
-- Bulut: `profiles` + `student_data` (JSON); tablo yoksa uygulama yerel çalışır
-- Soru bankası: `src/data/bankData.ts` (YKS TYT/AYT, özgün alıştırma soruları)
+- Bulut: `profiles` + `student_data` (JSON)
+- Soru bankası: `src/data/bankData.ts`
 
-Eski tek dosyalık V31 arayüzü `legacy/app-v31.html` içinde durur; üretim girişi bu React uygulamasıdır.
+## Üyelik
 
-## Üyelik ve AI
+Üyelik ekranı arayüz denemesidir. Gerçek ödeme ve görüntülü görüşme bağlı değildir.
 
-Üyelik ekranı hazır; plan alanı istemciden yükseltilemez (SQL tetikleyici). Gerçek ödeme ve model çağrısı sonraki adım: Edge Function + webhook.
+## Google indeksleme
+
+Teknik SEO (`title`, `description`, canonical, `robots.txt`, `sitemap.xml`) hazırdır. Google’da görünmesi için [Google Search Console](https://search.google.com/search-console) üzerinden `https://yks-ko-luk.vercel.app/` özelliği ekleyip sitemap’i gönderin. Hash sayfalar (`#/coaches` vb.) ayrı URL olarak indekslenmez.

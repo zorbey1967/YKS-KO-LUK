@@ -3,15 +3,15 @@ import { useApp } from '../context/AppContext';
 import { applyScheduleNotes, generateWeeklySchedule } from '../lib/schedule';
 import { buildScheduleFromPdf, buildScheduleWithAi } from '../lib/aiSchedule';
 import { blocksToTasks, todaySchedule } from '../lib/insights';
-import { suggestedDailyMinutes, examKind, typicalAge } from '../lib/stage';
+import { suggestedDailyMinutes, examKind } from '../lib/stage';
 import { today } from '../lib/util';
 import { assertPdfFile, clearSchedulePdf, loadSchedulePdf, saveSchedulePdf } from '../lib/pdfStore';
 
 export function SchedulePage() {
   const { data, setData, toast } = useApp();
-  const age = data.age || typicalAge(data.grade);
-  const [daily, setDaily] = useState(() => suggestedDailyMinutes(age, examKind(data)));
-  const [days, setDays] = useState(age <= 13 ? 5 : 6);
+  const age = data.age > 0 ? data.age : 0;
+  const [daily, setDaily] = useState(() => (age > 0 ? suggestedDailyMinutes(age, examKind(data)) : 150));
+  const [days, setDays] = useState(age > 0 && age <= 13 ? 5 : 6);
   const [focus, setFocus] = useState('Dengeli TYT + AYT');
   const [notes, setNotes] = useState(data.schedule.notes || '');
   const [file, setFile] = useState<File | null>(null);

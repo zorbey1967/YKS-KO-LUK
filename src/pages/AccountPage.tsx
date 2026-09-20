@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { supabase, withTimeout } from '../lib/supabase';
+import { SUPABASE_UNAVAILABLE, supabase, withTimeout } from '../lib/supabase';
 import { normalizeData, saveData } from '../lib/storage';
 import { coachAdvice } from '../lib/coach';
 import { GoalEditor } from '../components/GoalEditor';
@@ -88,7 +88,7 @@ export function AccountPage() {
       await applyCoach();
       return;
     }
-    if (!supabase) return setAuthMsg('Bulut giriş sistemi yüklenemedi.');
+    if (!supabase) return setAuthMsg(SUPABASE_UNAVAILABLE);
     setAuthMsg('Kayıt yapılıyor…');
     try {
       const { data: res, error } = await withTimeout(supabase.auth.signUp({ email, password }));
@@ -102,7 +102,7 @@ export function AccountPage() {
   }
 
   async function signIn() {
-    if (!supabase) return setAuthMsg('Bulut giriş sistemi yüklenemedi.');
+    if (!supabase) return setAuthMsg(SUPABASE_UNAVAILABLE);
     if (!email || !password) return setAuthMsg('E-posta ve şifre gerekli.');
     setAuthMsg('Giriş yapılıyor…');
     try {
@@ -126,6 +126,7 @@ export function AccountPage() {
       <div className="card">
         <div className="section-title"><h3>👤 Hesabım</h3><span>Supabase Auth</span></div>
         <div className="notice">Kayıtta önce rolünü seç: öğrenci veya koç. Koç seçersen branş, öğrenci sayısı ve fotoğraf istenir; profil Koçlar listesine düşer.</div>
+        {!supabase ? <div className="notice" role="alert">{SUPABASE_UNAVAILABLE}</div> : null}
         <div className="status-grid">
           <div className="status"><b>Oturum</b><span>{user ? 'Giriş yapıldı' : 'Giriş yapılmadı'}</span></div>
           <div className="status"><b>Profil</b><span>{profile ? 'Hazır' : 'Eksik'}</span></div>

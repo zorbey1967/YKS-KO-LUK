@@ -136,7 +136,9 @@ export const SCHOOL_CURRICULUM: Record<string, Record<string, string[]>> = {
 };
 
 export function curriculumForGrade(grade: string) {
-  const g = SCHOOL_CURRICULUM[grade] ? grade : '12. Sınıf';
+  if (!grade) return {};
+  const g = SCHOOL_CURRICULUM[grade] ? grade : '';
+  if (!g) return {};
   if (g === 'Mezun / YKS') return SCHOOL_CURRICULUM['Mezun / YKS'];
   if (g === '11. Sınıf' || g === '12. Sınıf') {
     return { ...SCHOOL_CURRICULUM[g], ...SCHOOL_CURRICULUM['Mezun / YKS'] };

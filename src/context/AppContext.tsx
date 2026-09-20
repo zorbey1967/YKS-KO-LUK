@@ -3,7 +3,7 @@ import type { User } from '@supabase/supabase-js';
 import type { AppData, PageId, Profile } from '../lib/types';
 import { isKnownPage } from '../lib/types';
 import { loadData, saveData, normalizeData } from '../lib/storage';
-import { supabase, withTimeout } from '../lib/supabase';
+import { SUPABASE_UNAVAILABLE, isSupabaseConfigured, supabase, withTimeout } from '../lib/supabase';
 import { canAccessAdminPanel, fetchServerAdmin } from '../lib/admin';
 
 type Ctx = {
@@ -57,7 +57,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [toastMsg, setToastMsg] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
   const [authMsg, setAuthMsg] = useState('');
-  const [cloudStatus, setCloudStatus] = useState('Yerel');
+  const [cloudStatus, setCloudStatus] = useState(isSupabaseConfigured() ? 'Giriş yok' : 'Yapılandırılmadı');
   const [serverAdmin, setServerAdmin] = useState<boolean | null>(null);
   const toastTimer = useRef(0);
   const pushTimer = useRef(0);
@@ -146,17 +146,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       cloudReady.current = true;
       if (row?.data && typeof row.data === 'object') {
         const cloud = normalizeData(row.data);
-        const has =
-          cloud.tasks.length || cloud.exams.length || cloud.sessions.length || cloud.plan.length;
-        if (has) {
-          setDataState(cloud);
-          persistLocal(cloud, u.id);
-        } else {
-          const local = loadData(u.id);
-          setDataState(local);
-          persistLocal(local, u.id);
-          void pushCloud(local);
-        }
+        setDataState(cloud);
+        persistLocal(cloud, u.id);
       } else {
         const local = loadData(u.id);
         setDataState(local);
@@ -166,7 +157,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setCloudStatus('Bulut senkron');
     } catch {
       cloudReady.current = false;
-      setCloudStatus('Yerel (bulut tablosu yok)');
+      setCloudStatus('Bağlantı hatası');
       setDataState(loadData(u.id));
       persistLocal(loadData(u.id), u.id);
     }
@@ -174,7 +165,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const refreshAuth = useCallback(async () => {
     if (!supabase) {
-      setAuthMsg('Bulut giriş sistemi yüklenemedi; yerel moddasın.');
+      setAuthMsg(SUPABASE_UNAVAILABLE);
+      setCloudStatus('Yapılandırılmadı');
       return;
     }
     const { data: sessionData } = await withTimeout(supabase.auth.getSession());
@@ -186,6 +178,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setServerAdmin(await fetchServerAdmin());
     } else {
       setServerAdmin(null);
+      setCloudStatus('Giriş yok');
       try {
         const name = localStorage.getItem('yks_guest_name') || '';
         setProfile({ name, email: '', plan: 'Ücretsiz' });
@@ -198,7 +191,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const saveProfile = useCallback(async (name: string) => {
     const n = (name || '').trim();
-    try { localStorage.setItem('yks_guest_name', n); } catch { /* ignore */ }
+    const u = userRef.current;
+    if (!u) {
+      try { localStorage.setItem('yks_guest_name', n); } catch { /* ignore */ }
+    }
     setProfile((p) => ({
       id: p?.id,
       name: n,
@@ -207,7 +203,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       role: p?.role,
       account_status: p?.account_status,
     }));
-    const u = userRef.current;
     if (!u || !supabase) return;
     const payload = {
       id: u.id,
@@ -251,6 +246,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setUser(u);
       if (!u) {
         cloudReady.current = false;
+        setCloudStatus(isSupabaseConfigured() ? 'Giriş yok' : 'Yapılandırılmadı');
         try {
           const name = localStorage.getItem('yks_guest_name') || '';
           setProfile({ name, email: '', plan: 'Ücretsiz' });

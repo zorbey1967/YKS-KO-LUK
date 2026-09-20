@@ -1,5 +1,5 @@
 import type { AppData, Schedule, ScheduleDay } from './types';
-import { examKind, typicalAge } from './stage';
+import { examKind } from './stage';
 import { curriculumForGrade } from './curriculum';
 
 const WEEKDAYS = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
@@ -33,10 +33,10 @@ export function generateWeeklySchedule(
   source: string,
   notes: string,
 ): Schedule {
-  const age = data.age || typicalAge(data.grade);
+  const age = data.age > 0 ? data.age : 0;
   const kind = examKind(data);
-  const mins = Math.max(30, daily || (age <= 9 ? 60 : age <= 13 ? 120 : 240));
-  const count = Math.max(age <= 9 ? 5 : 5, Math.min(7, dayCount || (age <= 13 ? 5 : 6)));
+  const mins = Math.max(30, daily || (age > 0 && age <= 9 ? 60 : age > 0 && age <= 13 ? 120 : 180));
+  const count = Math.max(5, Math.min(7, dayCount || (age > 0 && age <= 13 ? 5 : 6)));
   const pool = subjectPool(data);
   const days: ScheduleDay[] = [];
   for (let i = 0; i < count; i++) {
@@ -55,12 +55,12 @@ export function generateWeeklySchedule(
       add(i % 2 ? 'GK Tarih-Coğrafya' : 'Vatandaşlık + güncel', 45, '📜');
       if (focus === 'Deneme + analiz') add('KPSS deneme + analiz', 70, '📝');
       else add(subject, 40, '📚');
-    } else if (kind === 'Okul' && age <= 9) {
+    } else if (kind === 'Okul' && age > 0 && age <= 9) {
       add(`${subject} (kısa blok)`, 20, '📘');
       add('Okuma / hikâye', 15, '📖');
       add('Oyunla tekrar', 15, '🎯');
       add('Ödev yardımı', 20, '✏️');
-    } else if (kind === 'Okul' && age <= 13) {
+    } else if (kind === 'Okul' && age > 0 && age <= 13) {
       add(subject, 40, '📚');
       add('Matematik soru', 35, '➗');
       add('Okuma-anlama', 25, '✍️');

@@ -321,7 +321,7 @@ export function CoachesPage() {
       <div className="card" style={{ marginTop: 16 }}>
         <div className="section-title"><h3>Randevu al</h3><span>Öğrenciler</span></div>
         <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: 0 }}>Tarih ve saat seç; koç panelinden onaylanır. Ücret burada tahsil edilmez.</p>
-        {listError ? <div className="notice" style={{ marginBottom: 12 }} role="alert">Koç listesi alınamadı: {listError}</div> : null}
+        {listError ? <div className="notice" style={{ marginBottom: 12 }} role="alert">{listError}</div> : null}
         <div className="chip-row" style={{ marginBottom: 12 }}>
           <button className={`chip ${track === 'Tümü' ? 'on' : ''}`} type="button" onClick={() => setTrack('Tümü')}>Tümü</button>
           {COACH_TRACKS.map((t) => (

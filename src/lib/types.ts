@@ -155,14 +155,29 @@ export type Profile = {
   target_rank?: number;
 };
 
+export const UNSET_LABEL = 'belirtilmedi';
+
+export function displayText(value: string | null | undefined) {
+  const s = String(value || '').trim();
+  return s || UNSET_LABEL;
+}
+
+export function displayAge(age: number) {
+  return age > 0 ? `${age} yaş` : UNSET_LABEL;
+}
+
+export function displayRank(rank: number) {
+  return rank > 0 ? rank.toLocaleString('tr-TR') : UNSET_LABEL;
+}
+
 export const emptyData = (): AppData => ({
-  dept: 'Hukuk',
-  rank: 5000,
+  dept: '',
+  rank: 0,
   weekHours: 10,
-  track: 'Eşit Ağırlık',
-  grade: '12. Sınıf',
-  age: 17,
-  examDate: '2027-06-19',
+  track: '',
+  grade: '',
+  age: 0,
+  examDate: '',
   tasks: [],
   exams: [],
   topics: [],
