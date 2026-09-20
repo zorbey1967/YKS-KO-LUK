@@ -1,4 +1,4 @@
-export type PageId = 'home' | 'questionbank' | 'goal' | 'schedule' | 'tasks' | 'plan' | 'exams' | 'calculator' | 'topics' | 'questions' | 'calendar' | 'timer' | 'analytics' | 'membership' | 'account' | 'settings';
+export type PageId = 'home' | 'questionbank' | 'coaches' | 'goal' | 'schedule' | 'tasks' | 'plan' | 'exams' | 'calculator' | 'topics' | 'questions' | 'calendar' | 'timer' | 'analytics' | 'membership' | 'account' | 'settings' | 'admin';
 
 export type Task = {
   id: string;
@@ -141,11 +141,16 @@ export type BankManifest = {
   curriculum: Record<string, Record<string, string[]>>;
 };
 
+export type ProfileRole = 'student' | 'coach' | 'admin';
+export type AccountStatus = 'active' | 'pasif';
+
 export type Profile = {
   id?: string;
   name: string;
   email: string;
   plan: string;
+  role?: ProfileRole;
+  account_status?: AccountStatus;
   target_department?: string;
   target_rank?: number;
 };
@@ -173,6 +178,7 @@ export const emptyData = (): AppData => ({
 
 export const NAV: { id: PageId; icon: string; label: string }[] = [
   { id: 'home', icon: '🏠', label: 'Ana Sayfa' },
+  { id: 'coaches', icon: '🎓', label: 'Koçlar' },
   { id: 'questionbank', icon: '🧠', label: 'Soru Bankası' },
   { id: 'goal', icon: '🎯', label: 'Hedefim' },
   { id: 'schedule', icon: '🗓️', label: 'Ders Programım' },
@@ -189,3 +195,10 @@ export const NAV: { id: PageId; icon: string; label: string }[] = [
   { id: 'account', icon: '👤', label: 'Hesabım' },
   { id: 'settings', icon: '⚙', label: 'Ayarlar' },
 ];
+
+/** Öğrenci menüsünde yok; hash ve yetkili menü için. */
+export const ADMIN_NAV = { id: 'admin' as const, icon: '🛡', label: 'Yönetici' };
+
+export function isKnownPage(id: string): id is PageId {
+  return id === 'admin' || NAV.some((n) => n.id === id);
+}

@@ -57,6 +57,7 @@ export function ExamsPage() {
           <div className="kpi"><div><span style={{ color: 'var(--muted)', fontSize: 12 }}>Ortalama {kpss ? 'GY' : 'TYT'}</span><br /><b>{avg.toFixed(2)}</b></div><span className="chip">{ex.length} deneme</span></div>
           <div className="kpi"><div><span style={{ color: 'var(--muted)', fontSize: 12 }}>Son {kpss ? 'GK' : 'AYT'}</span><br /><b>{ex[0]?.ayt || 0}</b></div></div>
           <div className="actions"><span className="chip">🏆 En yüksek {kpss ? 'GY' : 'TYT'}: {best}</span><span className="chip">İlk→son: {delta > 0 ? '+' : ''}{delta.toFixed(2)}</span></div>
+          <p style={{ color: 'var(--muted)', fontSize: 13 }}>Zayıf net gördüğün dersi Soru Bankası’nda Zor filtresiyle tarat.</p>
         </div>
       </div>
       <div className="card" style={{ marginTop: 16 }}>

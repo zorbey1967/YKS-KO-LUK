@@ -1,7 +1,9 @@
 import { useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { coachAdvice } from '../lib/coach';
+import { eliteReport } from '../lib/elite';
 import { blocksToTasks, examCountdown, studyStreak, todaySchedule, weekMinutes } from '../lib/insights';
+import { lastBankTopic, setBankJump, weakBankTopics } from '../lib/practice';
 import { ExamInsight } from '../components/ExamInsight';
 import { TaskRows } from '../components/TaskRows';
 import { examTitle } from '../lib/stage';
@@ -23,11 +25,19 @@ export function HomePage({ onNewTask }: { onNewTask: () => void }) {
   const day = todaySchedule(data);
   const count = examCountdown(data.examDate);
   const coach = useMemo(() => coachAdvice(data), [data]);
+  const elite = useMemo(() => eliteReport(data), [data]);
+  const recs = useMemo(() => weakBankTopics(data, 3), [data]);
+  const lastQ = useMemo(() => lastBankTopic(data), [data]);
+
+  function openBank(level: string, subject?: string | null, topic?: string | null) {
+    setBankJump({ level, subject, topic });
+    go('questionbank');
+  }
 
   return (
     <>
       <div className="hero">
-        <div className="eyebrow" style={{ color: '#cfe1ff' }}>Kişisel çalışma merkezi</div>
+        <div className="eyebrow" style={{ color: '#cfe1ff' }}>Sınav temposu • {elite.phase}</div>
         <h2>Hoş geldin, {name} 👋</h2>
         <p>{user ? 'Giriş yaptın — bu panel yalnızca senin verin.' : 'Tek site, her öğrenci kendi hesabıyla girer. Kayıt olunca panelin sende kalır.'}</p>
         <p>{data.grade} • {data.age} yaş • {data.dept} • {data.track} • hedef sıralama {Number(data.rank).toLocaleString('tr-TR')}</p>
@@ -38,11 +48,13 @@ export function HomePage({ onNewTask }: { onNewTask: () => void }) {
           <button className="btn" type="button" onClick={() => go('schedule')}>🗓️ Ders Programım</button>
           <button className="btn" type="button" onClick={onNewTask}>＋ Görev Ekle</button>
           <button className="btn" type="button" onClick={() => go('timer')}>⏱ Çalışmaya Başla</button>
+          <button className="btn" type="button" onClick={() => go('questionbank')}>🧠 Soru Bankası</button>
+          <button className="btn" type="button" onClick={() => go('topics')}>📚 Konular</button>
         </div>
       </div>
       {!user ? (
         <div className="notice" style={{ marginTop: 16 }}>
-          Öğrenciler ayrı site kurmaz. <b>Hesabım</b>’dan kayıt / giriş yap; görev, net ve koç senin hesabına yazılır.
+          Öğrenciler ayrı site kurmaz. <b>Hesabım</b>’dan kayıt / giriş yap; kayıtta öğrenci veya koç seç. Koç seçersen branş, öğrenci sayısı ve fotoğrafla Koçlar listesine düşersin.
           <button className="btn primary" type="button" style={{ marginLeft: 8 }} onClick={() => go('account')}>Kayıt / giriş</button>
         </div>
       ) : (
@@ -56,6 +68,27 @@ export function HomePage({ onNewTask }: { onNewTask: () => void }) {
         <div className="card stat"><div className="label">✅ GÖREV</div><div className="value">{todayTasks.length ? Math.round((done / todayTasks.length) * 100) : 0}%</div><div className="sub">{done} / {todayTasks.length} bugün</div></div>
         <div className="card stat"><div className="label">🔥 SERİ</div><div className="value">{streak} gün</div><div className="sub">Çalışma serin</div></div>
       </div>
+      <div className="card" style={{ marginBottom: 16 }}>
+        <div className="section-title"><h3>Bugünün temposu</h3><span>{elite.headline}</span></div>
+        <p style={{ color: 'var(--muted)', fontSize: 13, lineHeight: 1.55, marginTop: 0 }}>{coach.msg}</p>
+        <div className="actions">
+          <button className="btn primary" type="button" onClick={() => lastQ ? openBank(lastQ.levelName, lastQ.subject, lastQ.topic) : go('questionbank')}>
+            {lastQ ? `Devam: ${lastQ.topic}` : '🧠 Soru Bankası'}
+          </button>
+          <button className="btn secondary" type="button" onClick={() => go('plan')}>Çalışma planı</button>
+          <button className="btn secondary" type="button" onClick={() => go('timer')}>{elite.dailyMin} dk blok</button>
+        </div>
+        {recs.length ? (
+          <div style={{ marginTop: 12 }}>
+            {recs.map((r) => (
+              <div className="plan-item" key={r.key}>
+                <span>{r.topic}<br /><small style={{ color: 'var(--muted)' }}>{r.subject} • %{r.acc} • {r.wrong} yanlış</small></span>
+                <button className="btn secondary" type="button" onClick={() => openBank(r.levelName, r.subject, r.topic)}>Çöz</button>
+              </div>
+            ))}
+          </div>
+        ) : null}
+      </div>
       <div className="grid cols">
         <div className="card">
           <div className="section-title"><h3>Bugünün görevleri</h3><button className="btn secondary" type="button" onClick={onNewTask}>＋ Ekle</button></div>
@@ -65,7 +98,7 @@ export function HomePage({ onNewTask }: { onNewTask: () => void }) {
           <div className="section-title"><h3>Hedef durumu</h3><span>Bu hafta</span></div>
           <div className="kpi"><div><span style={{ color: 'var(--muted)', fontSize: 12 }}>Haftalık hedef</span><br /><b>{data.weekHours}s</b></div><span className="chip">{pct}%</span></div>
           <div className="progress"><i style={{ width: `${pct}%` }} /></div>
-          <div className="success" style={{ marginTop: 14 }}>{coach.msg}</div>
+          <div className="chip" style={{ marginTop: 12 }}>{elite.dailyQ} soru / {elite.dailyMin} dk hedef</div>
         </div>
       </div>
       <div className="grid two" style={{ marginTop: 16 }}>

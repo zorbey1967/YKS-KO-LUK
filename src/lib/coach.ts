@@ -2,7 +2,9 @@ import type { AppData, PlanBlock } from './types';
 import { examCountdown, todaySchedule, weekMinutes, studyStreak } from './insights';
 import { examKind, examTitle, typicalAge } from './stage';
 import { curriculumForGrade } from './curriculum';
+import { eliteReport } from './elite';
 import { today } from './util';
+import { weakBankTopics } from './practice';
 
 export type CoachSnap = {
   kind: 'YKS' | 'KPSS' | 'Okul';
@@ -55,7 +57,10 @@ export function coachSnapshot(data: AppData): CoachSnap {
             ? ['TYT Türkçe', 'AYT Edebiyat', 'Tarih', 'Coğrafya']
             : ['TYT Matematik', 'AYT Matematik', 'TYT Türkçe', 'AYT Edebiyat']
         : (curr.length ? curr : ['Türkçe', 'Matematik']);
-  const weak = topics.filter((t) => t.level < 70).map((t) => `${t.name} (%${t.level})`);
+  const weak = [
+    ...topics.filter((t) => t.level < 70).map((t) => `${t.name} (%${t.level})`),
+    ...weakBankTopics(data, 3).map((t) => `${t.topic} (banka %${t.acc})`),
+  ];
   return {
     kind,
     exam: examTitle(data),
@@ -158,6 +163,14 @@ export function generatePlan(data: AppData, minutes: number, focus: string): Pla
       add(weakName.includes('GK') ? weakName : 'GK Tarih-Coğrafya', unit, '📜');
       add('Vatandaşlık + güncel', 30, '🌍');
     }
+  } else if (focus === 'Zor konu temposu' || focus === 'Üst düzey kamp') {
+    add('Zamanlı Zor set (süre tut, atlama yok)', unit + 10, '⚡');
+    add(data.track === 'Sayısal' ? 'AYT zayıf fen / türev-integral' : weakName, unit + 10);
+    add('Yanlış etiketleme: bilgi / işlem / süre / dikkatsizlik', 30, '🔎');
+    add('TYT paragraf hız (18 dk / 10 soru temposu)', 25, '✍️');
+  } else if (focus === 'Zamanlı set') {
+    add('40 soruluk zamanlı karışık (TYT+AYT)', 50, '⚡');
+    add('Sadece işaretli yanlışların çözüm yazımı', 40, '🔎');
   } else if (focus === 'Deneme + analiz') {
     add('TYT/AYT denemesi', 90, '📝');
     add('Deneme yanlış analizi', 50, '🔎');
@@ -213,13 +226,15 @@ export function extractSubject(q: string, data: AppData) {
 
 export function coachAdvice(data: AppData) {
   const s = coachSnapshot(data);
-  let msg = `${s.exam} için bugün ilk ${blockLen(s.age)} dakikalık bloğu başlat. Hedef: ${s.dept}.`;
-  if (s.open) msg = `Bugünün ${s.open} görevi kaldı. İlk olarak “${s.openTitle}” ile başla.`;
-  else if (s.weak[0]) msg = `Öncelik: ${s.weak[0]}. Kısa tekrar + soru çözümü yap.`;
-  else if (s.solved && s.acc < 60) msg = `Soru doğruluğun %${s.acc}. Yanlışları konu bazında tekrar çöz.`;
-  else if (s.lastExam) msg = `Son denemen: ${s.lastExam}. Yanlışlarını konu başlıklarına ayır.`;
-  else if (!s.past) msg = `${s.exam}’ye ${s.countdown}. ${s.age} yaş • ${s.grade}. Bugün ${blockLen(s.age)} dk’lık net bir blok koy.`;
-  return { msg, open: s.open, study: s.todayStudy, weak: s.weak[0], solved: s.solved, acc: s.acc };
+  const e = eliteReport(data);
+  let msg = e.headline + ' — ' + (e.lines[0] || `${s.exam} için bugün ${blockLen(s.age)} dk net blok.`);
+  if (s.open) msg = `Bugünün ${s.open} görevi kaldı. İlk: “${s.openTitle}”. Sonra ${e.dailyMin} dk / ~${e.dailyQ} soru.`;
+  else if (s.solved && s.acc < 60) msg = `Doğruluk %${s.acc} (${e.phase}). Yanlış kuyruğu bitmeden yeni konu açma.`;
+  else if (e.weakLesson) msg = `${e.phase}. En düşük net: ${e.weakLesson}. Zamanlı 20 soru + 15 dk analiz.`;
+  else if (s.weak[0]) msg = `${e.phase}. Öncelik ${s.weak[0]}.`;
+  else if (s.lastExam) msg = `${e.headline}. Son deneme ${s.lastExam} — yanlışları 4 etikete ayır.`;
+  else if (!s.past) msg = `${s.exam}’ye ${s.countdown}. ${e.headline}.`;
+  return { msg, open: s.open, study: s.todayStudy, weak: s.weak[0], solved: s.solved, acc: s.acc, phase: e.phase, headline: e.headline };
 }
 
 export function chatReply(q: string, data: AppData): { text: string; plan?: PlanBlock[] } {
@@ -292,7 +307,9 @@ export function chatReply(q: string, data: AppData): { text: string; plan?: Plan
     const minutes = extractMinutes(t, s.todayStudy ? Math.max(unit * 2, 120 - s.todayStudy) : unit * 4);
     const subject = extractSubject(q, data);
     let focus = 'Eksik konular';
-    if (t.includes('ayt')) focus = 'AYT ağırlıklı';
+    if (t.includes('üst') || t.includes('kamp') || t.includes('zor set') || t.includes('tempo')) focus = 'Zor konu temposu';
+    else if (t.includes('zamanlı') || t.includes('süre tut')) focus = 'Zamanlı set';
+    else if (t.includes('ayt')) focus = 'AYT ağırlıklı';
     else if (t.includes('tyt')) focus = 'TYT ağırlıklı';
     else if (t.includes('deneme')) focus = 'Deneme + analiz';
     else if (t.includes('kpss')) focus = 'KPSS GY-GK';
@@ -312,7 +329,7 @@ export function chatReply(q: string, data: AppData): { text: string; plan?: Plan
 }
 
 export const COACH_CHIPS: Record<CoachSnap['kind'], string[]> = {
-  YKS: ['Bugün ne çalışayım?', '2 saat plan', 'Performansım', 'Yanlış analizi'],
+  YKS: ['Zor konu temposu', 'Zamanlı 40 soru', 'Performansım', 'Yanlış analizi'],
   KPSS: ['Bugün GY-GK', '90 dk plan', 'Performansım', 'Deneme nasıl?'],
   Okul: ['Bugün ne çalışayım?', '40 dk plan', 'Ödev + tekrar', 'Performansım'],
 };

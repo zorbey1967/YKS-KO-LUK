@@ -10,12 +10,14 @@ export const SCHOOL_CURRICULUM: Record<string, Record<string, string[]>> = {
     Türkçe: ['Okuduğunu anlama', 'Yazım', 'Noktalama', 'Hikâye'],
     Matematik: ['Sayılar 1-100', 'Çarpma girişi', 'Saat', 'Paralar', 'Problemler'],
     'Hayat Bilgisi': ['Güvenlik', 'Üretim ve tüketim', 'Canlılar', 'Milli bayramlar'],
+    İngilizce: ['Selamlaşma', 'Sayılar', 'Renkler'],
   },
   '3. Sınıf': {
     Türkçe: ['Paragraf', 'Anlatım', 'Sözcükte anlam', 'Yazılı anlatım'],
     Matematik: ['Sayılar 1-1000', 'Çarpma-bölme', 'Kesir girişi', 'Çevre', 'Veri'],
     'Hayat Bilgisi': ['Toplum hayatı', 'Kaynaklar', 'Geçmiş ve gelecek'],
     Fen: ['Beş duyu', 'Madde', 'Canlılar'],
+    İngilizce: ['Okul', 'Aile', 'Hayvanlar'],
   },
   '4. Sınıf': {
     Türkçe: ['Paragraf', 'Söz sanatlarına giriş', 'Yazım-noktalama', 'Metin türleri'],
@@ -23,6 +25,7 @@ export const SCHOOL_CURRICULUM: Record<string, Record<string, string[]>> = {
     Fen: ['Vücudumuz', 'Maddeyi niteleme', 'Kuvvet', 'Aydınlatma', 'İnsan ve çevre'],
     Sosyal: ['Birey ve toplum', 'Kültür ve miras', 'Yerimizi öğrenelim', 'Bilim ve teknoloji'],
     'Din Kültürü': ['İnanç', 'İbadet', 'Güzel ahlak'],
+    İngilizce: ['Günlük konuşma', 'Okuma', 'Kelime'],
   },
   '5. Sınıf': {
     Türkçe: ['Sözcükte anlam', 'Cümlede anlam', 'Paragraf', 'Yazım', 'Noktalama'],
@@ -38,6 +41,7 @@ export const SCHOOL_CURRICULUM: Record<string, Record<string, string[]>> = {
     Fen: ['Güneş sistemi', 'Vücudumuzdaki sistemler', 'Kuvvet ve hareket', 'Madde ve ısı', 'Ses'],
     Sosyal: ['İpek Yolu', 'Türklerin Anadolu’ya gelişi', 'Yeryüzünde yaşam', 'Demokrasinin serüveni'],
     'Din Kültürü': ['Peygamberlik', 'Namaz', 'Ahlak'],
+    İngilizce: ['Okul hayatı', 'Günlük rutin', 'Yemekler', 'Hayvanlar'],
   },
   '7. Sınıf': {
     Türkçe: ['Fiilimsiler', 'Cümlede anlam', 'Paragraf', 'Anlatım bozukluğu'],
@@ -45,6 +49,7 @@ export const SCHOOL_CURRICULUM: Record<string, Record<string, string[]>> = {
     Fen: ['Güneş sistemi ve ötesi', 'Hücre ve mitoz', 'Kuvvet ve enerji', 'Saf madde ve karışımlar', 'Işığın kırılması'],
     Sosyal: ['Türk tarihinde yolculuk', 'Osmanlı kültür', 'Ülkemizde nüfus', 'Ekonomi ve sosyal hayat'],
     'Din Kültürü': ['Melek ve ahiret', 'Hac ve kurban', 'Ahlaki tutumlar'],
+    İngilizce: ['Görünüş', 'Spor', 'Biyografi', 'Okuma'],
   },
   '8. Sınıf': {
     Türkçe: ['Sözcükte anlam', 'Paragraf', 'Fiil çatısı', 'Cümlenin ögeleri', 'Yazım-noktalama'],
@@ -53,10 +58,11 @@ export const SCHOOL_CURRICULUM: Record<string, Record<string, string[]>> = {
     Sosyal: ['Bir kahraman doğuyor', 'Millî uyanış', 'Atatürkçülük', 'Çağdaş Türkiye', 'Bilim ve teknoloji'],
     'Din Kültürü': ['Kader', 'Zekât ve sadaka', 'Din ve hayat'],
     'İnkılap Tarihi': ['Bir kahraman doğuyor', 'Millî mücadele', 'Atatürkçülük'],
+    İngilizce: ['Okuma', 'Dil bilgisi', 'Kelime'],
   },
   '9. Sınıf': {
     'Türk Dili ve Edebiyatı': ['Giriş', 'Hikâye', 'Şiir', 'Masal / Fabl', 'Roman', 'Tiyatro', 'Destan / Efsane'],
-    Matematik: ['Sayılar', 'Bölünebilme', 'Üslü İfadeler', 'Köklü İfadeler', 'Denklemler', 'Üçgenler', 'Veri'],
+    Matematik: ['Sayılar', 'Bölünebilme', 'Üslü İfadeler', 'Köklü İfadeler', 'Denklemler', 'Kümeler', 'Mantık', 'Üçgenler', 'Veri'],
     Fizik: ['Fizik Bilimine Giriş', 'Madde ve Özkütle', 'Hareket ve Kuvvet', 'Enerji', 'Isı ve Sıcaklık'],
     Kimya: ['Kimyanın Temel Kanunları', 'Atom ve Periyodik Sistem', 'Kimyasal Türler', 'Maddenin Halleri'],
     Biyoloji: ['Yaşam Bilimi', 'Hücre', 'Canlılar Dünyası', 'Ekosistem'],
@@ -73,6 +79,9 @@ export const SCHOOL_CURRICULUM: Record<string, Record<string, string[]>> = {
     Biyoloji: ['Hücre Bölünmeleri', 'Kalıtım', 'Ekosistem', 'Canlılarda Enerji'],
     Tarih: ['Yerleşme ve Devletleşme', 'Beylikten Devlete', 'Dünya Gücü Osmanlı', 'Arayış Yılları'],
     Coğrafya: ['Doğal Sistemler', 'Beşeri Sistemler', 'Ekonomik Faaliyetler', 'Afetler'],
+    'Din Kültürü': ['İnanç ve ibadet', 'Ahlak', 'Din ve hayat'],
+    İngilizce: ['Kişilik', 'Seyahat', 'Okuma', 'Dil bilgisi'],
+    Felsefe: ['Felsefeye giriş', 'Bilgi', 'Varlık'],
   },
   '11. Sınıf': {
     'Türk Dili ve Edebiyatı': ['Hikâye', 'Şiir', 'Makale', 'Sohbet / Fıkra', 'Roman', 'Tiyatro'],
@@ -83,6 +92,8 @@ export const SCHOOL_CURRICULUM: Record<string, Record<string, string[]>> = {
     Tarih: ['Değişen Dünya Dengeleri', 'Uluslararası İlişkiler', 'Devrimler Çağında Değişen Devlet-Toplum İlişkileri'],
     Coğrafya: ['Doğal Sistemler', 'Beşeri Sistemler', 'Mekânsal Bir Sentez', 'Çevre ve Toplum'],
     Felsefe: ['Felsefenin anlamı', 'Bilgi felsefesi', 'Varlık', 'Ahlak', 'Siyaset'],
+    'Din Kültürü': ['İnanç', 'İbadet', 'Ahlak ve değerler'],
+    İngilizce: ['Okuma', 'Yazma', 'Dil bilgisi'],
   },
   '12. Sınıf': {
     'Türk Dili ve Edebiyatı': ['Cumhuriyet Dönemi Edebiyatı', 'Şiir', 'Roman', 'Tiyatro', 'Dünya Edebiyatı', 'Edebî Akımlar'],
@@ -92,18 +103,26 @@ export const SCHOOL_CURRICULUM: Record<string, Record<string, string[]>> = {
     Biyoloji: ['Genden Proteine', 'Canlılarda Enerji Dönüşümleri', 'Bitki Biyolojisi', 'Ekoloji'],
     Tarih: ['XX. Yüzyıl Başlarında Dünya', 'Millî Mücadele', 'Atatürkçülük ve Türk İnkılabı', 'İki Savaş Arasındaki Dönem', 'II. Dünya Savaşı Sonrası'],
     Coğrafya: ['Ekstrem Doğa Olayları', 'Küresel Çevre Sorunları', 'Türkiye’de Bölge Sınırları', 'Ekonomik Faaliyetler'],
+    'Din Kültürü': ['İnanç', 'İbadet', 'Ahlak'],
+    İngilizce: ['Okuma', 'Dil bilgisi', 'Kelime'],
+    Felsefe: ['Bilgi', 'Ahlak', 'Siyaset'],
   },
   'Mezun / YKS': {
-    'TYT Türkçe': ['Sözcükte Anlam', 'Cümlede Anlam', 'Paragraf', 'Dil Bilgisi', 'Ses Bilgisi', 'Yazım Kuralları', 'Noktalama', 'Anlatım Bozukluğu'],
-    'TYT Matematik': ['Temel Kavramlar', 'Sayılar', 'Bölünebilme', 'Üslü-Köklü İfadeler', 'Denklemler', 'Problemler', 'Kümeler', 'Fonksiyonlar', 'Permütasyon-Kombinasyon', 'Olasılık', 'Veri'],
+    'TYT Türkçe': ['Sözcükte anlam', 'Cümlede anlam', 'Paragraf', 'Dil bilgisi', 'Ses bilgisi', 'Yazım ve noktalama', 'Anlatım bozukluğu', 'Anlatım biçimleri'],
+    'TYT Matematik': ['Temel kavramlar', 'Sayılar', 'Bölünebilme', 'Üslü ve köklü sayılar', 'Denklemler', 'Eşitsizlikler', 'Problemler', 'Kümeler', 'Fonksiyon', 'Permütasyon ve olasılık', 'Veri', 'Mutlak değer', 'Özdeşlikler'],
+    'TYT Geometri': ['Üçgenler', 'Çember', 'Açılar', 'Çokgenler', 'Katı cisimler'],
     'TYT Sosyal': ['Tarih', 'Coğrafya', 'Felsefe', 'Din Kültürü'],
     'TYT Fen': ['Fizik', 'Kimya', 'Biyoloji'],
-    'AYT Matematik': ['Fonksiyonlar', 'Polinomlar', 'İkinci Dereceden Denklemler', 'Parabol', 'Trigonometri', 'Logaritma', 'Diziler', 'Limit', 'Türev', 'İntegral', 'Analitik Geometri'],
-    'AYT Edebiyat': ['Şiir Bilgisi', 'İslamiyet Öncesi Türk Edebiyatı', 'Divan Edebiyatı', 'Halk Edebiyatı', 'Tanzimat', 'Servetifünun', 'Fecriati', 'Millî Edebiyat', 'Cumhuriyet Edebiyatı'],
-    'AYT Tarih-1': ['Tarih ve Zaman', 'İlk Türk Devletleri', 'Osmanlı Tarihi', 'Millî Mücadele', 'Atatürk Dönemi'],
-    'AYT Coğrafya-1': ['Doğal Sistemler', 'Beşeri Sistemler', 'Ekonomik Faaliyetler', 'Türkiye Coğrafyası'],
+    'AYT Matematik': ['Fonksiyonlar', 'Polinomlar', 'İkinci dereceden denklemler', 'Parabol', 'Trigonometri', 'Logaritma', 'Diziler', 'Limit', 'Türev', 'İntegral', 'Analitik geometri', 'Permütasyon ve kombinasyon', 'Eşitsizlikler'],
+    'AYT Edebiyat': ['Şiir bilgisi', 'İslamiyet öncesi', 'Divan edebiyatı', 'Halk edebiyatı', 'Tanzimat', 'Servetifünun', 'Fecriati', 'Millî Edebiyat', 'Cumhuriyet', 'Edebî akımlar'],
+    'AYT Tarih-1': ['İlk Türk devletleri', 'Osmanlı', 'Millî mücadele', 'Atatürk dönemi'],
+    'AYT Coğrafya-1': ['Doğal sistemler', 'Türkiye coğrafyası', 'Beşeri sistemler', 'Ekonomik faaliyetler'],
     'AYT Sosyal-2': ['Tarih', 'Coğrafya', 'Felsefe Grubu', 'Din Kültürü'],
-    'AYT Fen': ['Fizik', 'Kimya', 'Biyoloji'],
+    'AYT Fizik': ['Hareket ve kuvvet', 'Elektrik', 'Dalgalar', 'Optik', 'Modern fizik'],
+    'AYT Kimya': ['Atom ve periyodik sistem', 'Gazlar', 'Çözeltiler', 'Kimyasal tepkimeler', 'Organik bileşikler'],
+    'AYT Biyoloji': ['Hücre', 'Kalıtım', 'Sistemler', 'Enerji dönüşümleri', 'Ekoloji'],
+    'AYT Felsefe Grubu': ['Felsefe', 'Psikoloji', 'Sosyoloji', 'Mantık'],
+    'AYT Din Kültürü': ['İnanç', 'İbadet', 'Ahlak', 'Din ve hayat'],
   },
   'KPSS Adayı': {
     'Genel Yetenek Türkçe': ['Sözcükte anlam', 'Cümlede anlam', 'Paragraf', 'Dil bilgisi', 'Anlatım bozukluğu', 'Yazım-noktalama'],
@@ -118,17 +137,9 @@ export const SCHOOL_CURRICULUM: Record<string, Record<string, string[]>> = {
 
 export function curriculumForGrade(grade: string) {
   const g = SCHOOL_CURRICULUM[grade] ? grade : '12. Sınıf';
+  if (g === 'Mezun / YKS') return SCHOOL_CURRICULUM['Mezun / YKS'];
   if (g === '11. Sınıf' || g === '12. Sınıf') {
-    const y = SCHOOL_CURRICULUM['Mezun / YKS'];
-    return {
-      ...SCHOOL_CURRICULUM[g],
-      'TYT Türkçe': y['TYT Türkçe'],
-      'TYT Matematik': y['TYT Matematik'],
-      'TYT Sosyal': y['TYT Sosyal'],
-      'TYT Fen': y['TYT Fen'],
-      'AYT Matematik': y['AYT Matematik'],
-      'AYT Edebiyat': y['AYT Edebiyat'],
-    };
+    return { ...SCHOOL_CURRICULUM[g], ...SCHOOL_CURRICULUM['Mezun / YKS'] };
   }
   return SCHOOL_CURRICULUM[g];
 }

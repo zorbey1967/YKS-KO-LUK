@@ -90,4 +90,31 @@ export const SCHOOL_BANK: Record<string, BankQuestion[]> = {
   '12. Sınıf|Biyoloji|Genden Proteine': [
     q('s12-by-1', 'DNA’daki bilgi protein sentezine aktarılırken önce hangisi oluşur?', ['tRNA antikatı', 'mRNA (transkripsiyon)', 'Ribozom alt birimi', 'Peptid bağı doğrudan DNA’da', 'Lizozom enzimi'], 1, 'Santral dogma: DNA → mRNA → protein.', 'Orta'),
   ],
+  '9. Sınıf|Kimya|Atom ve Periyodik Sistem': [
+    q('s9-km-1', 'Periyodik tabloda aynı grupta yer alan elementler için hangisi doğrudur?', ['Aynı kütle numarası', 'Benzer değerlik elektron sayısı', 'Aynı proton sayısı', 'Hepsi ametal', 'Aynı yoğuşma noktası'], 1, 'Gruplar benzer değerlik düzeni taşır.', 'Orta'),
+  ],
+  '9. Sınıf|Biyoloji|Hücre': [
+    q('s9-by-1', 'Ökaryot hücrede protein sentezinin gerçekleştiği organel hangisidir?', ['Lizozom', 'Ribozom', 'Koful', 'Sentrozom', 'Hücre çeperi'], 1, 'Ribozom translasyon yeridir.', 'Orta'),
+  ],
+  '10. Sınıf|Fizik|Elektrik ve Manyetizma': [
+    q('s10-fz-1', 'Ohm yasasına göre gerilim (V), akım (I) ve direnç (R) ilişkisi hangisidir?', ['V = I / R', 'V = I · R', 'I = V · R', 'R = V · I', 'V = I − R'], 1, 'V = I R.', 'Orta'),
+  ],
+  '10. Sınıf|Biyoloji|Kalıtım': [
+    q('s10-by-1', 'Heterozigot bireyde görülen alel çifti hangisidir?', ['AA', 'aa', 'Aa', 'XX zorunlu', 'YY'], 2, 'Aa heterozigottur.', 'Kolay'),
+  ],
+  '11. Sınıf|Kimya|Gazlar': [
+    q('s11-km-1', 'İdeal gaz denklemi hangisidir?', ['P + V = nRT', 'PV = nRT', 'P = nV / T', 'n = PVT', 'T = PV / n'], 1, 'PV = nRT.', 'Orta'),
+  ],
+  '11. Sınıf|Fizik|Kuvvet ve Hareket': [
+    q('s11-fz-1', 'Sabit ivmeli harekette Δx = v₀t + ½at² bağıntısı ne zaman kullanılır?', ['İvme zamana göre değişirken', 'İvme sabitken yer değiştirme için', 'Dairesel yörüngede zorunlu', 'Sürtünme yoksa geçersiz', 'Kütle değişirken yalnızca'], 1, 'Sabit a için konum-zaman.', 'Zor'),
+  ],
+  '12. Sınıf|Matematik|İntegral': [
+    q('s12-mt-2', '∫₀² (2x) dx değeri kaçtır?', ['2', '4', '6', '8', '0'], 1, '[x²]₀² = 4.', 'Orta'),
+  ],
+  '12. Sınıf|Fizik|Modern Fizik': [
+    q('s12-fz-1', 'Fotoelektrik olayda sökülen elektronun kinetik enerjisi neye bağlıdır?', ['Yalnızca ışığın şiddetine', 'Işığın frekansına (eşik üstü) ve iş fonksiyonuna', 'Yalnızca metalin rengine', 'Ortam sıcaklığına tek başına', 'Dalgaboyunun karesine zorunlu'], 1, 'K = h f − φ.', 'Zor'),
+  ],
+  '12. Sınıf|Kimya|Organik Bileşikler': [
+    q('s12-km-1', 'Alkanların genel formülü hangisidir?', ['CnH2n', 'CnH2n+2', 'CnH2n−2', 'CnH2nO', 'C6H6 her zaman'], 1, 'Doymuş açık zincir: CnH2n+2.', 'Orta'),
+  ],
 };

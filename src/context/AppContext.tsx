@@ -1,9 +1,10 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { User } from '@supabase/supabase-js';
 import type { AppData, PageId, Profile } from '../lib/types';
-import { NAV } from '../lib/types';
+import { isKnownPage } from '../lib/types';
 import { loadData, saveData, normalizeData } from '../lib/storage';
 import { supabase, withTimeout } from '../lib/supabase';
+import { canAccessAdminPanel, fetchServerAdmin } from '../lib/admin';
 
 type Ctx = {
   page: PageId;
@@ -24,6 +25,7 @@ type Ctx = {
   cloudStatus: string;
   refreshAuth: () => Promise<void>;
   saveProfile: (name: string) => Promise<void>;
+  isAdmin: boolean;
 };
 
 const AppCtx = createContext<Ctx | null>(null);
@@ -35,8 +37,8 @@ export function useApp() {
 }
 
 function pageFromHash(): PageId {
-  const raw = location.hash.replace('#/', '').replace('#', '');
-  return NAV.some((n) => n.id === raw) ? (raw as PageId) : 'home';
+  const raw = location.hash.replace('#/', '').replace('#', '').split('?')[0];
+  return isKnownPage(raw) ? raw : 'home';
 }
 
 export function AppProvider({ children }: { children: ReactNode }) {
@@ -56,6 +58,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [authMsg, setAuthMsg] = useState('');
   const [cloudStatus, setCloudStatus] = useState('Yerel');
+  const [serverAdmin, setServerAdmin] = useState<boolean | null>(null);
   const toastTimer = useRef(0);
   const pushTimer = useRef(0);
   const cloudReady = useRef(false);
@@ -111,6 +114,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
             name: row.name || '',
             email: row.email || u.email || '',
             plan: 'Ücretsiz',
+            role: row.role === 'admin' || row.role === 'coach' ? row.role : 'student',
+            account_status: row.account_status === 'pasif' ? 'pasif' : 'active',
             target_department: row.target_department,
             target_rank: row.target_rank,
           }
@@ -178,7 +183,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (u) {
       await loadCloudProfile(u);
       await pullCloud(u);
+      setServerAdmin(await fetchServerAdmin());
     } else {
+      setServerAdmin(null);
       try {
         const name = localStorage.getItem('yks_guest_name') || '';
         setProfile({ name, email: '', plan: 'Ücretsiz' });
@@ -197,6 +204,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       name: n,
       email: p?.email || userRef.current?.email || '',
       plan: p?.plan || 'Ücretsiz',
+      role: p?.role,
+      account_status: p?.account_status,
     }));
     const u = userRef.current;
     if (!u || !supabase) return;
@@ -219,6 +228,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         name: row?.name || name,
         email: u.email || '',
         plan: 'Ücretsiz',
+        role: row?.role === 'admin' || row?.role === 'coach' ? row.role : 'student',
+        account_status: row?.account_status === 'pasif' ? 'pasif' : 'active',
       });
     } catch (e) {
       toast(`Yerel kayıt yapıldı; bulut profilinde hata: ${e instanceof Error ? e.message : ''}`);
@@ -247,8 +258,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
           setProfile({ name: '', email: '', plan: 'Ücretsiz' });
         }
         setDataState(loadData(null));
+        setServerAdmin(null);
       } else {
         void loadCloudProfile(u).then(() => pullCloud(u));
+        void fetchServerAdmin().then(setServerAdmin);
       }
     });
     return () => {
@@ -262,6 +275,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setPage(id);
     setMenuOpen(false);
   }, []);
+
+  const isAdmin = canAccessAdminPanel(user, serverAdmin);
 
   const value = useMemo<Ctx>(
     () => ({
@@ -283,8 +298,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       cloudStatus,
       refreshAuth,
       saveProfile,
+      isAdmin,
     }),
-    [page, go, data, setData, user, profile, theme, toast, toastMsg, menuOpen, authMsg, cloudStatus, refreshAuth, saveProfile],
+    [page, go, data, setData, user, profile, theme, toast, toastMsg, menuOpen, authMsg, cloudStatus, refreshAuth, saveProfile, isAdmin],
   );
 
   return <AppCtx.Provider value={value}>{children}</AppCtx.Provider>;

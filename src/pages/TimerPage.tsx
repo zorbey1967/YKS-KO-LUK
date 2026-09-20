@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { STUDY_SUBJECTS, todaySchedule } from '../lib/insights';
+import { eliteReport } from '../lib/elite';
+import { setBankJump } from '../lib/practice';
 import { today, uid } from '../lib/util';
 
 export function TimerPage() {
-  const { data, setData, toast } = useApp();
+  const { data, setData, toast, go } = useApp();
   const [total, setTotal] = useState(40 * 60);
   const [left, setLeft] = useState(40 * 60);
   const [running, setRunning] = useState(false);
@@ -67,11 +69,12 @@ export function TimerPage() {
   const mm = String(Math.floor(left / 60)).padStart(2, '0');
   const ss = String(left % 60).padStart(2, '0');
   const firstBlock = todaySchedule(data)?.blocks[0];
+  const elite = eliteReport(data);
 
   return (
     <div className="grid two">
       <div className="card" style={{ textAlign: 'center' }}>
-        <div className="eyebrow">Odak • {Math.round(total / 60)} dk</div>
+        <div className="eyebrow">Sınav bloğu • {elite.phase}</div>
         <div className="timer-face">{mm}:{ss}</div>
         <div className="field" style={{ maxWidth: 260, margin: '0 auto', textAlign: 'left' }}>
           <label>Ders</label>
@@ -96,9 +99,10 @@ export function TimerPage() {
           <button className="btn" type="button" onClick={() => { setRunning(false); endAt.current = null; setLeft(total); }}>↺ Sıfırla</button>
         </div>
         <div className="actions" style={{ justifyContent: 'center' }}>
-          {[25, 40, 60, 90].map((m) => (
+          {[25, 40, 50, 90].map((m) => (
             <button key={m} className="btn secondary" type="button" onClick={() => setMode(m)}>{m} dk</button>
           ))}
+          <button className="btn secondary" type="button" onClick={() => setMode(elite.dailyMin)}>Tempo {elite.dailyMin} dk</button>
           {firstBlock ? (
             <button className="btn secondary" type="button" onClick={() => {
               const hit = STUDY_SUBJECTS.find((s) => firstBlock.title.toLocaleLowerCase('tr-TR').includes(s.toLocaleLowerCase('tr-TR')));
@@ -115,8 +119,13 @@ export function TimerPage() {
       <div className="card">
         <div className="section-title"><h3>⏱ Bugünkü çalışma</h3></div>
         <div className="kpi"><div><span style={{ color: 'var(--muted)', fontSize: 12 }}>Toplam</span><br /><b>{mins} dk</b></div><span className="chip">{todayS.length} oturum</span></div>
-        <div className="progress"><i style={{ width: `${Math.min(100, (mins / 240) * 100)}%` }} /></div>
-        <p style={{ fontSize: 12, color: 'var(--muted)' }}>Süre duvar saatine göre işler; sekme arka planda kalsa da sapmaz.</p>
+        <div className="progress"><i style={{ width: `${Math.min(100, (mins / Math.max(40, elite.dailyMin)) * 100)}%` }} /></div>
+        <p style={{ fontSize: 12, color: 'var(--muted)' }}>Günlük tempo ~{elite.dailyMin} dk. Süre duvar saatine göre işler.</p>
+        <button className="btn secondary" type="button" style={{ marginBottom: 12 }} onClick={() => {
+          const sub = subject === 'Odak' || subject === 'Deneme' ? 'Matematik' : subject;
+          setBankJump({ level: data.grade.includes('KPSS') ? 'KPSS Genel Yetenek' : (data.grade.includes('Mezun') || data.grade.startsWith('11') || data.grade.startsWith('12') ? 'YKS TYT' : data.grade), subject: sub === 'Edebiyat' ? 'Türk Dili ve Edebiyatı' : sub });
+          go('questionbank');
+        }}>Bu dersten soru çöz</button>
         {todayS.length ? todayS.map((s) => (
           <div className="plan-item" key={s.id}>
             <span>{s.subject}<br /><small style={{ color: 'var(--muted)' }}>{new Date(s.createdAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</small></span>

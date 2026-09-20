@@ -23,7 +23,7 @@ button{cursor:pointer}
 .nav{display:grid;gap:5px;overflow:auto}
 .nav button{border:0;background:transparent;color:var(--muted);text-align:left;padding:11px 12px;border-radius:12px;display:flex;gap:10px;align-items:center;font-weight:700}
 .nav button:hover,.nav button.active{background:var(--soft);color:var(--primary)}
-.sidebar-bottom{margin-top:auto}
+.sidebar-bottom{margin-top:auto;padding-top:8px}
 .mini-user{border:1px solid var(--line);border-radius:16px;padding:12px;background:var(--bg)}
 .avatar{width:34px;height:34px;border-radius:11px;background:var(--soft);display:grid;place-items:center;font-weight:900;color:var(--primary)}
 .userline{display:flex;align-items:center;gap:9px}

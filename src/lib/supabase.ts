@@ -14,11 +14,25 @@ export const supabase: SupabaseClient | null =
     })
     : null;
 
-export function withTimeout<T>(p: Promise<T>, ms = 12000) {
-  return Promise.race([
-    p,
-    new Promise<T>((_, rej) =>
-      setTimeout(() => rej(new Error('İstek zaman aşımına uğradı.')), ms),
-    ),
-  ]);
+export function withTimeout<T>(p: PromiseLike<T>, ms = 12000, signal?: AbortSignal) {
+  return new Promise<T>((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error('İstek zaman aşımına uğradı.')), ms);
+    const onAbort = () => {
+      clearTimeout(t);
+      reject(new Error('İstek iptal edildi.'));
+    };
+    if (signal?.aborted) {
+      clearTimeout(t);
+      reject(new Error('İstek iptal edildi.'));
+      return;
+    }
+    signal?.addEventListener('abort', onAbort, { once: true });
+    Promise.resolve(p).then((v) => {
+      clearTimeout(t);
+      resolve(v);
+    }, (e) => {
+      clearTimeout(t);
+      reject(e);
+    });
+  });
 }

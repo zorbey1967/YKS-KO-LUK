@@ -57,8 +57,11 @@ export function loadData(userId?: string | null): AppData {
 }
 
 export function saveData(data: AppData, userId?: string | null) {
-  const payload = JSON.stringify(data);
-  localStorage.setItem(storageKey(userId), payload);
+  try {
+    localStorage.setItem(storageKey(userId), JSON.stringify(data));
+  } catch (e) {
+    console.warn('Yerel kayıt yazılamadı', e);
+  }
 }
 
 export const SAMPLE_TOPICS: Omit<Topic, 'id'>[] = [

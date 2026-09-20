@@ -1,7 +1,7 @@
 import type { AppData, PlanBlock } from './types';
 import { chatReply, coachContext, generatePlan, iconForTopic, planToText } from './coach';
 import { packAiResult } from './llmPrompt';
-import { supabase, supabaseAnonKey, supabaseUrl, withTimeout } from './supabase';
+import { supabase, supabaseAnonKey, supabaseUrl } from './supabase';
 
 export type CoachSource = 'ai' | 'local';
 export type CoachAnswer = { text: string; source: CoachSource; model?: string; plan?: PlanBlock[]; error?: string };
@@ -54,8 +54,12 @@ async function invokeAi(body: Record<string, unknown>, ms: number): Promise<{ ok
   }
 
   try {
-    const res = await withTimeout(
-      fetch(`${supabaseUrl}/functions/v1/student-ai`, {
+    const ctrl = new AbortController();
+    const msCap = Math.min(ms, 28000);
+    const timer = window.setTimeout(() => ctrl.abort(), msCap);
+    let res: Response;
+    try {
+      res = await fetch(`${supabaseUrl}/functions/v1/student-ai`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -63,10 +67,14 @@ async function invokeAi(body: Record<string, unknown>, ms: number): Promise<{ ok
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(body),
-      }),
-      Math.min(ms, 28000),
-    );
-    const rec = await res.json().catch(() => null) as Record<string, unknown> | null;
+        signal: ctrl.signal,
+      });
+    } finally {
+      window.clearTimeout(timer);
+    }
+    const rawText = await res.text();
+    let rec: Record<string, unknown> | null = null;
+    try { rec = rawText ? JSON.parse(rawText) as Record<string, unknown> : null; } catch { rec = null; }
     if (res.ok && rec && (rec.reply || rec.plan || rec.schedule)) {
       return { ok: true, data: rec, model: String(rec.model || 'Bulut koç') };
     }
@@ -74,7 +82,9 @@ async function invokeAi(body: Record<string, unknown>, ms: number): Promise<{ ok
     if (res.status === 401) return { ok: false, error: 'Oturum doğrulanamadı. Hesabım’dan tekrar giriş yap.' };
     return { ok: false, error: `Model yanıt vermedi (HTTP ${res.status}).` };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : 'Bulut koç hata' };
+    const msg = e instanceof Error ? e.message : 'Bulut koç hata';
+    if (msg.toLowerCase().includes('abort')) return { ok: false, error: 'İstek zaman aşımına uğradı.' };
+    return { ok: false, error: msg };
   }
 }
 

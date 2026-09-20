@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { flattenBank, loadLevel, loadManifest, topicKey } from '../lib/bank';
+import { lastBankTopic, suggestedBankLevels, takeBankJump, weakBankTopics } from '../lib/practice';
 import type { BankManifest, BankQuestion, TopicProgress } from '../lib/types';
 
 type Mode = 'normal' | 'marked' | 'wrong' | 'quick';
@@ -22,6 +23,7 @@ export function QuestionBankPage() {
   const [answers, setAnswers] = useState<Record<number, number>>({});
   const [pack, setPack] = useState<Record<string, BankQuestion[]>>({});
   const [special, setSpecial] = useState<BankQuestion[]>([]);
+  const [diff, setDiff] = useState<'Hepsi' | 'Zor' | 'Orta' | 'Kolay'>('Hepsi');
 
   useEffect(() => {
     void (async () => {
@@ -33,6 +35,13 @@ export function QuestionBankPage() {
           Object.assign(merged, await loadLevel(l.slug, l.name));
         }));
         setPack(merged);
+        const jump = takeBankJump();
+        if (jump?.level) {
+          setLevel(jump.level);
+          setSubject(jump.subject || null);
+          setTopic(jump.topic || null);
+          setMode('normal');
+        }
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Banka yüklenemedi');
       }
@@ -42,15 +51,35 @@ export function QuestionBankPage() {
   const all = useMemo(() => flattenBank(pack), [pack]);
   const q = search.toLocaleLowerCase('tr-TR');
   const levels = (manifest?.levels || []).filter((l) => l.name.toLocaleLowerCase('tr-TR').includes(q));
+  const topicHits = useMemo(() => {
+    if (q.length < 2 || !manifest) return [] as { level: string; subject: string; topic: string; n: number }[];
+    const hits: { level: string; subject: string; topic: string; n: number }[] = [];
+    for (const [lv, subs] of Object.entries(manifest.curriculum)) {
+      for (const [sub, tops] of Object.entries(subs)) {
+        for (const t of tops) {
+          const blob = `${lv} ${sub} ${t}`.toLocaleLowerCase('tr-TR');
+          if (!blob.includes(q)) continue;
+          hits.push({ level: lv, subject: sub, topic: t, n: (pack[topicKey(lv, sub, t)] || []).length });
+          if (hits.length >= 14) return hits;
+        }
+      }
+    }
+    return hits;
+  }, [q, manifest, pack]);
   const key = level && subject && topic ? topicKey(level, subject, topic) : '';
   const normalList = key ? pack[key] || [] : [];
 
   const list = useMemo(() => {
-    if (mode === 'marked') return all.filter((x) => data.qbMarks.includes(x.id));
-    if (mode === 'wrong') return all.filter((x) => (data.questionStats[x.id]?.wrong || 0) > 0);
-    if (mode === 'quick') return special;
-    return normalList;
-  }, [mode, all, data.qbMarks, data.questionStats, special, normalList]);
+    const base = mode === 'marked'
+      ? all.filter((x) => data.qbMarks.includes(x.id))
+      : mode === 'wrong'
+        ? all.filter((x) => (data.questionStats[x.id]?.wrong || 0) > 0)
+        : mode === 'quick'
+          ? special
+          : normalList;
+    if (diff === 'Hepsi') return base;
+    return base.filter((x) => (x.difficulty || 'Orta') === diff);
+  }, [mode, all, data.qbMarks, data.questionStats, special, normalList, diff]);
 
   const meta = data.qb[key] || emptyMeta(key);
   const current = list[index];
@@ -107,9 +136,24 @@ export function QuestionBankPage() {
 
   function startQuick() {
     const wrong = all.filter((x) => (data.questionStats[x.id]?.wrong || 0) > 0);
-    const rest = all.filter((x) => !(wrong.some((w) => w.id === x.id)));
-    const slice = [...wrong, ...rest].slice(0, 20);
+    const unseen = all.filter((x) => !data.questionStats[x.id]);
+    const rest = all.filter((x) => data.questionStats[x.id] && !(wrong.some((w) => w.id === x.id)));
+    const slice = [...wrong, ...unseen, ...rest].slice(0, 20);
     setMode('quick');
+    setDiff('Hepsi');
+    setSpecial(slice);
+    setIndex(0);
+    setAnswers({});
+    setLevel(null);
+    setSubject(null);
+    setTopic(null);
+  }
+
+  function startTopicWrongs() {
+    const slice = (pack[key] || []).filter((x) => (data.questionStats[x.id]?.wrong || 0) > 0);
+    if (!slice.length) return toast('Bu konuda henüz yanlış yok.');
+    setMode('quick');
+    setDiff('Hepsi');
     setSpecial(slice);
     setIndex(0);
     setAnswers({});
@@ -124,6 +168,12 @@ export function QuestionBankPage() {
       <button className="btn secondary" type="button" onClick={() => { setMode('marked'); setIndex(0); setAnswers({}); }}>🔖 İşaretliler <span className="chip">{data.qbMarks.length}</span></button>
       <button className="btn secondary" type="button" onClick={() => { setMode('wrong'); setIndex(0); setAnswers({}); }}>❌ Yanlışlarım</button>
       <button className="btn secondary" type="button" onClick={startQuick}>⚡ Hızlı Test</button>
+      <select value={diff} onChange={(e) => { setDiff(e.target.value as typeof diff); setIndex(0); setAnswers({}); }} aria-label="Zorluk">
+        <option>Hepsi</option>
+        <option>Zor</option>
+        <option>Orta</option>
+        <option>Kolay</option>
+      </select>
     </div>
   );
 
@@ -161,7 +211,7 @@ export function QuestionBankPage() {
             else toast('Test tamamlandı');
           }}
           onMark={toggleMark}
-          chip={mode === 'marked' ? 'İşaretliler' : mode === 'wrong' ? 'Yanlışlarım' : 'Hızlı Test'}
+          chip={mode === 'marked' ? 'İşaretliler' : mode === 'wrong' ? 'Yanlışlarım' : (current?._bankKey ? `Tekrar • ${current._bankKey}` : 'Hızlı Test')}
         />
       </>
     );
@@ -175,17 +225,71 @@ export function QuestionBankPage() {
       { title: 'YKS', items: levels.filter((l) => l.name.startsWith('YKS')) },
       { title: 'KPSS', items: levels.filter((l) => l.name.startsWith('KPSS')) },
     ].filter((g) => g.items.length);
+    const suggested = suggestedBankLevels(data.grade).filter((name) => (manifest.levels || []).some((l) => l.name === name));
+    const recs = weakBankTopics(data, 4);
+    const last = lastBankTopic(data);
     return (
       <>
         {toolbar}
-        <div className="hero"><div className="chip">ÖSYM üslubu</div><h2>🧠 Soru Bankası</h2><p>1–12. sınıf müfredatı, YKS TYT/AYT ve KPSS GY-GK-Eğitim Bilimleri. Kökler ÖSYM tarzında; şıklar karışır.</p></div>
+        <div className="hero">
+          <div className="chip">ÖSYM üslubu</div>
+          <h2>🧠 Soru Bankası</h2>
+          <p>{manifest.questionCount} orijinal soru • {manifest.levels.length} seviye. A–E veya 1–5 ile işaretle; açıklama seçince açılır.</p>
+        </div>
+        {topicHits.length ? (
+          <div className="card" style={{ marginTop: 16 }}>
+            <div className="section-title"><h3>Arama</h3><span>{topicHits.length} konu</span></div>
+            <div className="qb-topic-grid">
+              {topicHits.map((h) => (
+                <button key={`${h.level}|${h.subject}|${h.topic}`} className="qb-topic" type="button" onClick={() => resetNav({ level: h.level, subject: h.subject, topic: h.topic })}>
+                  <b>{h.topic}</b>
+                  <small>{h.level} • {h.subject} • {h.n} soru</small>
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
+        {suggested.length ? (
+          <div className="card" style={{ marginTop: 16 }}>
+            <div className="section-title"><h3>Senin seviyen</h3><span>{data.grade}</span></div>
+            <div className="qb-level-grid">
+              {suggested.map((name) => {
+                const l = manifest.levels.find((x) => x.name === name);
+                if (!l) return null;
+                return (
+                  <button key={name} className="qb-choice" type="button" onClick={() => resetNav({ level: name, subject: null, topic: null })}>
+                    <b>{name}</b>
+                    <small>{l.topics} konu • önerilen</small>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
+        {last || recs.length ? (
+          <div className="card" style={{ marginTop: 16 }}>
+            <div className="section-title"><h3>Kaldığın yer</h3></div>
+            {last ? (
+              <button className="qb-choice" type="button" style={{ width: '100%', marginBottom: 8 }} onClick={() => resetNav({ level: last.levelName, subject: last.subject, topic: last.topic })}>
+                <b>Devam: {last.topic}</b>
+                <small>{last.levelName} • {last.subject} • %{last.acc} doğruluk</small>
+              </button>
+            ) : null}
+            {recs.map((r) => (
+              <div className="plan-item" key={r.key}>
+                <span>{r.topic}<br /><small style={{ color: 'var(--muted)' }}>{r.subject} • {r.wrong} yanlış</small></span>
+                <button className="btn secondary" type="button" onClick={() => resetNav({ level: r.levelName, subject: r.subject, topic: r.topic })}>Çöz</button>
+              </div>
+            ))}
+          </div>
+        ) : null}
         {groups.map((g) => (
           <div className="card" key={g.title} style={{ marginTop: 16 }}>
             <div className="section-title"><h3>{g.title}</h3><span>{g.items.length} seviye</span></div>
             <div className="qb-level-grid">
               {g.items.map((l) => (
                 <button key={l.name} className="qb-choice" type="button" onClick={() => resetNav({ level: l.name, subject: null, topic: null })}>
-                  <b>{l.name}</b><small>{l.subjects} ders • {l.topics} konu</small>
+                  <b>{l.name}</b><small>{l.subjects} ders • {l.topics} konu • {Object.entries(pack).filter(([k]) => k.startsWith(`${l.name}|`)).reduce((n, [, qs]) => n + qs.length, 0)} soru</small>
                 </button>
               ))}
             </div>
@@ -207,7 +311,8 @@ export function QuestionBankPage() {
           <div className="qb-subject-grid">
             {subjects.map((s) => (
               <button key={s} className="qb-choice" type="button" onClick={() => { setSubject(s); setTopic(null); setIndex(0); setAnswers({}); }}>
-                <b>{s}</b><small>{(curriculum[s] || []).length} konu</small>
+                <b>{s}</b>
+                <small>{(curriculum[s] || []).length} konu • {(curriculum[s] || []).reduce((n, t) => n + (pack[topicKey(level, s, t)] || []).length, 0)} soru</small>
               </button>
             ))}
           </div>
@@ -229,11 +334,12 @@ export function QuestionBankPage() {
               const k = topicKey(level, subject, t);
               const m = data.qb[k];
               const n = (pack[k] || []).length;
+              const hard = (pack[k] || []).filter((x) => x.difficulty === 'Zor').length;
               const p = n ? Math.min(100, Math.round(((m?.answered || 0) / n) * 100)) : 0;
               return (
-                <button key={t} className="qb-topic" type="button" onClick={() => { setTopic(t); setIndex(Math.min(m?.index || 0, Math.max(0, n - 1))); setAnswers({}); }}>
+                <button key={t} className="qb-topic" type="button" onClick={() => { setTopic(t); setIndex(diff === 'Hepsi' ? Math.min(m?.index || 0, Math.max(0, n - 1)) : 0); setAnswers({}); }}>
                   <b>{t}</b>
-                  <small>{m?.answered || 0} / {n} • {m?.correct || 0} doğru</small>
+                  <small>{m?.answered || 0} / {n} • {hard} zor • {m?.correct || 0} doğru</small>
                   <div className="progress" style={{ marginTop: 9 }}><i style={{ width: `${p}%` }} /></div>
                 </button>
               );
@@ -246,6 +352,15 @@ export function QuestionBankPage() {
 
   if (!normalList.length) {
     return <div className="card"><button className="btn" type="button" onClick={() => setTopic(null)}>← Konular</button><div className="empty">Bu konuda soru yok.</div></div>;
+  }
+
+  if (!list.length) {
+    return (
+      <div className="card">
+        <button className="btn" type="button" onClick={() => setTopic(null)}>← Konular</button>
+        <div className="empty">Bu zorlukta soru yok. Üstten “Hepsi” veya başka bir düzey seç.</div>
+      </div>
+    );
   }
 
   if (meta.completed || index >= normalList.length) {
@@ -264,12 +379,19 @@ export function QuestionBankPage() {
           <button className="btn primary" type="button" onClick={() => {
             setData((d) => {
               const qb = { ...d.qb };
+              const m = d.qb[key];
+              const acc = m?.answered ? Math.round((m.correct / m.answered) * 100) : 0;
+              const topics = topic
+                ? d.topics.map((t) => (t.name === topic && t.subject === subject ? { ...t, level: Math.max(t.level, Math.min(100, acc)) } : t))
+                : d.topics;
               delete qb[key];
-              return { ...d, qb };
+              return { ...d, qb, topics };
             });
             setIndex(0);
             setAnswers({});
           }}>Baştan çöz</button>
+          {' '}
+          <button className="btn" type="button" onClick={startTopicWrongs}>Yanlışları tekrarla</button>
           {' '}
           <button className="btn" type="button" onClick={() => setTopic(null)}>Konulara dön</button>
         </div>
@@ -325,7 +447,7 @@ function QuestionCard(props: {
       const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
       if (['input', 'textarea', 'select'].includes(tag)) return;
       if (!q) return;
-      const map: Record<string, number> = { a: 0, b: 1, c: 2, d: 3, e: 4 };
+      const map: Record<string, number> = { a: 0, b: 1, c: 2, d: 3, e: 4, '1': 0, '2': 1, '3': 2, '4': 3, '5': 4 };
       const i = map[e.key.toLowerCase()];
       if (i !== undefined && i < q.o.length && !props.locked) props.onChoose(i);
       if (e.key === 'ArrowRight' && props.locked) props.onNext();
@@ -367,7 +489,7 @@ function QuestionCard(props: {
         {props.locked ? <div className="explain"><b>💡 Açıklama</b><br />{q.e}</div> : null}
         <div className="actions" style={{ justifyContent: 'space-between' }}>
           <button className="btn" type="button" disabled={props.index === 0} onClick={props.onPrev}>← Önceki</button>
-          {props.locked ? <button className="btn primary" type="button" onClick={props.onNext}>{props.index === props.total - 1 ? 'Testi bitir ✓' : 'Sonraki →'}</button> : <span className="chip">Bir seçenek seç</span>}
+          {props.locked ? <button className="btn primary" type="button" onClick={props.onNext}>{props.index === props.total - 1 ? 'Testi bitir ✓' : 'Sonraki →'}</button> : <span className="chip">A–E veya 1–5</span>}
         </div>
       </div>
     </>

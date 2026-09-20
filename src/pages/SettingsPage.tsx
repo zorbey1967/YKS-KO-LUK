@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { bundledManifest } from '../data/bankData';
 import { supabase } from '../lib/supabase';
@@ -8,7 +9,7 @@ import { LlmSettingsCard } from '../components/LlmSettingsCard';
 
 export function SettingsPage() {
   const { data, setData, toast, theme, toggleTheme, user, cloudStatus } = useApp();
-  const man = bundledManifest();
+  const man = useMemo(() => bundledManifest(), []);
   const raw = (() => {
     try { return localStorage.getItem(storageKey(user?.id)) || ''; } catch { return ''; }
   })();

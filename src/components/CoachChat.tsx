@@ -54,10 +54,15 @@ export function CoachChat() {
     const nextMsgs: Msg[] = [...msgs, { who: 'user', text: q }];
     setMsgs(nextMsgs);
     setBusy(true);
-    const ans = await askCoach(q, data, nextMsgs);
-    setLastPlan(ans.plan);
-    setMsgs((m) => [...m, { who: 'bot', text: ans.text, source: ans.source, model: ans.model }]);
-    setBusy(false);
+    try {
+      const ans = await askCoach(q, data, nextMsgs);
+      setLastPlan(ans.plan);
+      setMsgs((m) => [...m, { who: 'bot', text: ans.text, source: ans.source, model: ans.model }]);
+    } catch (e) {
+      setMsgs((m) => [...m, { who: 'bot', text: e instanceof Error ? e.message : 'Koç yanıt veremedi.', source: 'local' }]);
+    } finally {
+      setBusy(false);
+    }
   }
 
   function applyPlan() {

@@ -5,7 +5,7 @@ import { calcNet, today } from '../lib/util';
 import { coachAdvice } from '../lib/coach';
 
 export function QuestionsPage() {
-  const { data, setData, toast } = useApp();
+  const { data, setData, toast, go } = useApp();
   const [subject, setSubject] = useState('Matematik');
   const [c, setC] = useState(0);
   const [w, setW] = useState(0);
@@ -26,6 +26,10 @@ export function QuestionsPage() {
     <>
       <div className="card">
         <div className="section-title"><h3>❓ Soru merkezi</h3><span>Hızlı kayıt</span></div>
+        <p style={{ color: 'var(--muted)' }}>Kendi deneme setini buraya yaz; hazır ÖSYM üslubu maddeler için Soru Bankası’nda YKS TYT/AYT konularının tamamı var.</p>
+        <div className="actions" style={{ marginBottom: 12 }}>
+          <button className="btn primary" type="button" onClick={() => go('questionbank')}>Soru Bankası</button>
+        </div>
         <div className="form-grid">
           <div className="field">
             <label>Ders</label>

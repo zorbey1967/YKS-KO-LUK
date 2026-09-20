@@ -10,5 +10,13 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      setTimeout(function () {
+        var root = document.getElementById('root');
+        if (root && !root.childElementCount) {
+          root.innerHTML = '<div style="font-family:sans-serif;padding:32px;max-width:40rem;line-height:1.5"><h1>Sayfa yüklenemedi</h1><p>Geliştirme sunucusu durmuş olabilir. Proje klasöründe <code>npm run dev</code> çalıştır, sonra bu sekmeyi yenile.</p></div>';
+        }
+      }, 4000);
+    </script>
   </body>
 </html>

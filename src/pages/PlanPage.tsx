@@ -15,7 +15,7 @@ export function PlanPage() {
   const [note, setNote] = useState('');
   const foci = useMemo(() => {
     const base = ['Eksik konular', 'Programdan bugün', 'Deneme + analiz'];
-    if (kind === 'YKS') return [...base, 'AYT ağırlıklı', 'TYT ağırlıklı'];
+    if (kind === 'YKS') return [...base, 'AYT ağırlıklı', 'TYT ağırlıklı', 'Zor konu temposu', 'Zamanlı set'];
     if (kind === 'KPSS') return [...base, 'KPSS GY-GK'];
     return [...base, 'Okul tekrarı'];
   }, [kind]);
@@ -46,8 +46,7 @@ export function PlanPage() {
       <div className="card">
         <div className="section-title"><h3>🤖 Akıllı Plan</h3></div>
         <p style={{ color: 'var(--muted)', fontSize: 13, lineHeight: 1.55 }}>
-          Yaş, sınıf, {kind} hedefi, zayıf konular, son net ve bugünün programı kullanılır.
-          Giriş yaptıysan gerçek model sunucuda çalışır. Yoksa veya hata olursa yerel koç üretir.
+          Zor konu temposu: zamanlı Zor set, yanlış etiketleme, TYT hız. Giriş varsa model sunucuda; yoksa yerel koç.
         </p>
         <div className="form-grid">
           <div className="field"><label>Günlük süre (dk)</label><input type="number" min={20} value={minutes} onChange={(e) => setMinutes(Number(e.target.value) || 0)} /></div>

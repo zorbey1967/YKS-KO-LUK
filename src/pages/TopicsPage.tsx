@@ -2,10 +2,11 @@ import { useMemo, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { curriculumForGrade, GRADES } from '../lib/curriculum';
 import { applyGradeKeepAge } from '../lib/goal';
+import { jumpFromTracker, setBankJump } from '../lib/practice';
 import { uid } from '../lib/util';
 
 export function TopicsPage() {
-  const { data, setData, toast } = useApp();
+  const { data, setData, toast, go } = useApp();
   const [subject, setSubject] = useState('');
   const curr = useMemo(() => curriculumForGrade(data.grade), [data.grade]);
   const subjects = Object.keys(curr);
@@ -22,6 +23,15 @@ export function TopicsPage() {
             {GRADES.map((g) => <option key={g}>{g}</option>)}
           </select>
         </div>
+        <p style={{ color: 'var(--muted)', marginTop: 0 }}>
+          {subjects.length} ders • {subjects.reduce((n, s) => n + (curr[s] || []).length, 0)} konu.
+          {data.grade === 'Mezun / YKS' || data.grade.startsWith('11') || data.grade.startsWith('12')
+            ? ' TYT ve AYT başlıkları tam listelenir; pratik için Soru Bankası’nda YKS TYT / YKS AYT’yi aç.'
+            : ' Takibe aldığın konular programda öne çıkar.'}
+        </p>
+        <div className="actions" style={{ marginBottom: 12 }}>
+          <button className="btn primary" type="button" onClick={() => go('questionbank')}>🧠 Soru çöz</button>
+        </div>
         <div className="chip-row">
           {subjects.map((s) => (
             <button key={s} className={`chip ${s === activeSubject ? 'on' : ''}`} type="button" onClick={() => setSubject(s)}>{s}</button>
@@ -34,11 +44,25 @@ export function TopicsPage() {
               <div className="topic-row" key={name}>
                 <div className="topic-head">
                   <span><b>{name}</b></span>
-                  {existing ? <span className="chip">{existing.level}%</span> : (
-                    <button className="btn secondary" type="button" onClick={() => {
-                      setData({ ...data, topics: [{ id: uid('tp_'), name, subject: activeSubject, level: 10, grade: data.grade }, ...data.topics] });
-                      toast('Konu eklendi');
-                    }}>Takibe al</button>
+                  {existing ? (
+                    <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <span className="chip">{existing.level}%</span>
+                      <button className="btn secondary" type="button" onClick={() => {
+                        setBankJump(jumpFromTracker(data.grade, activeSubject, name));
+                        go('questionbank');
+                      }}>Çöz</button>
+                    </span>
+                  ) : (
+                    <span style={{ display: 'flex', gap: 8 }}>
+                      <button className="btn secondary" type="button" onClick={() => {
+                        setData({ ...data, topics: [{ id: uid('tp_'), name, subject: activeSubject, level: 10, grade: data.grade }, ...data.topics] });
+                        toast('Konu eklendi');
+                      }}>Takibe al</button>
+                      <button className="btn secondary" type="button" onClick={() => {
+                        setBankJump(jumpFromTracker(data.grade, activeSubject, name));
+                        go('questionbank');
+                      }}>Çöz</button>
+                    </span>
                   )}
                 </div>
               </div>
@@ -59,6 +83,10 @@ export function TopicsPage() {
               <div className="actions">
                 <button className="btn secondary" type="button" onClick={() => setData({ ...data, topics: data.topics.map((t) => t.id === x.id ? { ...t, level: Math.max(0, t.level - 10) } : t) })}>−</button>
                 <button className="btn secondary" type="button" onClick={() => setData({ ...data, topics: data.topics.map((t) => t.id === x.id ? { ...t, level: Math.min(100, t.level + 10) } : t) })}>＋</button>
+                <button className="btn secondary" type="button" onClick={() => {
+                  setBankJump(jumpFromTracker(data.grade, x.subject, x.name));
+                  go('questionbank');
+                }}>Çöz</button>
               </div>
             </div>
           )) : <div className="empty">Soldan konu ekle.</div>}

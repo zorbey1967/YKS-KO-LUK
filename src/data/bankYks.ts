@@ -1,0 +1,333 @@
+import { q } from './bankQ';
+import type { BankQuestion } from '../lib/types';
+
+/** YKS TYT/AYT konu başlıkları (ÖSYM test dağılımına yakın, tam set). */
+export const YKS_CURRICULUM: Record<string, Record<string, string[]>> = {
+  'YKS TYT': {
+    Türkçe: ['Sözcükte anlam', 'Cümlede anlam', 'Paragraf', 'Dil bilgisi', 'Ses bilgisi', 'Yazım ve noktalama', 'Anlatım bozukluğu', 'Anlatım biçimleri'],
+    Matematik: ['Temel kavramlar', 'Sayılar', 'Bölünebilme', 'Üslü ve köklü sayılar', 'Denklemler', 'Eşitsizlikler', 'Problemler', 'Kümeler', 'Fonksiyon', 'Permütasyon ve olasılık', 'Veri', 'Mutlak değer', 'Özdeşlikler'],
+    Geometri: ['Üçgenler', 'Çember', 'Açılar', 'Çokgenler', 'Katı cisimler'],
+    Fen: ['Fizik', 'Kimya', 'Biyoloji'],
+    Sosyal: ['Tarih', 'Coğrafya', 'Felsefe', 'Din Kültürü'],
+  },
+  'YKS AYT': {
+    Matematik: ['Fonksiyonlar', 'Polinomlar', 'İkinci dereceden denklemler', 'Parabol', 'Trigonometri', 'Logaritma', 'Diziler', 'Limit', 'Türev', 'İntegral', 'Analitik geometri', 'Permütasyon ve kombinasyon', 'Eşitsizlikler'],
+    'Türk Dili ve Edebiyatı': ['Şiir bilgisi', 'İslamiyet öncesi', 'Divan edebiyatı', 'Halk edebiyatı', 'Tanzimat', 'Servetifünun', 'Fecriati', 'Millî Edebiyat', 'Cumhuriyet', 'Edebî akımlar'],
+    'Din Kültürü': ['İnanç', 'İbadet', 'Ahlak', 'Din ve hayat'],
+    Tarih: ['İlk Türk devletleri', 'Osmanlı', 'Millî mücadele', 'Atatürk dönemi'],
+    Coğrafya: ['Doğal sistemler', 'Türkiye coğrafyası', 'Beşeri sistemler', 'Ekonomik faaliyetler'],
+    Fizik: ['Hareket ve kuvvet', 'Elektrik', 'Dalgalar', 'Optik', 'Modern fizik'],
+    Kimya: ['Atom ve periyodik sistem', 'Gazlar', 'Çözeltiler', 'Kimyasal tepkimeler', 'Organik bileşikler'],
+    Biyoloji: ['Hücre', 'Kalıtım', 'Sistemler', 'Enerji dönüşümleri', 'Ekoloji'],
+    'Felsefe Grubu': ['Felsefe', 'Psikoloji', 'Sosyoloji', 'Mantık'],
+  },
+};
+
+export const YKS_BANK: Record<string, BankQuestion[]> = {
+  'YKS TYT|Türkçe|Sözcükte anlam': [
+    q('ty-tr-1', 'Aşağıdaki cümlelerin hangisinde “ince” sözcüğü mecaz anlamda kullanılmıştır?', ['İnce bir iplikle düğüm attı.', 'İnce bir düşünceyle konuyu kapattı.', 'İnce kâğıdı ikiye katladı.', 'İnce yağmur camları ıslattı.', 'İnce bir tahta parçası kırıldı.'], 1, 'Mecaz kullanımda “ince”, fiziksel kalınlık değil; düşüncenin niteliğini belirtir.', 'Orta'),
+    q('ty-tr-2', 'Aşağıdaki cümlelerin hangisinde deyim vardır?', ['Kapıyı ağır ağır kapadı.', 'Sınavdan sonra rahat bir nefes aldı.', 'Kitabı masanın üzerine koydu.', 'Sabah erken kalktı.', 'Yağmur bütün gün yağdı.'], 1, '“Rahat bir nefes almak” deyimdir.', 'Kolay'),
+    q('ty-tr-3', '“Yüzeysel” sözcüğünün anlamca en yakını hangisidir?', ['derinlemesine', 'ayrıntılı', 'üstünkörü', 'kapsamlı', 'titiz'], 2, 'Yüzeysel ≈ üstünkörü.', 'Orta'),
+    q('ty-tr-4', 'Hangisinde “kendi” sözcüğü dönüşlülük zamiri değildir?', ['Kendi kararını verdi.', 'Kendi evine döndü.', 'Kendi raporu masada duruyor.', 'Kendi kendini eleştirdi.', 'Kendi payına düşeni aldı.'], 2, '“Kendi raporu”nda iyelik/belirtme vardır.', 'Zor'),
+    q('ty-tr-6', '“Bu eleştiri, metni değil yazarı hedef alıyor.” cümlesindeki “hedef almak” deyiminin anlamı hangisine yakındır?', ['Nişan tahtası koymak', 'Asıl konuyu bırakıp kişiyi suçlamak', 'Hedef sıralamasını hesaplamak', 'Ok atmak', 'Planı öne çekmek'], 1, 'Deyim, eleştirinin nesnesinin yazara kaymasıdır.', 'Zor'),
+    q('ty-tr-7', 'Hangisinde “açık” sözcüğü “belirgin, gizlenmemiş” anlamındadır?', ['Kapı açık kalmış.', 'Açık sarı bir boya seçti.', 'Niyeti açıktı, saklamıyordu.', 'Açık artırma başladı.', 'Açık deniz dalgalıydı.'], 2, 'Bağlam “gizlenmemiş niyet”tir.', 'Orta'),
+  ],
+  'YKS TYT|Türkçe|Cümlede anlam': [
+    q('ty-cm-1', '“Bu soruyu çözmek zaman ister.” cümlesinde asıl vurgulanan nedir?', ['Sorunun kolaylığı', 'Çözümün süre gerektirmesi', 'Zamanın azlığı', 'Sorunun yanlışlığı', 'Çözümün imkânsızlığı'], 1, 'Yargı süreye bağlılıktır.', 'Kolay'),
+    q('ty-cm-2', 'Hangisi koşul bildirir?', ['Yağmur yağdı, evde kaldık.', 'Çalışırsan netlerin artar.', 'Deneme zordu.', 'Kitabı okudum.', 'Sabah erken çıktı.'], 1, '“-rsan” koşul ekidir.', 'Kolay'),
+    q('ty-cm-3', '“Sadece net değil, süre de önemli.” anlamca hangisine yakındır?', ['Süre önemsizdir.', 'Yalnızca net yeterlidir.', 'Hem doğruluk hem hız değerlidir.', 'Süre neti belirlemez.', 'Net hiç önemli değildir.'], 2, '“Sadece … değil, … da” iki ögeyi birlikte önemser.', 'Orta'),
+    q('ty-cm-4', '“Deneme zor olsa da vazgeçmedi.” cümlesindeki anlam ilişkisi hangisidir?', ['Koşul', 'Karşıtlık / ödün', 'Amaç', 'Neden-sonuç değil yalnızca neden', 'Karşılaştırma eşitliği'], 1, '“-sa da” ödün/karşıtlık bağlar.', 'Zor'),
+    q('ty-cm-5', 'Hangisi amaç-sonuç ilişkisi taşır?', ['Yağmur yağdığı için evde kaldı.', 'Daha iyi anlamak için örneği tekrar etti.', 'Hem çalıştı hem dinlendi.', 'Kitap uzun, film kısaydı.', 'Sabah oldu, kalktı.'], 1, '“için” burada amaçtır; “-dığı için” nedendir.', 'Zor'),
+  ],
+  'YKS TYT|Türkçe|Paragraf': [
+    q('ty-pr-1', 'Bir paragrafın ana düşüncesi en güvenilir nasıl bulunur?', ['İlk kelimeye bakarak', 'Yazarın vermek istediği temel yargıya bakarak', 'Cümle sayısını sayarak', 'Noktalama işaretlerini tarayarak', 'Paragrafın uzunluğuna bakarak'], 1, 'Ana düşünce metnin bütününden çıkar.', 'Kolay'),
+    q('ty-pr-2', 'Yardımcı düşünce ile ana düşünce arasındaki fark nedir?', ['Yardımcı düşünce metni destekler, ana düşünce omurgadır.', 'İkisi aynıdır.', 'Yardımcı düşünce her zaman ilk cümlededir.', 'Ana düşünce yalnızca örneklerde gizlidir.', 'Yardımcı düşünce konu dışıdır.'], 0, 'Yardımcılar ana yargıyı örnekler.', 'Orta'),
+    q('ty-pr-3', 'Paragrafta “ancak” bağlacı çoğunlukla ne yapar?', ['Aynı yönde ek bilgi verir', 'Karşıtlık veya sınırlama getirir', 'Zaman bildirir', 'Soru sorar', 'Konuyu bitirir'], 1, '“Ancak” çoğu kullanımda sınırlar.', 'Kolay'),
+    q('ty-pr-4', 'Paragrafta örnek cümlelerin işlevi genellikle hangisidir?', ['Ana yargıyı çürütmek', 'Soyut yargıyı somutlaştırmak', 'Konuyu değiştirmek', 'Noktalama öğretmek', 'Başlığı iptal etmek'], 1, 'Örnek, soyutu anlaşılır kılar.', 'Orta'),
+    q('ty-pr-5', '“Buna karşılık” ile başlayan cümle paragrafta en çok neyi haber verir?', ['Aynı yönde pekiştirme', 'Karşıt veya dengeleyici bir yargı', 'Tanım', 'Alıntı zorunluluğu', 'Kronoloji'], 1, 'Karşıt bağlaç yön değiştirir.', 'Zor'),
+  ],
+  'YKS TYT|Türkçe|Dil bilgisi': [
+    q('ty-dg-1', 'Hangisinde fiilimsi vardır?', ['Kapıyı kapadı.', 'Okuyan öğrenciler sessizdi.', 'Yarın gelir.', 'Hava soğuk.', 'Bu bir kalem.'], 1, '“Okuyan” sıfat-fiildir.', 'Orta'),
+    q('ty-dg-2', '“Kitabı masaya koydu.” cümlesinde “kitabı” ögesi hangisidir?', ['Özne', 'Belirtili nesne', 'Dolaylı tümleç', 'Zarf tümleci', 'Yüklem'], 1, '“-ı” belirtili nesne ekidir.', 'Kolay'),
+    q('ty-dg-3', 'Hangisi birleşik zamanlı fiildir?', ['geldi', 'gelecek', 'gelmişti', 'geliyor', 'gelsin'], 2, 'gel-miş-ti: duyulan geçmiş + görülen geçmiş.', 'Zor'),
+    q('ty-dg-4', '“evdekiler” sözcüğünde yapım eki hangisidir?', ['-de', '-ki', '-ler', 'kök ev-', 'hiçbiri, hepsi çekim'], 1, '-ki ilgi eki yapım işlevinde “evdeki” sıfatını kurar; -ler çokluktur.', 'Zor'),
+  ],
+  'YKS TYT|Türkçe|Yazım ve noktalama': [
+    q('ty-yn-1', 'Hangisinin yazımı doğrudur?', ['herşey', 'her şey', 'her-şey', 'herş ey', 'herşey!'], 1, '“Her şey” ayrı yazılır.', 'Kolay'),
+    q('ty-yn-2', 'Hangisinin yazımı yanlıştır?', ['hiçbir şey', 'her şey', 'birçok', 'herşey', 'bir şey'], 3, '“Her şey” ayrı yazılır; “herşey” yanlıştır.', 'Orta'),
+    q('ty-yn-3', '“mi” soru eki hangisinde doğru yazılmıştır?', ['Geldinmi', 'Geldin mi', 'Gel-dinmi', 'Geldinmi?', 'miGeldin'], 1, 'Soru eki ayrı yazılır.', 'Kolay'),
+    q('ty-yn-4', 'Kısaltması TBMM olan kurumun açık adında nokta kullanılır mı?', ['Her harften sonra zorunlu', 'Yaygın kullanımda noktasız büyük harf dizisi', 'Yalnızca T.B.M.M. doğrudur, diğeri yanlıştır', 'Küçük harfle yazılır', 'Tire ile yazılır'], 1, 'Kurum kısaltmaları genellikle noktasız yazılır.', 'Orta'),
+  ],
+  'YKS TYT|Türkçe|Anlatım bozukluğu': [
+    q('ty-ab-1', 'Hangisinde anlatım bozukluğu vardır?', ['Toplantıya katıldı.', 'Gerekli olan ihtiyaçları sıraladı.', 'Kitabı okudu.', 'Yolda yürüdü.', 'Sınav bitti.'], 1, '“Gerekli ihtiyaç” anlamca tekrardır.', 'Orta'),
+    q('ty-ab-2', '“Bu konuda hiçbir şey bilmiyorum, her şeyi biliyorum.” bozukluğunun türü hangisine yakındır?', ['Mantık çelişkisi', 'Özne-yüklem uyumsuzluğu', 'Ek eksikliği', 'Çatı uyumsuzluğu', 'Zamir belirsizliği değil, yargı çatışması'], 0, 'Aynı konuda tümüyle bilmemek ve her şeyi bilmek çelişir.', 'Zor'),
+    q('ty-ab-3', 'Hangisinde dolaylı anlatımda kişi kayması vardır?', ['Ali, “Gelirim.” dedi.', 'Ali geleceğini söyledi.', 'Ali, yarın geleceğini söyledim.', 'Ali geldiğini belirtti.', 'Ali yola çıktığını anlattı.'], 2, 'Özne Ali iken yüklem “söyledim” birinci kişiye kayar.', 'Zor'),
+  ],
+  'YKS TYT|Matematik|Temel kavramlar': [
+    q('ty-mt-1', '12 ve 18 sayılarının EBOB’u kaçtır?', ['2', '3', '6', '12', '36'], 2, '2·3=6.', 'Kolay'),
+    q('ty-mt-2', '12 ve 18 sayılarının EKOK’u kaçtır?', ['18', '24', '36', '54', '216'], 2, '2²·3²=36.', 'Kolay'),
+    q('ty-mt-4', 'Bir sayının %20’si 14 ise sayı kaçtır?', ['28', '56', '70', '84', '140'], 2, '0,2x=14 → x=70.', 'Orta'),
+    q('ty-mt-6', 'EBOB(a,b)·EKOK(a,b) = a·b eşitliği hangi koşulda geçerlidir?', ['a ve b pozitif tam sayılar', 'Yalnızca asal çiftlerde', 'Yalnızca çift sayılarda', 'a=b iken geçersiz', 'Hiçbir zaman'], 0, 'Pozitif tam sayılarda temel özdeşliktir.', 'Zor'),
+    q('ty-mt-7', '24’ün pozitif bölen sayısı kaçtır?', ['6', '8', '10', '12', '16'], 1, '24=2³·3 → (3+1)(1+1)=8.', 'Zor'),
+  ],
+  'YKS TYT|Matematik|Sayılar': [
+    q('ty-sy-1', 'Hangisi rasyonel sayı değildir?', ['0,25', '2/7', '√4', '√2', '−3'], 3, '√2 irrasyoneldir; √4=2 rasyoneldir.', 'Orta'),
+    q('ty-sy-2', '|−7| − |3−8| işleminin sonucu kaçtır?', ['2', '7', '12', '5', '0'], 0, '7 − 5 = 2.', 'Orta'),
+    q('ty-sy-3', '0,¯3 (0,333…) kesir olarak hangisidir?', ['1/4', '1/3', '3/10', '33/100', '1/30'], 1, 'Periyodik 3 → 1/3.', 'Kolay'),
+    q('ty-sy-4', 'a < 0 < b için |a| + b − |b| ifadesi sadeleştirilirse ne olur?', ['a', '−a', 'b', '−a + 2b değil, −a', '0'], 1, 'a negatif → |a|=−a; b pozitif → |b|=b ⇒ −a + b − b = −a.', 'Zor'),
+  ],
+  'YKS TYT|Matematik|Üslü ve köklü sayılar': [
+    q('ty-us-1', '2³ · 2² işleminin sonucu kaçtır?', ['2⁵', '2⁶', '4⁵', '8', '32'], 0, 'Üsler toplanır.', 'Kolay'),
+    q('ty-us-2', '(3²)³ kaçtır?', ['3⁵', '3⁶', '9³', '18', '27'], 1, '2·3=6.', 'Orta'),
+    q('ty-us-3', '√50 sadeleştirilmiş hali hangisidir?', ['5√2', '2√5', '25√2', '10√5', '√25·2'], 0, '√(25·2)=5√2.', 'Orta'),
+    q('ty-us-4', '8^(2/3) kaçtır?', ['2', '4', '16', '32', '64'], 1, '(8^(1/3))²=2²=4.', 'Zor'),
+    q('ty-us-5', '√12 + √27 ifadesi hangisine eşittir?', ['√39', '5√3', '3√3', '√3', '6√3'], 1, '2√3 + 3√3 = 5√3.', 'Zor'),
+  ],
+  'YKS TYT|Matematik|Denklemler': [
+    q('ty-dk-1', '2x − 6 = 10 denkleminde x kaçtır?', ['2', '6', '8', '16', '4'], 2, '2x=16 → x=8.', 'Kolay'),
+    q('ty-dk-2', 'x/3 + 1 = 5 ise x kaçtır?', ['6', '12', '15', '8', '4'], 1, 'x/3=4 → x=12.', 'Kolay'),
+    q('ty-dk-3', '|2x−4|=6 denkleminin çözüm kümesi hangisidir?', ['{5}', '{−1}', '{5, −1}', '{1}', '∅'], 2, '2x−4=6 veya 2x−4=−6 → x=5 veya x=−1.', 'Zor'),
+    q('ty-dk-4', '3(x−2)=x+4 ise x kaçtır?', ['5', '4', '3', '2', '1'], 0, '3x−6=x+4 → 2x=10 → x=5.', 'Orta'),
+  ],
+  'YKS TYT|Matematik|Problemler': [
+    q('ty-pb-1', 'Bir işi Ali 6 günde, Veli 12 günde bitiriyor. Birlikte kaç günde bitirirler?', ['3', '4', '5', '8', '9'], 1, '1/6+1/12=1/4.', 'Orta'),
+    q('ty-pb-2', 'Saatte 60 km giden araç 2,5 saatte kaç km gider?', ['120', '130', '140', '150', '180'], 3, '60·2,5=150.', 'Kolay'),
+    q('ty-pb-3', 'Bir ürün %20 zam, ardından %20 indirim görürse net değişim nedir?', ['Değişmez', '%4 azalır', '%4 artar', '%20 azalır', '%40 azalır'], 1, '1,2·0,8=0,96.', 'Zor'),
+    q('ty-pb-4', 'Havuz musluğu A 10 saatte, B 15 saatte dolduruyor. İkisi açıkken kaç saatte dolar?', ['5', '6', '8', '12', '25'], 1, '1/10+1/15=1/6.', 'Zor'),
+    q('ty-pb-5', 'Karışım: 40 litre %20 tuzlu suya kaç litre su eklenirse %16 tuzlu olur?', ['8', '10', '12', '16', '20'], 1, 'Tuz 8 L sabit; 8/(40+x)=0,16 → 40+x=50 → x=10.', 'Zor'),
+  ],
+  'YKS TYT|Matematik|Kümeler': [
+    q('ty-kmset-1', 'A={1,2,3}, B={2,3,4} ise A∩B hangisidir?', ['{1,2,3,4}', '{2,3}', '{1,4}', '∅', '{1,2}'], 1, 'Ortak elemanlar 2 ve 3.', 'Kolay'),
+    q('ty-kmset-2', 'n(A)=12, n(B)=8, n(A∩B)=3 ise n(A∪B) kaçtır?', ['17', '20', '23', '15', '11'], 0, '12+8−3=17.', 'Orta'),
+    q('ty-kmset-3', 'A⊂B ve A≠B ise hangisi kesinlikle doğrudur?', ['B⊂A', 'A, B’nin öz alt kümesidir', 'A=B', 'A∩B=∅', 'n(A)>n(B)'], 1, 'Öz alt küme tanımı.', 'Orta'),
+  ],
+  'YKS TYT|Matematik|Fonksiyon': [
+    q('ty-fn-1', 'f(x)=2x+1 için f(3) kaçtır?', ['5', '6', '7', '8', '9'], 2, '7.', 'Kolay'),
+    q('ty-fn-2', 'f(x)=x² için f(−2) kaçtır?', ['−4', '4', '−2', '2', '0'], 1, '(−2)²=4.', 'Kolay'),
+    q('ty-fn-3', 'f(x)=3x−4 ve f(a)=5 ise a kaçtır?', ['1', '2', '3', '4', '5'], 2, '3a=9 → a=3.', 'Orta'),
+    q('ty-fn-4', 'f(x)=2x, g(x)=x−1 için (f∘g)(4) kaçtır?', ['6', '7', '8', '5', '3'], 0, 'g(4)=3, f(3)=6.', 'Zor'),
+  ],
+  'YKS TYT|Matematik|Permütasyon ve olasılık': [
+    q('ty-ol-1', '5 kişinin yan yana dizilme sayısı kaçtır?', ['20', '60', '120', '25', '10'], 2, '5!=120.', 'Kolay'),
+    q('ty-ol-2', 'Bir zarın tek gelme olasılığı nedir?', ['1/6', '1/3', '1/2', '2/3', '5/6'], 2, '1,3,5 → 3/6.', 'Kolay'),
+    q('ty-ol-3', 'C(6,2) kaçtır?', ['12', '15', '30', '6', '720'], 1, '15.', 'Orta'),
+    q('ty-ol-4', 'Bir torbada 3 kırmızı 2 mavi bilye var. Üst üste iki kırmızı (yerine koymadan) çekme olasılığı?', ['3/10', '1/5', '3/20', '1/4', '2/5'], 0, '(3/5)·(2/4)=3/10.', 'Zor'),
+  ],
+  'YKS TYT|Matematik|Veri': [
+    q('ty-vr-1', '2, 4, 4, 6, 9 dizisinin medyanı kaçtır?', ['4', '5', '6', '9', '2'], 0, 'Ortadaki terim 4.', 'Kolay'),
+    q('ty-vr-2', 'Aynı dizinin aritmetik ortalaması kaçtır?', ['4', '5', '5,5', '6', '25'], 1, '25/5=5.', 'Kolay'),
+    q('ty-vr-3', 'Açıklık (range) nedir?', ['En büyük − en küçük', 'Ortalama', 'Medyan', 'Tepe değer', 'Çeyrekler farkı zorunlu'], 0, '9−2=7; tanım en büyük-en küçük.', 'Orta'),
+  ],
+  'YKS TYT|Geometri|Üçgenler': [
+    q('ty-uc-1', 'Bir üçgenin iç açıları toplamı kaç derecedir?', ['90', '120', '180', '270', '360'], 2, '180°.', 'Kolay'),
+    q('ty-uc-2', 'Kenarları 3, 4, 5 olan üçgen hangi türdedir?', ['Geniş açılı', 'Eşkenar', 'İkizkenar geniş', 'Dar ve eşkenar', 'Dik üçgen'], 4, '3-4-5 dik.', 'Kolay'),
+    q('ty-uc-4', 'İkizkenar üçgende taban açıları 50° ise tepe açısı kaçtır?', ['50', '60', '80', '100', '130'], 2, '80°.', 'Orta'),
+    q('ty-uc-5', '30-60-90 üçgeninde 30°nin karşısı 4 ise hipotenüs kaçtır?', ['4', '4√3', '8', '8√3', '2'], 2, 'Hipotenüs 2 kat: 8.', 'Zor'),
+  ],
+  'YKS TYT|Geometri|Çember': [
+    q('ty-cb-1', 'Yarıçapı 7 olan çemberin çapı kaçtır?', ['7', '14', '21', '49', 'π7'], 1, '2r=14.', 'Kolay'),
+    q('ty-cb-2', 'Çevre açısı, gördüğü yayın ölçüsünün kaç katıdır?', ['Eşittir', 'Yarısıdır', 'İki katıdır', 'Üç katıdır', 'Dörde bölünür'], 1, 'Yarısıdır.', 'Orta'),
+    q('ty-cb-3', 'Merkez açı 80° ise gördüğü yay kaç derecedir?', ['40', '80', '100', '160', '280'], 1, 'Eşittir.', 'Kolay'),
+    q('ty-cb-4', 'Çapı gören çevre açı kaç derecedir?', ['45', '60', '90', '120', '180'], 2, 'Thales: çapı gören açı diktir.', 'Zor'),
+  ],
+  'YKS TYT|Geometri|Açılar': [
+    q('ty-ac-1', 'İki komşu açı 180° ise bu açılara ne denir?', ['Ters açılar', 'Bütünler açılar', 'Tümler açılar', 'Dik açılar', 'Salı açıları'], 1, 'Bütünler = 180°.', 'Kolay'),
+    q('ty-ac-2', 'Tümler iki açıdan biri 35° ise diğeri kaçtır?', ['35', '55', '70', '145', '90'], 1, '90−35=55.', 'Kolay'),
+    q('ty-ac-3', 'Paralel iki doğruyu kesen kesenin iç ters açıları için hangisi doğrudur?', ['Toplamları 180°', 'Eşittirler', 'Hepsi 90°', 'Toplamları 90°', 'Bağımsızdır'], 1, 'İç ters açılar eşittir.', 'Orta'),
+  ],
+  'YKS TYT|Geometri|Çokgenler': [
+    q('ty-cgx-1', 'Düzgün altıgende bir iç açı kaç derecedir?', ['108', '120', '135', '150', '180'], 1, '(6−2)·180/6=120.', 'Orta'),
+    q('ty-cgx-2', 'Bir beşgenin iç açılar toplamı kaç derecedir?', ['360', '540', '720', '900', '180'], 1, '(5−2)·180=540.', 'Kolay'),
+    q('ty-cgx-3', 'Karenin köşegenleri için hangisi yanlıştır?', ['Eşit uzunluktadır', 'Birbirini dik keser', 'Açıortaydır', 'Kenarlara paraleldir', 'Merkezde kesişir'], 3, 'Köşegen kenara paralel değildir.', 'Zor'),
+  ],
+  'YKS TYT|Fen|Fizik': [
+    q('ty-fz-1', '120 m’yi 4 saniyede alan cismin ortalama sürati nedir?', ['20 m/s', '30 m/s', '40 m/s', '480 m/s', '16 m/s'], 1, '120/4=30.', 'Kolay'),
+    q('ty-fz-2', 'Durgun bir cisme net kuvvet uygulanmazsa ne olur?', ['Hızlanır', 'Yavaşlar', 'Hareket durumu değişmez', 'Kütlesi artar', 'Yönü mutlaka değişir'], 2, 'Newton I.', 'Orta'),
+    q('ty-fz-3', 'Ses boşlukta yayılır mı?', ['Evet, ışıktan hızlı', 'Evet, yavaş', 'Hayır, ortam gerekir', 'Yalnızca uzayda', 'Yalnızca suda'], 2, 'Mekanik dalga.', 'Kolay'),
+    q('ty-fz-4', 'Özkütle 2 g/cm³, hacim 50 cm³ ise kütle kaç gramdır?', ['25', '50', '100', '200', '52'], 2, 'm=d·V=100.', 'Orta'),
+    q('ty-fz-5', 'Isı ve sıcaklık için hangisi doğrudur?', ['Aynı niceliktir', 'Isı enerjidir, sıcaklık ortalama kinetik enerjiyle ilgilidir', 'Sıcaklık joul ile ölçülür', 'Isı yalnızca °C ile ölçülür', 'Boşlukta ısı iletimi kolaydır'], 1, 'Ayırım: enerji vs ortalama KE.', 'Zor'),
+  ],
+  'YKS TYT|Fen|Kimya': [
+    q('ty-km-1', 'Suyun formülü hangisidir?', ['HO', 'H2O', 'H2O2', 'CO2', 'NaCl'], 1, 'H2O.', 'Kolay'),
+    q('ty-km-2', 'Atomun pozitif yüklü taneciği hangisidir?', ['Elektron', 'Nötron', 'Proton', 'Molekül', 'Foton'], 2, 'Proton +1.', 'Kolay'),
+    q('ty-km-3', 'Aynı grup elementleri için hangisi doğrudur?', ['Aynı proton sayısı', 'Benzer değerlik elektron düzeni', 'Aynı kütle numarası', 'Hepsi metaldir', 'Hepsi gazdır'], 1, 'Grup = benzer değerlik.', 'Orta'),
+    q('ty-km-4', 'Fiziksel değişime örnek hangisidir?', ['Kâğıdın yanması', 'Buzun erimesi', 'Demirin paslanması', 'Sütün ekşimesi', 'Fotosentez'], 1, 'Erime hâl değişimidir.', 'Kolay'),
+    q('ty-km-5', 'Nötr atomda 11 proton, 12 nötron varsa kütle numarası kaçtır?', ['11', '12', '23', '1', '132'], 2, 'A=Z+N=23.', 'Orta'),
+  ],
+  'YKS TYT|Fen|Biyoloji': [
+    q('ty-by-1', 'Ökaryot hücrede kalıtım maddesinin ana deposu neresidir?', ['Mitokondri yalnızca', 'Çekirdek', 'Golgi', 'Koful', 'Hücre zarı'], 1, 'Çekirdek.', 'Kolay'),
+    q('ty-by-2', 'Fotosentezde açığa çıkan gaz hangisidir?', ['Azot', 'Karbondioksit', 'Oksijen', 'Metan', 'Helyum'], 2, 'O2.', 'Kolay'),
+    q('ty-by-3', 'Canlılığın temel birimi hangisidir?', ['Doku', 'Organ', 'Hücre', 'Sistem', 'Popülasyon'], 2, 'Hücre teorisi.', 'Kolay'),
+    q('ty-by-4', 'Mitozun mayozdan temel farkı hangisidir?', ['Kromozom sayısı yarıya iner', 'Kromozom sayısı korunur, büyüme/onarımdır', 'Yalnızca üreme organında olur', 'DNA eşlenmez', 'Dört yavru hücre zorunlu'], 1, 'Mitoz 2n → 2n.', 'Zor'),
+    q('ty-by-5', 'Enzimler için hangisi doğrudur?', ['Tepkimede tükenirler', 'Aktifleşmeyi genellikle hızlandıran biyokatalizördür', 'Yalnızca yağdır', 'Sıcaklıktan etkilenmez', 'pH’dan bağımsızdır'], 1, 'Katalizör, tepkimede tüketilmez.', 'Orta'),
+  ],
+  'YKS TYT|Sosyal|Tarih': [
+    q('ty-ta-1', 'Malazgirt Savaşı hangi yıldadır?', ['1071', '1299', '1453', '1517', '1571'], 0, '1071.', 'Kolay'),
+    q('ty-ta-2', 'İstanbul’un fethi hangi padişah dönemindedir?', ['Yavuz', 'Kanuni', 'Fatih Sultan Mehmet', 'Yıldırım', 'II. Mahmud'], 2, '1453 Fatih.', 'Kolay'),
+    q('ty-ta-3', 'Kurtuluş Savaşı’nın simgesel başlangıcı hangisidir?', ['Lozan', '19 Mayıs 1919 Samsun’a çıkış', 'Mondros', 'Sevr', 'Mudanya'], 1, '19 Mayıs 1919.', 'Orta'),
+    q('ty-ta-4', 'Tanzimat Fermanı hangi yılda ilan edilmiştir?', ['1839', '1856', '1876', '1908', '1923'], 0, '1839 Gülhane.', 'Zor'),
+    q('ty-ta-5', 'Anadolu’da ilk Türk beyliği sürecini başlatan zafer hangisine daha yakındır?', ['Haçlı Seferleri’nin bitişi', 'Malazgirt sonrası Türkmen yerleşimi', 'Lozan', 'Kades', 'Niğbolu yalnızca Balkan'], 1, '1071 sonrası Anadolu’nun Türkleşmesi.', 'Orta'),
+  ],
+  'YKS TYT|Sosyal|Coğrafya': [
+    q('ty-cg-1', 'Türkiye hangi yarım kürelerdedir?', ['Güney ve batı', 'Kuzey ve doğu', 'Güney ve doğu', 'Yalnızca güney', 'Ekvator kuşağı'], 1, '36–42°K, 26–45°D.', 'Orta'),
+    q('ty-cg-2', 'İklimi en çok etkileyen faktörlerden biri hangisidir?', ['Nüfus yoğunluğu', 'Enlem', 'Plaka adı', 'Dil ailesi', 'Para birimi'], 1, 'Güneş ışını açısı.', 'Kolay'),
+    q('ty-cg-3', 'Akarsuyun denize döküldüğü yer nedir?', ['Kaynak', 'Yatak', 'Ağız', 'Delta her zaman', 'Vadi'], 2, 'Ağız.', 'Kolay'),
+    q('ty-cg-4', 'Karadeniz kıyısında tarımı sınırlayan başlıca doğal etken hangisidir?', ['Enlem olarak kutup', 'Engebeli kıyı, dar ovalar, bol yağış/eğim', 'Çöl iklimi', 'Muson', 'Permafrost'], 1, 'Engebe ve dar kıyı ovası.', 'Zor'),
+  ],
+  'YKS TYT|Sosyal|Felsefe': [
+    q('ty-fl-1', 'Bilginin kaynağını duyu deneyimine dayandıran yaklaşım hangisidir?', ['Rasyonalizm', 'Empirizm', 'Septisizm', 'Entüisyonizm', 'Dogmatizm'], 1, 'Empirizm.', 'Orta'),
+    q('ty-fl-2', '“Bilinemeyeceğini savunmak” hangi tutuma yakındır?', ['Dogmatizm', 'Septisizm', 'Pozitivizm', 'Pragmatizm', 'Hümanizm'], 1, 'Septisizm.', 'Orta'),
+    q('ty-fl-3', 'Ahlak felsefesinin temel sorusu hangisine yakındır?', ['Varlık nedir?', 'İyi eylem nasıl temellendirilir?', 'Devletin kökeni nedir?', 'Güzel nedir?', 'Tarih yasası nedir?'], 1, 'Etik: iyi-kötü.', 'Kolay'),
+    q('ty-fl-4', 'Rasyonalizm bilgiyi öncelikle nereye dayandırır?', ['Duyu deneyimi', 'Akıl / apriori ilkeler', 'Toplum sözleşmesi', 'İktidar', 'Rastlantı'], 1, 'Akıl.', 'Zor'),
+  ],
+  'YKS TYT|Sosyal|Din Kültürü': [
+    q('ty-dk-1', 'İslam’da inancın temelini oluşturan kavram hangisidir?', ['Ticaret', 'Tevhit (Allah’ın birliği)', 'Coğrafya', 'Saltanat', 'Irk'], 1, 'Tevhit.', 'Kolay'),
+    q('ty-dk-2', 'Namazın farz oluşu hangi temel ibadet grubundandır?', ['Sünnet-i müekkede yalnızca', 'Beş temel ibadetten (farz)', 'Nafile', 'Keffaret değil farz', 'Yalnızca Ramazan'], 1, 'Namaz İslam’ın şartlarındandır.', 'Kolay'),
+    q('ty-dk-3', 'Zekâtın toplumsal işlevi hangisine yakındır?', ['Servetin belli ellerde toplanmasını teşvik', 'Gelir dağılımında dayanışma', 'Faizi zorunlu kılmak', 'Ticareti yasaklamak', 'Oruç yerine geçmek'], 1, 'Paylaşım ve dayanışma.', 'Orta'),
+  ],
+  'YKS AYT|Matematik|Fonksiyonlar': [
+    q('ay-fn-1', 'f(x)=2x−3 birebir midir?', ['Hayır', 'Evet, eğim sıfır değil', 'Yalnızca x>0', 'Yalnızca tam sayılarda', 'Sabit olduğu için değil'], 1, 'm≠0 doğru birebir.', 'Kolay'),
+    q('ay-fn-2', 'g(x)=x+1, f(x)=x² iken (f∘g)(2) kaçtır?', ['3', '4', '9', '5', '8'], 2, 'g(2)=3, f(3)=9.', 'Kolay'),
+    q('ay-fn-3', 'f(x)=x³−x tek fonksiyon mudur?', ['Çift', 'Tek', 'Ne tek ne çift', 'Sabit', 'Periyodik zorunlu'], 1, 'f(−x)=−f(x).', 'Zor'),
+    q('ay-fn-4', 'f(x)=1/x (x≠0) fonksiyonunun grafiği orijine göre nasıldır?', ['Çift / y ekseni simetrisi', 'Tek / orijin simetrisi', 'y=x simetrisi yok', 'Parabol', 'Elips'], 1, 'f(−x)=−f(x).', 'Orta'),
+  ],
+  'YKS AYT|Matematik|Polinomlar': [
+    q('ay-pl-1', 'P(x)=x³−x’in köklerinden biri hangisidir?', ['2', '0', '3', '−2 yalnızca', '4'], 1, 'P(0)=0.', 'Kolay'),
+    q('ay-pl-2', '(x−1)(x+2)=x²+x−2 özdeşliği için hangisi doğrudur?', ['Sabit terim −2', 'x katsayısı 0', 'İkinci derece değil', 'Kök yok', 'x² katsayısı 2'], 0, 'Açılım x²+x−2.', 'Orta'),
+    q('ay-pl-3', 'P(x)=x²−5x+6 için P(2) kaçtır?', ['0', '2', '−4', '6', '1'], 0, '(2−2)(2−3)=0.', 'Orta'),
+  ],
+  'YKS AYT|Matematik|Trigonometri': [
+    q('ay-tg-1', 'sin²x + cos²x değeri nedir?', ['0', '1', '2', 'sin 2x', 'tan x'], 1, 'Temel özdeşlik.', 'Kolay'),
+    q('ay-tg-2', 'sin 30° kaçtır?', ['0', '1/2', '√2/2', '√3/2', '1'], 1, '1/2.', 'Kolay'),
+    q('ay-tg-3', 'tan x = sin x / cos x tanımı hangi koşulda geçerlidir?', ['cos x ≠ 0', 'sin x ≠ 0', 'x=0 yalnızca', 'Her gerçek x', 'x=90°'], 0, 'Payda sıfır olamaz.', 'Orta'),
+    q('ay-tg-4', 'sin 2x özdeşliği hangisidir?', ['2 sin x', '2 sin x cos x', 'sin²x', 'cos 2x', 'tan 2x'], 1, '2sinx cosx.', 'Zor'),
+  ],
+  'YKS AYT|Matematik|Logaritma': [
+    q('ay-lg-1', 'log₂ 8 kaçtır?', ['2', '3', '4', '8', '1/3'], 1, '2³=8.', 'Kolay'),
+    q('ay-lg-2', 'log a + log b (aynı taban, a,b>0) hangisine eşittir?', ['log(a+b)', 'log(ab)', 'log(a/b)', 'log a · log b', 'a^b'], 1, 'Çarpım kuralı.', 'Orta'),
+    q('ay-lg-3', 'ln e³ kaçtır?', ['1', '3', 'e', '0', 'ln 3'], 1, 'ln eⁿ = n.', 'Orta'),
+  ],
+  'YKS AYT|Matematik|Diziler': [
+    q('ay-dz-1', 'aₙ = 2n−1 dizisinin 5. terimi kaçtır?', ['7', '9', '10', '11', '8'], 1, '2·5−1=9.', 'Kolay'),
+    q('ay-dz-2', '2, 5, 8, 11… dizisinin ortak farkı kaçtır?', ['2', '3', '4', '5', '1'], 1, 'Aritmetik, d=3.', 'Kolay'),
+    q('ay-dz-3', 'Geometrik dizide ilk terim 3, oran 2 ise 4. terim kaçtır?', ['6', '12', '24', '48', '18'], 2, '3·2³=24.', 'Orta'),
+  ],
+  'YKS AYT|Matematik|Limit': [
+    q('ay-lm-1', 'limₓ→2 (x+3) kaçtır?', ['2', '3', '5', '6', '0'], 2, 'Polinomda yerleştirme: 5.', 'Kolay'),
+    q('ay-lm-2', 'limₓ→0 (sin x)/x kaçtır?', ['0', '1', '∞', 'x', 'tan x'], 1, 'Standart limit 1.', 'Zor'),
+    q('ay-lm-3', 'Pay ve payda 0/0 belirsizliğinde hangisi yöntemdir?', ['Direkt çarpma her zaman', 'Çarpanlara ayırma / sadeleştirme', 'Limiti yok saymak', 'x=0 yazmak zorunlu hata', 'Türev almak yasak'], 1, 'Cebirsel sadeleştirme.', 'Orta'),
+  ],
+  'YKS AYT|Matematik|Türev': [
+    q('ay-tv-1', 'f(x)=x² türevi nedir?', ['x', '2x', '2', 'x²', '0'], 1, '2x.', 'Kolay'),
+    q('ay-tv-2', 'f(x)=sin x türevi nedir?', ['−sin x', 'cos x', 'tan x', 'sec x', '−cos x'], 1, 'cos x.', 'Kolay'),
+    q('ay-tv-3', 'f(x)=3x⁴−2x için f′(1) kaçtır?', ['10', '12', '8', '6', '14'], 0, '12−2=10.', 'Orta'),
+    q('ay-tv-4', 'f′(a)=0 ve f″(a)>0 ise x=a noktasında ne beklenir?', ['Yerel maksimum', 'Yerel minimum', 'Dönüm yok, dikey asimptot', 'Fonksiyon tanımsız', 'Teğet yok'], 1, 'İkinci türev testi: pozitif → min.', 'Zor'),
+  ],
+  'YKS AYT|Matematik|İntegral': [
+    q('ay-in-1', '∫ 2x dx belirsiz integrali nedir?', ['x²+C', '2x²+C', 'x+C', '2+C', 'ln|x|+C'], 0, 'x²+C.', 'Kolay'),
+    q('ay-in-2', '∫₀¹ 3x² dx değeri kaçtır?', ['0', '1', '2', '3', '1/3'], 1, '[x³]₀¹=1.', 'Orta'),
+    q('ay-in-3', 'Türev ile integral ilişkisi hangisidir?', ['İlişkisiz', 'Analizin temel teoremi: ters işlemler', 'İntegral her zaman büyük', 'Türev her zaman 0', 'Aynı işlem'], 1, 'Temel teorem.', 'Orta'),
+    q('ay-in-4', '∫ eˣ dx nedir?', ['eˣ+C', 'x eˣ+C', 'ln x+C', '1/eˣ+C', 'xe+C'], 0, 'eˣ kendi integralidir.', 'Kolay'),
+  ],
+  'YKS AYT|Matematik|Analitik geometri': [
+    q('ay-ag-1', 'A(0,0) ve B(3,4) arası uzaklık kaçtır?', ['5', '7', '12', '1', '√7'], 0, '5.', 'Kolay'),
+    q('ay-ag-2', 'y=2x+1 doğrusunun eğimi kaçtır?', ['1', '2', '1/2', '−2', '0'], 1, 'm=2.', 'Kolay'),
+    q('ay-ag-3', 'x+y−4=0 doğrusu (2,2) noktasından geçer mi?', ['Hayır', 'Evet', 'Yalnızca (4,0)', 'Yalnızca orijin', 'Hiçbir nokta'], 1, '2+2−4=0.', 'Orta'),
+    q('ay-ag-4', 'İki noktası (0,1) ve (2,5) olan doğrunun eğimi kaçtır?', ['1', '2', '3', '4', '1/2'], 1, '(5−1)/(2−0)=2.', 'Orta'),
+  ],
+  'YKS AYT|Türk Dili ve Edebiyatı|Şiir bilgisi': [
+    q('ay-si-1', 'Dizelerin ilk harflerinin yukarıdan aşağıya sözcük oluşturmasına ne denir?', ['Redif', 'Akrostiş', 'Imge', 'Hane', 'Nazire'], 1, 'Akrostiş.', 'Kolay'),
+    q('ay-si-2', 'Hece ölçüsü Millî Edebiyat’ta neden öne çıkar?', ['Aruz Arapçaya özgüdür diye yasak', 'Türkçenin doğal ses yapısına daha uygun görülmesi', 'Serbest şiirin tek biçimi olduğu için', 'Divan zorunluluğu', 'Nokta uyağı'], 1, 'Hece-millî dil bağı.', 'Orta'),
+    q('ay-si-3', 'Redif ile uyak farkı hangisidir?', ['Aynıdır', 'Redif aynı ek/sözcük tekrarı, uyak ses benzerliğidir', 'Redif yalnızca aruzda', 'Uyak yasaktır', 'Redif kafiye çeşidi değil anlamdır'], 1, 'Tanım ayrımı.', 'Zor'),
+  ],
+  'YKS AYT|Türk Dili ve Edebiyatı|Divan edebiyatı': [
+    q('ay-dv-1', 'Övgü amacıyla yazılan Divan nazım biçimi hangisidir?', ['Masal', 'Kaside', 'Haiku', 'Serbest şiir', 'Mani'], 1, 'Kaside.', 'Orta'),
+    q('ay-dv-2', 'Gazelin ilk beytine ne ad verilir?', ['Mahlas', 'Matla', 'Makta', 'Redif', 'Hane'], 1, 'Matla.', 'Kolay'),
+    q('ay-dv-3', 'Mahlas genellikle hangi beyittedir?', ['İlk', 'Son (makta)', 'Orta zorunlu', 'Nakarat', 'Serlevha'], 1, 'Makta.', 'Kolay'),
+    q('ay-dv-4', 'Divan şiirinde aşk, şarap, sevgili imgelerinin soyut dünyası hangisiyle anılır?', ['Realizm', 'Mazmun sistemi', 'Natüralizm', 'Fütürizm', 'Dada'], 1, 'Mazmun.', 'Zor'),
+  ],
+  'YKS AYT|Türk Dili ve Edebiyatı|Tanzimat': [
+    q('ay-tz-1', 'Tanzimat edebiyatının dilde yönelimi hangisine yakındır?', ['Daha sade, halkın anlayacağı dil arayışı', 'Yalnızca Çağatayca', 'Aruz yasağı tam', 'Şiiri kaldırmak', 'Latince'], 0, 'Sadeleşme eğilimi.', 'Orta'),
+    q('ay-tz-2', 'Tanzimat’ın “hak, adalet, ulus” temaları hangi türde yoğunlaşır?', ['Masal', 'Makale / gazete yazısı ve tiyatro', 'Gazel', 'Kaside övgüsü yalnızca', 'Destan mitolojisi'], 1, 'Yeni türler: gazete, tiyatro, roman.', 'Zor'),
+    q('ay-tz-3', 'Tanzimat Fermanı’nın ilanı edebiyata dolaylı etkisi hangisidir?', ['Batı türlerinin giriş zemini', 'Divanı zorunlu kılması', 'Matbaanın kapanması', 'Hece yasağı', 'Romanın yasaklanması'], 0, 'Batılılaşma süreci.', 'Orta'),
+  ],
+  'YKS AYT|Türk Dili ve Edebiyatı|Millî Edebiyat': [
+    q('ay-me-1', 'Millî Edebiyat’ın dil anlayışı hangisine yakındır?', ['Ağır Osmanlıca', 'Sade Türkçe', 'Yalnızca Fransızca', 'Latince', 'Aruz her metinde zorunlu'], 1, 'Sade dil, hece.', 'Kolay'),
+    q('ay-me-2', 'Millî Edebiyat’ta halk kültürü neden kaynak görülür?', ['Avrupa’yı reddetmek için değil, millî kimliği dil ve temada aramak', 'Yalnızca köyü yüceltmek', 'Aruzu yok saymak tek amaç', 'Gazeteyi kapatmak', 'Tiyatro yasağı'], 0, 'Kimlik + sade dil.', 'Zor'),
+  ],
+  'YKS AYT|Türk Dili ve Edebiyatı|Cumhuriyet': [
+    q('ay-cm-1', 'Köy gerçekliğini işleyen Cumhuriyet dönemi yazarlarından biri hangisidir?', ['Fuzûlî', 'Bâkî', 'Yaşar Kemal', 'Nedîm', 'Şeyh Galip'], 2, 'Yaşar Kemal.', 'Orta'),
+    q('ay-cm-2', 'Cumhuriyet döneminde şiirde Garip akımının yönelimi hangisidir?', ['Ağır mazmun', 'Gündelik dil, şairaneliği sadeleştirme', 'Aruz dönüşü zorunlu', 'Yalnızca kaside', 'Latince terim'], 1, 'Garip: sade konuşma dili.', 'Zor'),
+    q('ay-cm-3', 'Cumhuriyet romanında “toplumsal gerçekçilik” neyi öne alır?', ['Bireyin iç dünyasını yok saymak zorunda', 'Toplumsal yapı ve eşitsizlikleri kurmaca aracılığıyla göstermek', 'Yalnızca aşk üçgeni', 'Tarihî belgesel zorunluluğu', 'Şiir biçimi'], 1, 'Toplumcu gerçekçi çizgi.', 'Orta'),
+  ],
+  'YKS AYT|Tarih|Osmanlı': [
+    q('ay-os-1', 'Osmanlı’nın geleneksel kuruluş yılı hangisidir?', ['1071', '1299', '1453', '1517', '1683'], 1, '1299.', 'Kolay'),
+    q('ay-os-2', 'Mısır’ın alınması Yavuz döneminde hangi yılı işaret eder?', ['1453', '1517', '1571', '1699', '1839'], 1, '1517.', 'Orta'),
+    q('ay-os-3', 'Timar sisteminin temel işlevi hangisidir?', ['Sanayi üretimi', 'Tımar sahibinin vergi/asker karşılığı toprak tasarrufu', 'Cumhuriyet bürokrasisi', 'Kapitülasyon', 'Düyun-ı Umumiye'], 1, 'Asker-toprak bağı.', 'Zor'),
+  ],
+  'YKS AYT|Tarih|Millî mücadele': [
+    q('ay-mm-1', 'Amasya Genelgesi’nin özü hangisidir?', ['Saltanat güçlensin', 'Milletin bağımsızlığını yine milletin azmi kurtaracaktır', 'Manda kabul', 'Sevr uygulansın', 'TBMM kapatılsın'], 1, 'Millî irade.', 'Orta'),
+    q('ay-mm-2', 'TBMM hangi yıl açılmıştır?', ['1919', '1920', '1923', '1924', '1938'], 1, '23 Nisan 1920.', 'Kolay'),
+    q('ay-mm-3', 'Sakarya Savaşı’nın stratejik sonucu hangisine yakındır?', ['Taarruz inisiyatifinin millete geçmesi / savunmanın kırılması', 'Sevr’in imzası', 'Mondros', 'Hilafetin ilanı', 'Kapitülasyonların artması'], 0, 'Sakarya dönüm noktası.', 'Zor'),
+  ],
+  'YKS AYT|Tarih|Atatürk dönemi': [
+    q('ay-atd-1', '“Egemenlik kayıtsız şartsız milletindir.” ilkesi hangisiyle doğrudan bağlanır?', ['Laiklik yalnızca din', 'Millî egemenlik', 'Devletçilik ekonomi tek', 'İnkılapçılık giyim', 'Yurtta sulh tek başına'], 1, 'Millî egemenlik.', 'Orta'),
+    q('ay-atd-2', 'Harf inkılabı hangi yıldadır?', ['1923', '1924', '1928', '1934', '1938'], 2, '1928.', 'Kolay'),
+    q('ay-atd-3', 'Laiklik ilkesinin hukukî yansıması hangisine yakındır?', ['Dinî kuralların devlet hukukunun tek kaynağı olması', 'Hukukun evrensel/medeni temellere çekilmesi, din-devlet işlerinin ayrışması', 'İbadetin yasaklanması', 'Medresenin tek okul olması', 'Hilafetin güçlenmesi'], 1, 'Hukukun laikleşmesi.', 'Zor'),
+  ],
+  'YKS AYT|Coğrafya|Türkiye coğrafyası': [
+    q('ay-tc-1', 'Türkiye’nin en kalabalık kenti hangisidir?', ['Ankara', 'İzmir', 'İstanbul', 'Bursa', 'Antalya'], 2, 'İstanbul.', 'Kolay'),
+    q('ay-tc-2', 'Karadeniz ikliminin belirgin özelliği hangisidir?', ['Yıl boyu yağış, küçük sıcaklık farkı', 'Yalnızca kış yağışı', 'Çölleşme', 'Muson yağmuru', 'Kutup soğuğu'], 0, 'Her mevsim yağış.', 'Orta'),
+    q('ay-tc-3', 'Föhn (föhn) rüzgârının tarıma etkisi hangisine yakındır?', ['Sıcak ve kuru iniş, nem düşüşü', 'Buzul ilerlemesi', 'Muson yağmuru', 'Gelgit', 'Okyanus akıntısı'], 0, 'Dağ aşımı kuru ısınma.', 'Zor'),
+  ],
+  'YKS AYT|Coğrafya|Beşeri sistemler': [
+    q('ay-bs-1', 'Kırdan kente göçün başlıca itici nedeni hangisidir?', ['Kırsal iş imkânının daralması / tarımda makineleşme', 'Kentte konut fazlası', 'Nüfusun azalması her yerde', 'İklimin değişmemesi', 'Turizm yasağı'], 0, 'İtici faktörler.', 'Orta'),
+    q('ay-bs-2', 'Türkiye’de nüfusun kıyılarda yoğunlaşmasının nedeni hangisine yakındır?', ['Sanayi, tarım ve ulaşım imkânlarının kıyıda toplanması', 'Enlemin kutup olması', 'Çöl iklimi', 'Yüksek dağ yasağı', 'Sınırların kıyı olması zorunlu değil tek başına'], 0, 'Ekonomik çekim.', 'Zor'),
+    q('ay-bs-3', 'Gecekondu olgusu kentleşme sürecinde neyi gösterir?', ['Planlı kentleşmenin tam başarısı', 'Hızlı göç karşısında konut/altyapı açığı', 'Kır nüfusunun artışı', 'Sanayisizleşme yok', 'Turizm çöküşü'], 1, 'Çarpık kentleşme.', 'Orta'),
+  ],
+  'YKS AYT|Fizik|Hareket ve kuvvet': [
+    q('ay-hk-1', 'm=2 kg, Fnet=10 N ise ivme kaç m/s²?', ['2', '5', '8', '12', '20'], 1, 'a=F/m=5.', 'Kolay'),
+    q('ay-hk-2', 'Sürtünmesiz yatayda sabit hızın net kuvveti nedir?', ['Ağırlığa eşit', 'Sıfır', 'Kütleye eşit', 'Sıfır değil', 'Hava direncine eşit zorunlu'], 1, 'a=0 ⇒ F=0.', 'Orta'),
+    q('ay-hk-3', 'Momentum korunumu için hangisi gerekir?', ['Sisteme dış net kuvvet yok (izole)', 'Kütle artmalı', 'Hız sıfır', 'Sürtünme zorunlu', 'Enerji yok'], 0, 'Kapalı sistem.', 'Zor'),
+  ],
+  'YKS AYT|Fizik|Elektrik': [
+    q('ay-el-1', 'Ohm yasası hangisidir?', ['V=I/R', 'V=I·R', 'P=I/R', 'Q=I·t değil V', 'R=I·V'], 1, 'V=IR.', 'Kolay'),
+    q('ay-el-2', 'Dirençler seri bağlanırsa eşdeğer direnç nasıl değişir?', ['Toplanır, artar', 'Paralel gibi azalır', 'Değişmez', 'Sıfır olur', 'Negatif olur'], 0, 'Rs=R1+R2.', 'Orta'),
+    q('ay-el-3', 'Elektrik alan çizgileri hangi yükten uzağa yönelir?', ['Negatif', 'Pozitif', 'Nötr', 'Nötron', 'Çekirdek her zaman'], 1, '+ yüklerden dışarı.', 'Orta'),
+  ],
+  'YKS AYT|Fizik|Dalgalar': [
+    q('ay-dl-1', 'v=λ·f bağıntısında f nedir?', ['Genlik', 'Frekans', 'Periyot karesi', 'Dalga boyu', 'Hız karesi'], 1, 'Frekans.', 'Kolay'),
+    q('ay-dl-2', 'Periyot ile frekans ilişkisi hangisidir?', ['T=f', 'T=1/f', 'T=f²', 'T=λ/f değil T=1/f', 'Bağımsız'], 1, 'T=1/f.', 'Kolay'),
+    q('ay-dl-3', 'Sesin boşlukta yayılmaması hangisini gösterir?', ['Elektromanyetik olduğu', 'Mekanik dalga olduğu', 'Işık olduğu', 'Yatay polarizasyon', 'Kuantum zorunluluğu'], 1, 'Ortam gerekir.', 'Orta'),
+  ],
+  'YKS AYT|Kimya|Atom ve periyodik sistem': [
+    q('ay-at-1', 'Nötr atomda proton sayısı hangisine eşittir?', ['Nötron', 'Elektron', 'Kütle numarası her zaman', 'Grup her zaman', 'Periyot'], 1, 'e⁻=p⁺.', 'Kolay'),
+    q('ay-at-2', 'İzotopların ortak özelliği nedir?', ['Aynı kütle numarası', 'Aynı proton, farklı nötron', 'Aynı nötron farklı proton', 'Farklı element', 'Aynı hâl zorunlu'], 1, 'Aynı Z, farklı A.', 'Orta'),
+    q('ay-at-3', 'Periyodik tabloda soldan sağa (bir periyotta) atom yarıçapı genelde nasıl değişir?', ['Artar', 'Ayar çekimiyle küçülür', 'Sabit', 'Sıfırlanır', 'Rastgele'], 1, 'Çekirdek çekimi artar.', 'Zor'),
+  ],
+  'YKS AYT|Kimya|Gazlar': [
+    q('ay-gz-1', 'İdeal gaz yasası hangisidir?', ['PV=nRT', 'P=nRT', 'V=nP', 'n=PVT', 'T=nR'], 0, 'PV=nRT.', 'Kolay'),
+    q('ay-gz-2', 'Sabit T’de P artarsa V nasıl değişir (Boyle)?', ['Artar', 'Azalır', 'Sabit', 'Sıfır', 'Üssel sonsuz'], 1, 'P↑ V↓.', 'Orta'),
+    q('ay-gz-3', 'Aynı koşullarda eşit hacim gazlar için hangisi doğrudur (Avogadro)?', ['Eşit mol sayısı', 'Eşit kütle', 'Eşit yoğunluk her gazda', 'Eşit renk', 'Eşit koku'], 0, 'Eşit n.', 'Zor'),
+  ],
+  'YKS AYT|Kimya|Organik bileşikler': [
+    q('ay-og-1', 'Alkanların genel formülü hangisidir?', ['CnH2n', 'CnH2n+2', 'CnH2n−2', 'CnHn', 'CnH2n+1OH her zaman'], 1, 'Doymuş zincir.', 'Kolay'),
+    q('ay-og-2', 'İzomer ne demektir?', ['Aynı formül, farklı yapı', 'Aynı yapı farklı formül', 'Aynı element farklı mol', 'İyon çifti', 'Allotrop değil organikte yapı'], 0, 'C4H10 gibi.', 'Orta'),
+    q('ay-og-3', 'Alkol fonksiyonel grubu hangisidir?', ['−COOH', '−OH', '−CHO', '−NH2', '−X'], 1, 'Hidroksil.', 'Kolay'),
+  ],
+  'YKS AYT|Biyoloji|Hücre': [
+    q('ay-hc-1', 'Mitokondrinin temel görevi nedir?', ['Fotosentez', 'ATP üretimi', 'Yalnızca paketleme', 'DNA yok etmek', 'Su depolamak'], 1, 'Solunum / ATP.', 'Kolay'),
+    q('ay-hc-2', 'Bitki hücresinde olup hayvanda bulunmayan yapı hangisidir?', ['Çekirdek', 'Mitokondri', 'Hücre çeperi', 'Ribozom', 'Hücre zarı'], 2, 'Selüloz çeper.', 'Kolay'),
+    q('ay-hc-3', 'Ribozomun görevi hangisidir?', ['Fotosentez', 'Protein sentezi', 'Sindirim enzimi depolamak zorunlu', 'DNA eşlemesi çekirdekte değil ribozomda', 'ATP depolamak'], 1, 'Translasyon.', 'Orta'),
+  ],
+  'YKS AYT|Biyoloji|Kalıtım': [
+    q('ay-kl-1', 'Mendel’e göre dominant alel ne yapar?', ['Her zaman yok olur', 'Heterozigotta fenotipi belirler', 'Yalnızca çekinikken görülür', 'DNA’yı siler', 'Kromozom sayısını yarıya indirir'], 1, 'Aa’da A görülür.', 'Orta'),
+    q('ay-kl-2', 'Fenotip nedir?', ['Genetik şifrenin kendisi', 'Gözlenen özellik', 'Yalnızca DNA dizisi', 'Kromozom sayısı', 'Mutasyon hızı'], 1, 'Görünüm.', 'Kolay'),
+    q('ay-kl-3', 'Eşeyli üremede genetik çeşitliliğin kaynaklarından biri hangisidir?', ['Mitozun kromozom koruması', 'Mayozda crossing-over', 'DNA’nın hiç eşlenmemesi', 'Klonlama', 'Tomurcuklanma'], 1, 'Parça değişimi.', 'Zor'),
+  ],
+  'YKS AYT|Biyoloji|Ekoloji': [
+    q('ay-ek-1', 'Üreticiler ekosistemde ne yapar?', ['Yalnızca tüketir', 'Fotosentez/kemosentezle organik madde üretir', 'Ayrıştırmazlar asla', 'Işık kullanmaz', 'Azot fikse etmek zorunda her üretici'], 1, 'Ototrof üretim.', 'Kolay'),
+    q('ay-ek-2', 'Besin piramidinde yukarı çıkıldıkça enerji genelde nasıl değişir?', ['Artar', 'Yaklaşık %10’u aktarılır, azalır', 'Sabit kalır', 'Sıfırlanır hemen', 'Işığa dönüşür zorunlu'], 1, 'Enerji kaybı.', 'Orta'),
+    q('ay-ek-3', 'Süksesyon nedir?', ['Ani yok oluş', 'Topluluğun zamanla değişerek klimaksa yönelmesi', 'Tek türün sonsuzluğu', 'Göç yasağı', 'İklimin durması'], 1, 'Sırayla değişim.', 'Zor'),
+  ],
+};

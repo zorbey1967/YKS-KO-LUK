@@ -1,12 +1,13 @@
 import { useApp } from '../context/AppContext';
-import { NAV } from '../lib/types';
+import { ADMIN_NAV, NAV } from '../lib/types';
 import { examCountdown } from '../lib/insights';
 import { examTitle } from '../lib/stage';
 import type { ReactNode } from 'react';
 
 export function Layout({ children }: { children: ReactNode }) {
-  const { page, go, menuOpen, setMenuOpen, profile, user, toggleTheme, theme, toastMsg, data } = useApp();
-  const item = NAV.find((n) => n.id === page) || NAV[0];
+  const { page, go, menuOpen, setMenuOpen, profile, user, toggleTheme, theme, toastMsg, data, isAdmin } = useApp();
+  const nav = isAdmin ? [NAV[0], ADMIN_NAV, ...NAV.slice(1)] : NAV;
+  const item = nav.find((n) => n.id === page) || (page === 'admin' ? ADMIN_NAV : NAV[0]);
   const count = examCountdown(data.examDate);
   return (
     <div className="app">
@@ -21,7 +22,7 @@ export function Layout({ children }: { children: ReactNode }) {
           </div>
         </div>
         <nav className="nav">
-          {NAV.map((n) => (
+          {nav.map((n) => (
             <button key={n.id} className={page === n.id ? 'active' : ''} onClick={() => go(n.id)}>
               {n.icon} <span>{n.label}</span>
             </button>

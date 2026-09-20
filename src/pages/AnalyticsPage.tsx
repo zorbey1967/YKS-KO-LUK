@@ -1,11 +1,13 @@
 import { useApp } from '../context/AppContext';
+import { eliteReport } from '../lib/elite';
 import { examCountdown, weekMinutes } from '../lib/insights';
+import { setBankJump, weakBankTopics } from '../lib/practice';
 import { ExamInsight } from '../components/ExamInsight';
 import { examKind, examTitle } from '../lib/stage';
 import { localDateKey } from '../lib/util';
 
 export function AnalyticsPage() {
-  const { data } = useApp();
+  const { data, go } = useApp();
   const total = data.sessions.reduce((a, x) => a + x.minutes, 0);
   const avgTyt = data.exams.length ? data.exams.reduce((a, x) => a + Number(x.tyt || 0), 0) / data.exams.length : 0;
   const avgAyt = data.exams.length ? data.exams.reduce((a, x) => a + Number(x.ayt || 0), 0) / data.exams.length : 0;
@@ -32,6 +34,8 @@ export function AnalyticsPage() {
   const n2 = kind === 'KPSS' ? 'GK' : kind === 'YKS' ? 'AYT' : 'Deneme-2';
   const count = examCountdown(data.examDate);
   const lastCalc = data.calcs.slice(0, 4);
+  const elite = eliteReport(data);
+  const bankWeak = weakBankTopics(data, 5);
 
   return (
     <>
@@ -41,7 +45,11 @@ export function AnalyticsPage() {
         <div className="card stat"><div className="label">SORU</div><div className="value">{qs + bankSolved}</div><div className="sub">Banka doğruluk %{acc}</div></div>
         <div className="card stat"><div className="label">HAFTA</div><div className="value">{weekPct}%</div><div className="sub">{(week / 60).toFixed(1)} / {data.weekHours}s</div></div>
       </div>
-      <div className="notice" style={{ marginBottom: 16 }}>{count.past ? 'Sınav tarihi geçti — Hedefim’den yeni tarih seç.' : `${examTitle(data)}’ye ${count.label}. Görev tamamlanma ${data.tasks.length ? Math.round((done / data.tasks.length) * 100) : 0}%.`}</div>
+      <div className="notice" style={{ marginBottom: 16 }}>{count.past ? 'Sınav tarihi geçti — Hedefim’den yeni tarih seç.' : `${examTitle(data)}’ye ${count.label}. ${elite.headline}. Görev tamamlanma ${data.tasks.length ? Math.round((done / data.tasks.length) * 100) : 0}%.`}</div>
+      <div className="card" style={{ marginBottom: 16 }}>
+        <div className="section-title"><h3>Sınav temposu</h3><span>{elite.phase}</span></div>
+        {elite.lines.map((ln) => <p key={ln.slice(0, 40)} style={{ color: 'var(--muted)', fontSize: 13, margin: '6px 0' }}>{ln}</p>)}
+      </div>
       <div style={{ marginBottom: 16 }}><ExamInsight /></div>
       <div className="grid two">
         <div className="card">
@@ -72,12 +80,17 @@ export function AnalyticsPage() {
       <div className="grid two" style={{ marginTop: 16 }}>
         <div className="card">
           <div className="section-title"><h3>Zayıf konular</h3></div>
-          {weak.length ? weak.map((x) => (
+          {bankWeak.length ? bankWeak.map((x) => (
+            <div className="plan-item" key={x.key}>
+              <span>{x.topic}<br /><small style={{ color: 'var(--muted)' }}>{x.subject} • banka %{x.acc}</small></span>
+              <button className="btn secondary" type="button" onClick={() => { setBankJump({ level: x.levelName, subject: x.subject, topic: x.topic }); go('questionbank'); }}>Çöz</button>
+            </div>
+          )) : weak.length ? weak.map((x) => (
             <div className="topic-row" key={x.id}>
               <div className="topic-head"><b>{x.name}</b><span>{x.level}%</span></div>
               <div className="progress"><i style={{ width: `${x.level}%` }} /></div>
             </div>
-          )) : <div className="empty">Konu takibi boş.</div>}
+          )) : <div className="empty">Konu takibi ve banka çözümü boş.</div>}
         </div>
         <div className="card">
           <div className="section-title"><h3>Ders süreleri</h3></div>

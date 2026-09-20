@@ -30,6 +30,12 @@ export function CalculatorPage() {
   const [rows, setRows] = useState<CalcSubject[]>(() => CALC_CONFIG[kpss ? 'GY' : 'TYT'].map((s) => emptyRow(s.key, s.max)));
   const [autoBlank, setAutoBlank] = useState(true);
 
+  const weakRow = useMemo(() => {
+    const scored = rows.filter((r) => r.correct + r.wrong > 0);
+    if (!scored.length) return null;
+    return scored.slice().sort((a, b) => a.net - b.net)[0];
+  }, [rows]);
+
   const totals = useMemo(() => {
     const correct = rows.reduce((a, r) => a + r.correct, 0);
     const wrong = rows.reduce((a, r) => a + r.wrong, 0);
@@ -102,6 +108,7 @@ export function CalculatorPage() {
           <div className="eyebrow">Canlı net • 4 yanlış = 1 doğru</div>
           <div className="calc-big">{totals.net.toFixed(2)}</div>
           <small>{totals.correct}D • {totals.wrong}Y • {totals.blank}B</small>
+          {weakRow ? <div style={{ marginTop: 8, fontSize: 13 }}>En düşük ders <b>{weakRow.subject}</b> ({weakRow.net.toFixed(2)} net) — zamanlı 20 soru.</div> : null}
         </div>
         <div className="chip-row">
           {(kpss ? (['GY', 'GK'] as const) : (['TYT', 'AYT'] as const)).map((t) => (

@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { Layout } from './components/Layout';
 import { CoachChat } from './components/CoachChat';
 import { CommandPalette } from './components/CommandPalette';
 import { HomePage } from './pages/HomePage';
 import { QuestionBankPage } from './pages/QuestionBankPage';
+import { CoachesPage } from './pages/CoachesPage';
 import { GoalPage } from './pages/GoalPage';
 import { SchedulePage } from './pages/SchedulePage';
 import { TasksPage } from './pages/TasksPage';
@@ -19,6 +21,7 @@ import { AnalyticsPage } from './pages/AnalyticsPage';
 import { MembershipPage } from './pages/MembershipPage';
 import { AccountPage } from './pages/AccountPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { AdminGate, AdminPage } from './pages/AdminPage';
 import { today, uid } from './lib/util';
 import { STUDY_SUBJECTS } from './lib/insights';
 
@@ -31,7 +34,7 @@ export default function App() {
 }
 
 function Shell() {
-  const { page, setMenuOpen, menuOpen } = useApp();
+  const { page, setMenuOpen, menuOpen, isAdmin } = useApp();
   const [taskOpen, setTaskOpen] = useState(false);
   const [cmd, setCmd] = useState(false);
 
@@ -60,8 +63,10 @@ function Shell() {
 
   return (
     <Layout>
+      <ErrorBoundary key={page}>
       {page === 'home' && <HomePage onNewTask={() => setTaskOpen(true)} />}
       {page === 'questionbank' && <QuestionBankPage />}
+      {page === 'coaches' && <CoachesPage />}
       {page === 'goal' && <GoalPage />}
       {page === 'schedule' && <SchedulePage />}
       {page === 'tasks' && <TasksPage onNewTask={() => setTaskOpen(true)} />}
@@ -76,6 +81,8 @@ function Shell() {
       {page === 'membership' && <MembershipPage />}
       {page === 'account' && <AccountPage />}
       {page === 'settings' && <SettingsPage />}
+      {page === 'admin' && (isAdmin ? <AdminPage /> : <AdminGate />)}
+      </ErrorBoundary>
       {taskOpen && <TaskModal onClose={() => setTaskOpen(false)} />}
       <CommandPalette open={cmd} onClose={() => setCmd(false)} />
       <CoachChat />
