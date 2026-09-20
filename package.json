@@ -1,0 +1,27 @@
+{
+  "name": "yks-kocluk",
+  "private": true,
+  "version": "2.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "extract-bank": "node scripts/extract-bank.mjs",
+    "deploy:ai": "npx supabase functions deploy student-ai --no-verify-jwt",
+    "deploy:web": "npx vercel --prod --yes"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.57.4",
+    "pdfjs-dist": "^6.3.289",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.13",
+    "@types/react-dom": "^19.1.9",
+    "@vitejs/plugin-react": "^5.0.2",
+    "typescript": "~5.9.2",
+    "vite": "^7.1.5"
+  }
+}

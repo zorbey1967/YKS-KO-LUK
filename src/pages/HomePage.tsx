@@ -1,0 +1,100 @@
+import { useMemo } from 'react';
+import { useApp } from '../context/AppContext';
+import { coachAdvice } from '../lib/coach';
+import { blocksToTasks, examCountdown, studyStreak, todaySchedule, weekMinutes } from '../lib/insights';
+import { ExamInsight } from '../components/ExamInsight';
+import { TaskRows } from '../components/TaskRows';
+import { examTitle } from '../lib/stage';
+import { today } from '../lib/util';
+
+export function HomePage({ onNewTask }: { onNewTask: () => void }) {
+  const { data, setData, go, profile, toast, user } = useApp();
+  const name = profile?.name || 'Öğrenci';
+  const td = today();
+  const todayTasks = data.tasks.filter((t) => t.date === td);
+  const done = todayTasks.filter((t) => t.done).length;
+  const sessions = data.sessions.filter((x) => x.date === td);
+  const mins = sessions.reduce((a, x) => a + x.minutes, 0);
+  const streak = studyStreak(data);
+  const weekMins = weekMinutes(data);
+  const pct = Math.min(100, Math.round((weekMins / ((data.weekHours || 10) * 60)) * 100));
+  const exams = data.exams.slice().sort((a, b) => b.date.localeCompare(a.date)).slice(0, 4);
+  const lastCalc = data.calcs[0];
+  const day = todaySchedule(data);
+  const count = examCountdown(data.examDate);
+  const coach = useMemo(() => coachAdvice(data), [data]);
+
+  return (
+    <>
+      <div className="hero">
+        <div className="eyebrow" style={{ color: '#cfe1ff' }}>Kişisel çalışma merkezi</div>
+        <h2>Hoş geldin, {name} 👋</h2>
+        <p>{user ? 'Giriş yaptın — bu panel yalnızca senin verin.' : 'Tek site, her öğrenci kendi hesabıyla girer. Kayıt olunca panelin sende kalır.'}</p>
+        <p>{data.grade} • {data.age} yaş • {data.dept} • {data.track} • hedef sıralama {Number(data.rank).toLocaleString('tr-TR')}</p>
+        <div className="countdown-pill">{count.past ? 'Sınav tarihi geçti' : `${examTitle(data)}’ye ${count.label}`} • {data.examDate}</div>
+        <div className="hero-actions">
+          <button className="btn" type="button" onClick={() => go('goal')}>🎯 Hedefi / yaşı değiştir</button>
+          <button className="btn" type="button" onClick={() => go('plan')}>🤖 Akıllı Plan</button>
+          <button className="btn" type="button" onClick={() => go('schedule')}>🗓️ Ders Programım</button>
+          <button className="btn" type="button" onClick={onNewTask}>＋ Görev Ekle</button>
+          <button className="btn" type="button" onClick={() => go('timer')}>⏱ Çalışmaya Başla</button>
+        </div>
+      </div>
+      {!user ? (
+        <div className="notice" style={{ marginTop: 16 }}>
+          Öğrenciler ayrı site kurmaz. <b>Hesabım</b>’dan kayıt / giriş yap; görev, net ve koç senin hesabına yazılır.
+          <button className="btn primary" type="button" style={{ marginLeft: 8 }} onClick={() => go('account')}>Kayıt / giriş</button>
+        </div>
+      ) : (
+        <div className="success" style={{ marginTop: 16 }}>
+          E-Koç girişinle sunucuda çalışır. Model anahtarı tarayıcıda tutulmaz.
+        </div>
+      )}
+      <div className="grid stats">
+        <div className="card stat"><div className="label">🎯 HEDEF SIRALAMA</div><div className="value">{Number(data.rank).toLocaleString('tr-TR')}</div><div className="sub">{data.track} • {data.dept}</div></div>
+        <div className="card stat"><div className="label">📚 BUGÜN</div><div className="value">{mins} dk</div><div className="sub">{sessions.length} oturum</div></div>
+        <div className="card stat"><div className="label">✅ GÖREV</div><div className="value">{todayTasks.length ? Math.round((done / todayTasks.length) * 100) : 0}%</div><div className="sub">{done} / {todayTasks.length} bugün</div></div>
+        <div className="card stat"><div className="label">🔥 SERİ</div><div className="value">{streak} gün</div><div className="sub">Çalışma serin</div></div>
+      </div>
+      <div className="grid cols">
+        <div className="card">
+          <div className="section-title"><h3>Bugünün görevleri</h3><button className="btn secondary" type="button" onClick={onNewTask}>＋ Ekle</button></div>
+          <TaskRows tasks={todayTasks.slice(0, 8)} />
+        </div>
+        <div className="card">
+          <div className="section-title"><h3>Hedef durumu</h3><span>Bu hafta</span></div>
+          <div className="kpi"><div><span style={{ color: 'var(--muted)', fontSize: 12 }}>Haftalık hedef</span><br /><b>{data.weekHours}s</b></div><span className="chip">{pct}%</span></div>
+          <div className="progress"><i style={{ width: `${pct}%` }} /></div>
+          <div className="success" style={{ marginTop: 14 }}>{coach.msg}</div>
+        </div>
+      </div>
+      <div className="grid two" style={{ marginTop: 16 }}>
+        <div className="card">
+          <div className="section-title">
+            <h3>🗓️ Bugünün programı</h3>
+            {day?.blocks.length ? (
+              <button className="btn secondary" type="button" onClick={() => {
+                const exist = new Set(todayTasks.map((t) => t.title));
+                const extra = blocksToTasks(day).filter((t) => !exist.has(t.title));
+                if (!extra.length) return toast('Bugünün blokları zaten görevlerde.');
+                setData({ ...data, tasks: [...extra, ...data.tasks] });
+                toast(`${extra.length} blok göreve alındı`);
+              }}>Görevlere aktar</button>
+            ) : <button className="btn secondary" type="button" onClick={() => go('schedule')}>Üret</button>}
+          </div>
+          {day?.blocks.length ? day.blocks.map((b, i) => (
+            <div className="plan-item" key={`${b.title}-${i}`}><span>{b.icon} {b.title}</span><b>{b.minutes} dk</b></div>
+          )) : <div className="empty">Haftalık program yok. Ders Programım’dan üret.</div>}
+        </div>
+        <div className="card">
+          <div className="section-title"><h3>📈 Son performans</h3></div>
+          {lastCalc ? <div className="plan-item"><span>Son net • {lastCalc.type}</span><b>{Number(lastCalc.net).toFixed(2)}</b></div> : null}
+          {exams.length ? exams.map((x) => (
+            <div className="plan-item" key={x.id}><span>{x.name}</span><b>{x.tyt} TYT</b></div>
+          )) : !lastCalc ? <div className="empty">Henüz deneme kaydı yok.</div> : null}
+        </div>
+      </div>
+      <div style={{ marginTop: 16 }}><ExamInsight /></div>
+    </>
+  );
+}
