@@ -8,7 +8,7 @@ import { displayAge, displayRank, displayText } from '../lib/types';
 export function GoalPage() {
   const { data } = useApp();
   const weekMins = data.sessions.reduce((a, x) => a + x.minutes, 0);
-  const bar = Math.min(100, Math.round((weekMins / Math.max(1, data.weekHours * 60 * 4)) * 100) || 8);
+  const bar = Math.min(100, Math.round((weekMins / Math.max(1, (data.weekHours || 0) * 60 * 4)) * 100) || 0);
   const count = examCountdown(data.examDate);
 
   return (

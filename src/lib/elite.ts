@@ -13,8 +13,8 @@ export function eliteReport(data: AppData) {
   const aytDelta = ayt.length >= 2 ? ayt[ayt.length - 1] - ayt[0] : 0;
   const lastTyt = tyt.length ? tyt[tyt.length - 1] : undefined;
   const lastAyt = ayt.length ? ayt[ayt.length - 1] : undefined;
-  const weekTarget = Math.max(60, (data.weekHours || 10) * 60);
-  const dailyMin = Math.round(weekTarget / 7);
+  const weekTarget = Math.max(0, (data.weekHours || 0) * 60);
+  const dailyMin = weekTarget > 0 ? Math.round(weekTarget / 7) : 40;
   const stats = Object.values(data.questionStats);
   const attempts = stats.reduce((a, s) => a + s.attempts, 0);
   const correct = stats.reduce((a, s) => a + s.correct, 0);
@@ -25,8 +25,9 @@ export function eliteReport(data: AppData) {
     : '';
   const week = weekMinutes(data);
 
-  let phase = 'Okul mastery';
-  if (kind === 'YKS') {
+  const unset = !data.grade && !data.track;
+  let phase = unset ? 'Başlangıç' : 'Okul mastery';
+  if (!unset && kind === 'YKS') {
     if (lastTyt === undefined) phase = 'TYT tabanı';
     else if (lastTyt < 70) phase = 'TYT tabanı';
     else if ((lastAyt ?? 0) < 35) phase = 'AYT ivme';
@@ -40,7 +41,9 @@ export function eliteReport(data: AppData) {
     : kind === 'KPSS' ? 45 : 25;
 
   const lines: string[] = [];
-  if (kind === 'YKS') {
+  if (unset) {
+    lines.push('Yaş, sınıf, alan ve hedef otomatik doldurulmaz. Hedefim sayfasından kaydet.');
+  } else if (kind === 'YKS') {
     lines.push(`${phase}: her yanlışta etiket (bilgi / işlem / süre / dikkatsizlik), ertesi gün aynı türden 5 soru.`);
     if (weakLesson) lines.push(`Son nette en düşük ders ${weakLesson} — bugün süre tutarak 20 soru.`);
     if (acc && acc < 65) lines.push(`Banka doğruluk %${acc}. Yeni konu açmadan yanlış kuyruğunu bitir.`);
@@ -55,11 +58,13 @@ export function eliteReport(data: AppData) {
   if (!count.past && count.days > 0 && count.days < 40) {
     lines.push(`${count.days} gün kaldı: deneme haftada en az 1, analiz deneme kadar uzun.`);
   }
-  if (week < weekTarget * 0.5) {
+  if (weekTarget > 0 && week < weekTarget * 0.5) {
     lines.push(`Haftalık süre hedefin yarısının altında (${Math.round(week / 60)} / ${data.weekHours}s).`);
   }
 
-  const headline = kind === 'YKS'
+  const headline = unset
+    ? 'Önce yaş, sınıf ve hedefi kaydet'
+    : kind === 'YKS'
     ? `${phase} • günde ~${dailyQ} soru / ${dailyMin} dk`
     : `${phase} • ~${dailyMin} dk bugün`;
 

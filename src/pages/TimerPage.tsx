@@ -123,7 +123,14 @@ export function TimerPage() {
         <p style={{ fontSize: 12, color: 'var(--muted)' }}>Günlük tempo ~{elite.dailyMin} dk. Süre duvar saatine göre işler.</p>
         <button className="btn secondary" type="button" style={{ marginBottom: 12 }} onClick={() => {
           const sub = subject === 'Odak' || subject === 'Deneme' ? 'Matematik' : subject;
-          setBankJump({ level: data.grade.includes('KPSS') ? 'KPSS Genel Yetenek' : (data.grade.includes('Mezun') || data.grade.startsWith('11') || data.grade.startsWith('12') ? 'YKS TYT' : data.grade), subject: sub === 'Edebiyat' ? 'Türk Dili ve Edebiyatı' : sub });
+          setBankJump({
+            level: data.grade.includes('KPSS')
+              ? 'KPSS Genel Yetenek'
+              : (data.grade.includes('Mezun') || data.grade.startsWith('11') || data.grade.startsWith('12') || !data.grade
+                ? 'YKS TYT'
+                : data.grade),
+            subject: sub === 'Edebiyat' ? 'Türk Dili ve Edebiyatı' : sub,
+          });
           go('questionbank');
         }}>Bu dersten soru çöz</button>
         {todayS.length ? todayS.map((s) => (

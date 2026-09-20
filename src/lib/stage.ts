@@ -9,10 +9,13 @@ export const GRADES = [
 
 export function gradeNumber(grade: string) {
   const m = grade.match(/^(\d+)/);
-  return m ? Number(m[1]) : grade.includes('KPSS') ? 20 : 13;
+  if (m) return Number(m[1]);
+  if (!grade) return 0;
+  return grade.includes('KPSS') ? 20 : 13;
 }
 
 export function typicalAge(grade: string) {
+  if (!grade) return 0;
   const n = gradeNumber(grade);
   if (n <= 12) return 5 + n;
   if (grade.includes('KPSS')) return 24;
@@ -21,6 +24,10 @@ export function typicalAge(grade: string) {
 
 export function examKind(data: AppData): 'YKS' | 'KPSS' | 'Okul' {
   if (data.track === 'KPSS' || data.grade === 'KPSS Adayı') return 'KPSS';
+  if (!data.grade) {
+    if (data.track === 'Sayısal' || data.track === 'Sözel' || data.track === 'Eşit Ağırlık' || data.track === 'TYT') return 'YKS';
+    return 'Okul';
+  }
   const n = gradeNumber(data.grade);
   if (data.grade.includes('Mezun') || n === 11 || n === 12) return 'YKS';
   return 'Okul';

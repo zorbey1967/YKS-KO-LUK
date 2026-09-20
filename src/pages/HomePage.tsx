@@ -21,7 +21,7 @@ export function HomePage({ onNewTask }: { onNewTask: () => void }) {
   const mins = sessions.reduce((a, x) => a + x.minutes, 0);
   const streak = studyStreak(data);
   const weekMins = weekMinutes(data);
-  const pct = Math.min(100, Math.round((weekMins / ((data.weekHours || 10) * 60)) * 100));
+  const pct = Math.min(100, Math.round((weekMins / Math.max(1, (data.weekHours || 0) * 60)) * 100));
   const exams = data.exams.slice().sort((a, b) => b.date.localeCompare(a.date)).slice(0, 4);
   const lastCalc = data.calcs[0];
   const day = todaySchedule(data);

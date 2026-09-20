@@ -173,7 +173,7 @@ export function displayRank(rank: number) {
 export const emptyData = (): AppData => ({
   dept: '',
   rank: 0,
-  weekHours: 10,
+  weekHours: 0,
   track: '',
   grade: '',
   age: 0,

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { COACH_CHIPS, coachSnapshot, type CoachSnap } from '../lib/coach';
+import { COACH_CHIPS, coachSnapshot } from '../lib/coach';
 import { askCoach, type CoachSource } from '../lib/coachAi';
 import { today, uid } from '../lib/util';
 import { displayAge, displayText } from '../lib/types';
@@ -88,7 +88,7 @@ export function CoachChat() {
     toast(`${lastPlan.length} blok göreve alındı`);
   }
 
-  const chips = COACH_CHIPS[snap.kind as CoachSnap['kind']];
+  const chips = COACH_CHIPS[snap.kind] || COACH_CHIPS.Okul;
 
   return (
     <>

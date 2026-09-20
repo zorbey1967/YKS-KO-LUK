@@ -241,7 +241,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     window.addEventListener('hashchange', onHash);
     void refreshAuth();
     if (!supabase) return;
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'TOKEN_REFRESHED') return;
       const u = session?.user || null;
       setUser(u);
       if (!u) {

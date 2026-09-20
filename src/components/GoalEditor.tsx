@@ -116,7 +116,19 @@ export function GoalEditor({ compact }: { compact?: boolean }) {
             }}
           />
         </div>
-        <div className="field"><label>Haftalık hedef (saat)</label><input type="number" min={1} value={draft.weekHours} onChange={(e) => patch({ weekHours: Number(e.target.value) || 1 })} /></div>
+        <div className="field">
+          <label>Haftalık hedef (saat)</label>
+          <input
+            type="number"
+            min={1}
+            value={draft.weekHours > 0 ? draft.weekHours : ''}
+            placeholder="Belirtilmedi"
+            onChange={(e) => {
+              const raw = e.target.value;
+              patch({ weekHours: raw === '' ? 0 : Number(e.target.value) || 0 });
+            }}
+          />
+        </div>
         <div className="field"><label>Sınav tarihi</label><input type="date" value={draft.examDate} onChange={(e) => patch({ examDate: e.target.value })} /></div>
       </div>
       <div className="actions">

@@ -35,7 +35,7 @@ export function applyGoal(data: AppData, draft: GoalDraft): AppData {
     track,
     dept: draft.dept.trim(),
     rank: Number.isFinite(draft.rank) ? Math.max(0, Math.round(draft.rank)) : 0,
-    weekHours: Number.isFinite(draft.weekHours) ? Math.max(1, draft.weekHours) : data.weekHours,
+    weekHours: Number.isFinite(draft.weekHours) && draft.weekHours > 0 ? Math.max(1, draft.weekHours) : 0,
     examDate: draft.examDate || '',
   };
 }

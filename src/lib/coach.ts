@@ -233,7 +233,7 @@ export function coachAdvice(data: AppData) {
   else if (e.weakLesson) msg = `${e.phase}. En düşük net: ${e.weakLesson}. Zamanlı 20 soru + 15 dk analiz.`;
   else if (s.weak[0]) msg = `${e.phase}. Öncelik ${s.weak[0]}.`;
   else if (s.lastExam) msg = `${e.headline}. Son deneme ${s.lastExam} — yanlışları 4 etikete ayır.`;
-  else if (!s.past) msg = `${s.exam}’ye ${s.countdown}. ${e.headline}.`;
+  else if (data.examDate && !s.past) msg = `${s.exam}’ye ${s.countdown}. ${e.headline}.`;
   return { msg, open: s.open, study: s.todayStudy, weak: s.weak[0], solved: s.solved, acc: s.acc, phase: e.phase, headline: e.headline };
 }
 
