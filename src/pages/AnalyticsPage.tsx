@@ -1,6 +1,6 @@
 import { useApp } from '../context/AppContext';
 import { eliteReport } from '../lib/elite';
-import { examCountdown, weekMinutes } from '../lib/insights';
+import { examCountdown, weekGoalPct, weekMinutes } from '../lib/insights';
 import { setBankJump, weakBankTopics } from '../lib/practice';
 import { ExamInsight } from '../components/ExamInsight';
 import { examKind, examTitle } from '../lib/stage';
@@ -28,7 +28,8 @@ export function AnalyticsPage() {
   const bySub: Record<string, number> = {};
   data.sessions.forEach((s) => { bySub[s.subject] = (bySub[s.subject] || 0) + s.minutes; });
   const week = weekMinutes(data);
-  const weekPct = Math.min(100, Math.round((week / Math.max(1, data.weekHours * 60)) * 100));
+  const weekGoal = weekGoalPct(data);
+  const weekPct = weekGoal.pct;
   const kind = examKind(data);
   const n1 = kind === 'KPSS' ? 'GY' : kind === 'YKS' ? 'TYT' : 'Deneme-1';
   const n2 = kind === 'KPSS' ? 'GK' : kind === 'YKS' ? 'AYT' : 'Deneme-2';
@@ -43,9 +44,9 @@ export function AnalyticsPage() {
         <div className="card stat"><div className="label">TOPLAM ÇALIŞMA</div><div className="value">{(total / 60).toFixed(1)}s</div><div className="sub">Kayıtlı oturumlar</div></div>
         <div className="card stat"><div className="label">ORT. {n1} / {n2}</div><div className="value">{avgTyt.toFixed(1)} / {avgAyt.toFixed(1)}</div><div className="sub">{data.exams.length} deneme</div></div>
         <div className="card stat"><div className="label">SORU</div><div className="value">{qs + bankSolved}</div><div className="sub">Banka doğruluk %{acc}</div></div>
-        <div className="card stat"><div className="label">HAFTA</div><div className="value">{weekPct}%</div><div className="sub">{(week / 60).toFixed(1)} / {data.weekHours}s</div></div>
+        <div className="card stat"><div className="label">HAFTA</div><div className="value">{weekPct}%</div><div className="sub">{(week / 60).toFixed(1)} / {weekGoal.hoursLabel}</div></div>
       </div>
-      <div className="notice" style={{ marginBottom: 16 }}>{count.past ? 'Sınav tarihi geçti — Hedefim’den yeni tarih seç.' : `${examTitle(data)}’ye ${count.label}. ${elite.headline}. Görev tamamlanma ${data.tasks.length ? Math.round((done / data.tasks.length) * 100) : 0}%.`}</div>
+      <div className="notice" style={{ marginBottom: 16 }}>{!data.examDate ? `Sınav tarihi belirtilmedi. ${elite.headline}.` : count.past ? 'Sınav tarihi geçti — Hedefim’den yeni tarih seç.' : `${examTitle(data)}’ye ${count.label}. ${elite.headline}. Görev tamamlanma ${data.tasks.length ? Math.round((done / data.tasks.length) * 100) : 0}%.`}</div>
       <div className="card" style={{ marginBottom: 16 }}>
         <div className="section-title"><h3>Sınav temposu</h3><span>{elite.phase}</span></div>
         {elite.lines.map((ln) => <p key={ln.slice(0, 40)} style={{ color: 'var(--muted)', fontSize: 13, margin: '6px 0' }}>{ln}</p>)}

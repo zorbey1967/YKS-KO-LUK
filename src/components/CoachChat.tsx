@@ -3,7 +3,7 @@ import { useApp } from '../context/AppContext';
 import { COACH_CHIPS, coachSnapshot } from '../lib/coach';
 import { askCoach, type CoachSource } from '../lib/coachAi';
 import { today, uid } from '../lib/util';
-import { displayAge, displayText } from '../lib/types';
+import { displayAge, displayText, emptyData } from '../lib/types';
 
 type Msg = { who: 'user' | 'bot'; text: string; source?: CoachSource; model?: string };
 
@@ -19,6 +19,16 @@ function loadMsgs(userId?: string): Msg[] {
   return [];
 }
 
+function welcomeMsg(loggedIn: boolean, firstName: string, snap: ReturnType<typeof coachSnapshot>): Msg {
+  return {
+    who: 'bot',
+    source: 'local',
+    text: loggedIn
+      ? `Selam${firstName ? ` ${firstName}` : ''}. Gerçek koç sunucuda. ${displayText(snap.grade)}, ${displayAge(snap.age)}, ${displayText(snap.dept)}. Ne çalışalım?`
+      : `Selam${firstName ? ` ${firstName}` : ''}. Giriş yoksa yerel koç yazar. Gerçek model için Hesabım’dan giriş yap.`,
+  };
+}
+
 export function CoachChat() {
   const { data, setData, toast, profile, go, user } = useApp();
   const snap = coachSnapshot(data);
@@ -26,16 +36,11 @@ export function CoachChat() {
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [lastPlan, setLastPlan] = useState<{ text: string; minutes: number; icon: string }[] | undefined>();
+  const skipSave = useRef(true);
   const [msgs, setMsgs] = useState<Msg[]>(() => {
-    const saved = loadMsgs(user?.id);
+    const saved = loadMsgs(undefined);
     if (saved.length) return saved;
-    return [{
-      who: 'bot',
-      source: user ? 'ai' : 'local',
-      text: user
-        ? `Selam${profile?.name ? ` ${profile.name.split(' ')[0]}` : ''}. Gerçek koç sunucuda. ${displayText(snap.grade)}, ${displayAge(snap.age)}, ${displayText(snap.dept)}. Ne çalışalım?`
-        : `Selam${profile?.name ? ` ${profile.name.split(' ')[0]}` : ''}. Giriş yoksa yerel koç yazar. Gerçek model için Hesabım’dan giriş yap.`,
-    }];
+    return [welcomeMsg(false, '', coachSnapshot(emptyData()))];
   });
   const box = useRef<HTMLDivElement>(null);
 
@@ -46,6 +51,17 @@ export function CoachChat() {
   }, []);
 
   useEffect(() => {
+    const saved = loadMsgs(user?.id);
+    const first = profile?.name ? profile.name.split(' ')[0] : '';
+    setMsgs(saved.length ? saved : [welcomeMsg(Boolean(user), first, coachSnapshot(data))]);
+    skipSave.current = true;
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (skipSave.current) {
+      skipSave.current = false;
+      return;
+    }
     try { localStorage.setItem(chatKey(user?.id), JSON.stringify(msgs.slice(-40))); } catch { /* ignore */ }
     box.current?.scrollTo({ top: box.current.scrollHeight, behavior: 'smooth' });
   }, [msgs, busy, user?.id]);

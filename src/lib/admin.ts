@@ -1,6 +1,5 @@
 import type { User } from '@supabase/supabase-js';
 import {
-  DEMO_COACHES,
   loadAllDesks,
   loadCoachAccounts,
   loadCoachDesk,
@@ -129,7 +128,7 @@ export function addFinance(entry: Omit<FinanceEntry, 'id'>): FinanceEntry {
 
 export function allAppointments(): (CoachAppointment & { coachName: string })[] {
   const accounts = loadCoachAccounts();
-  const nameOf = (id: string) => accounts.find((a) => a.id === id)?.name || DEMO_COACHES.find((d) => d.id === id)?.name || id;
+  const nameOf = (id: string) => accounts.find((a) => a.id === id)?.name || id;
   const desks = loadAllDesks();
   const rows: (CoachAppointment & { coachName: string })[] = [];
   for (const [coachId, desk] of Object.entries(desks)) {
@@ -176,9 +175,9 @@ export function adminSnapshot(current?: { name: string; email: string; plan: str
     finance,
     settings,
     links,
-    demoCoaches: DEMO_COACHES.length,
+    demoCoaches: 0,
     studentCount: coachStudents + (current?.email ? 1 : 0),
-    coachCount: coaches.length + DEMO_COACHES.length,
+    coachCount: coaches.length,
     activeCoaches: coaches.filter((a) => a.status === 'active').length,
     pendingCoaches: coaches.filter((a) => a.status === 'pending').length,
     pendingAppts: appts.filter((a) => a.status === 'bekliyor').length,

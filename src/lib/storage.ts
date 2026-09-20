@@ -39,6 +39,12 @@ export function normalizeData(raw: unknown): AppData {
   return d;
 }
 
+export function dataLooksEmpty(d: AppData) {
+  return !d.dept && !d.grade && !d.track && !d.examDate && d.age <= 0 && d.weekHours <= 0
+    && d.tasks.length === 0 && d.sessions.length === 0 && d.exams.length === 0 && d.topics.length === 0
+    && d.questions.length === 0;
+}
+
 export function loadData(userId?: string | null): AppData {
   try {
     const raw = localStorage.getItem(storageKey(userId));

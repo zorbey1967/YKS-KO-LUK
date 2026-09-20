@@ -122,11 +122,15 @@ export function TimerPage() {
         <div className="progress"><i style={{ width: `${Math.min(100, (mins / Math.max(40, elite.dailyMin)) * 100)}%` }} /></div>
         <p style={{ fontSize: 12, color: 'var(--muted)' }}>Günlük tempo ~{elite.dailyMin} dk. Süre duvar saatine göre işler.</p>
         <button className="btn secondary" type="button" style={{ marginBottom: 12 }} onClick={() => {
+          if (!data.grade) {
+            go('questionbank');
+            return;
+          }
           const sub = subject === 'Odak' || subject === 'Deneme' ? 'Matematik' : subject;
           setBankJump({
             level: data.grade.includes('KPSS')
               ? 'KPSS Genel Yetenek'
-              : (data.grade.includes('Mezun') || data.grade.startsWith('11') || data.grade.startsWith('12') || !data.grade
+              : (data.grade.includes('Mezun') || data.grade.startsWith('11') || data.grade.startsWith('12')
                 ? 'YKS TYT'
                 : data.grade),
             subject: sub === 'Edebiyat' ? 'Türk Dili ve Edebiyatı' : sub,

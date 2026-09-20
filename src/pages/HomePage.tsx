@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { coachAdvice } from '../lib/coach';
 import { eliteReport } from '../lib/elite';
-import { blocksToTasks, examCountdown, studyStreak, todaySchedule, weekMinutes } from '../lib/insights';
+import { blocksToTasks, examCountdown, studyStreak, todaySchedule, weekGoalPct } from '../lib/insights';
 import { lastBankTopic, setBankJump, weakBankTopics } from '../lib/practice';
 import { ExamInsight } from '../components/ExamInsight';
 import { TaskRows } from '../components/TaskRows';
@@ -20,8 +20,8 @@ export function HomePage({ onNewTask }: { onNewTask: () => void }) {
   const sessions = data.sessions.filter((x) => x.date === td);
   const mins = sessions.reduce((a, x) => a + x.minutes, 0);
   const streak = studyStreak(data);
-  const weekMins = weekMinutes(data);
-  const pct = Math.min(100, Math.round((weekMins / Math.max(1, (data.weekHours || 0) * 60)) * 100));
+  const weekGoal = weekGoalPct(data);
+  const pct = weekGoal.pct;
   const exams = data.exams.slice().sort((a, b) => b.date.localeCompare(a.date)).slice(0, 4);
   const lastCalc = data.calcs[0];
   const day = todaySchedule(data);
@@ -104,7 +104,7 @@ export function HomePage({ onNewTask }: { onNewTask: () => void }) {
         </div>
         <div className="card">
           <div className="section-title"><h3>Hedef durumu</h3><span>Bu hafta</span></div>
-          <div className="kpi"><div><span style={{ color: 'var(--muted)', fontSize: 12 }}>Haftalık hedef</span><br /><b>{data.weekHours}s</b></div><span className="chip">{pct}%</span></div>
+          <div className="kpi"><div><span style={{ color: 'var(--muted)', fontSize: 12 }}>Haftalık hedef</span><br /><b>{weekGoal.hoursLabel}</b></div><span className="chip">{pct}%</span></div>
           <div className="progress"><i style={{ width: `${pct}%` }} /></div>
           <div className="chip" style={{ marginTop: 12 }}>{elite.dailyQ} soru / {elite.dailyMin} dk hedef</div>
         </div>

@@ -91,8 +91,8 @@ export function coachContext(data: AppData) {
   const s = coachSnapshot(data);
   return [
     `Öğrenci: ${s.grade || 'belirtilmedi'}, ${s.age > 0 ? `${s.age} yaş` : 'yaş belirtilmedi'}, alan ${s.track || 'belirtilmedi'}, hedef ${s.dept || 'belirtilmedi'} (sıra ${s.rank > 0 ? s.rank : 'belirtilmedi'}).`,
-    `Sınav: ${s.exam} • ${s.past ? `tarih geçti (${s.countdown})` : `${s.countdown} kaldı`} • ${data.examDate}.`,
-    `Bugün ${s.todayStudy} dk, ${s.open} açık görev${s.openTitle ? ` (ilk: ${s.openTitle})` : ''}, seri ${s.streak} gün, hafta ${s.weekMins} dk / hedef ${s.weekHours}s.`,
+    `Sınav: ${s.exam} • ${!data.examDate ? 'tarih belirtilmedi' : s.past ? `tarih geçti (${s.countdown})` : `${s.countdown} kaldı`}${data.examDate ? ` • ${data.examDate}` : ''}.`,
+    `Bugün ${s.todayStudy} dk, ${s.open} açık görev${s.openTitle ? ` (ilk: ${s.openTitle})` : ''}, seri ${s.streak} gün, hafta ${s.weekMins} dk / hedef ${s.weekHours > 0 ? `${s.weekHours}s` : 'belirtilmedi'}.`,
     s.weak.length ? `Zayıf konular: ${s.weak.join(', ')}.` : 'Konu seviyesi kaydı az.',
     s.lastExam ? `Son deneme: ${s.lastExam}.` : '',
     s.lastNet ? `Son net: ${s.lastNet}.` : '',
@@ -243,7 +243,7 @@ export function chatReply(q: string, data: AppData): { text: string; plan?: Plan
   const unit = blockLen(s.age);
 
   if (/\b(selam|merhaba|hey|sa\b)/.test(t)) {
-    return { text: `Selam. ${s.grade || 'sınıf belirtilmedi'}, ${s.age > 0 ? `${s.age} yaş` : 'yaş belirtilmedi'}, hedef ${s.dept || 'belirtilmedi'}. ${s.exam}’ye ${s.past ? 'tarih geçmiş' : s.countdown}. Ne çalışmak istiyorsun?` };
+    return { text: `Selam. ${s.grade || 'sınıf belirtilmedi'}, ${s.age > 0 ? `${s.age} yaş` : 'yaş belirtilmedi'}, hedef ${s.dept || 'belirtilmedi'}. ${s.exam}’ye ${!data.examDate ? 'tarih belirtilmedi' : s.past ? 'tarih geçmiş' : s.countdown}. Ne çalışmak istiyorsun?` };
   }
   if (t.includes('yoruld') || t.includes('motiv') || t.includes('çalışam') || t.includes('ertele')) {
     return { text: `${unit} dakikalık mini blok yeter: 2 dk hazırlık, ${unit - 7} dk tek konu, 5 dk kapanış. Telefonu başka odaya koy. Bitince 1 görevi işaretle — seri ${s.streak} gün.` };
@@ -258,7 +258,7 @@ export function chatReply(q: string, data: AppData): { text: string; plan?: Plan
   if (t.includes('performans') || t.includes('nasılım') || t.includes('istatistik')) {
     return {
       text: [
-        `Kayıt: ${s.solved} soru • doğruluk %${s.acc} • bugün ${s.todayStudy} dk • hafta ${s.weekMins} dk / ${s.weekHours}s • seri ${s.streak} gün • ${s.open} açık görev.`,
+        `Kayıt: ${s.solved} soru • doğruluk %${s.acc} • bugün ${s.todayStudy} dk • hafta ${s.weekMins} dk / ${s.weekHours > 0 ? `${s.weekHours}s` : 'hedef yok'} • seri ${s.streak} gün • ${s.open} açık görev.`,
         s.lastNet ? `Son net: ${s.lastNet}.` : 'Henüz net hesabı yok — Net Hesapla’ya gir.',
         s.lastExam ? `Son deneme: ${s.lastExam}.` : '',
       ].filter(Boolean).join('\n'),

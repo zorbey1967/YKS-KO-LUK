@@ -1,4 +1,4 @@
-import type { AppointmentStatus, CoachAccount, CoachAppointment, CoachDesk, CoachHomework, CoachPayment, CoachStatus, CoachStudent, CoachTrack, HumanCoach } from './coaches';
+import type { AppointmentStatus, CoachAccount, CoachAppointment, CoachDesk, CoachStatus, CoachStudent, CoachTrack, HumanCoach } from './coaches';
 import { COACH_TRACKS, emptyDesk } from './coaches';
 import { SUPABASE_UNAVAILABLE, publicCloudError, supabase, withTimeout } from './supabase';
 
@@ -59,7 +59,7 @@ function isMissingRelation(e: unknown) {
 }
 
 function asTrack(s: unknown): CoachTrack {
-  return COACH_TRACKS.includes(s as CoachTrack) ? (s as CoachTrack) : 'YKS Sayısal';
+  return COACH_TRACKS.includes(s as CoachTrack) ? (s as CoachTrack) : 'Okul';
 }
 
 function asStatus(s: unknown): CoachStatus {
@@ -168,37 +168,53 @@ export async function fetchMyCoach(userId: string): Promise<CloudCoach | null> {
   }
 }
 
+async function rowsFrom(table: string, coachId: string): Promise<Record<string, unknown>[]> {
+  if (!supabase) return [];
+  try {
+    const { data, error } = await withTimeout(supabase.from(table).select('*').eq('coach_id', coachId));
+    if (error) return [];
+    return (data || []) as Record<string, unknown>[];
+  } catch {
+    return [];
+  }
+}
+
+function mapStudents(rows: Record<string, unknown>[]): CoachStudent[] {
+  return rows.map((r) => ({
+    id: String(r.id),
+    name: String(r.student_name || r.name || ''),
+    grade: String(r.grade || ''),
+    note: String(r.note || ''),
+  }));
+}
+
 export async function fetchCoachDesk(coachId: string): Promise<CoachDesk | null> {
   if (!supabase || !isUuid(coachId)) return null;
-  try {
-    const [st, hw, pay, ap] = await Promise.all([
-      withTimeout(supabase.from('coach_students').select('*').eq('coach_id', coachId)),
-      withTimeout(supabase.from('coach_homeworks').select('*').eq('coach_id', coachId)),
-      withTimeout(supabase.from('coach_payments').select('*').eq('coach_id', coachId)),
-      withTimeout(supabase.from('appointments').select('*').eq('coach_id', coachId)),
-    ]);
-    if (st.error || hw.error || pay.error || ap.error) throw st.error || hw.error || pay.error || ap.error;
-    const students: CoachStudent[] = (st.data || []).map((r) => ({
-      id: String(r.id),
-      name: String(r.name || ''),
-      grade: String(r.grade || ''),
-      note: String(r.note || ''),
-    }));
-    const homeworks: CoachHomework[] = (hw.data || []).map((r) => ({
+  const [matches, legacyStudents, hw, pay, ap] = await Promise.all([
+    rowsFrom('coach_matches', coachId),
+    rowsFrom('coach_students', coachId),
+    rowsFrom('coach_homeworks', coachId),
+    rowsFrom('coach_payments', coachId),
+    rowsFrom('appointments', coachId),
+  ]);
+  const studentRows = matches.length ? matches : legacyStudents;
+  return {
+    students: mapStudents(studentRows),
+    homeworks: hw.map((r) => ({
       id: String(r.id),
       studentId: String(r.student_id || ''),
       title: String(r.title || ''),
       due: String(r.due || ''),
       done: Boolean(r.done),
-    }));
-    const payments: CoachPayment[] = (pay.data || []).map((r) => ({
+    })),
+    payments: pay.map((r) => ({
       id: String(r.id),
       studentId: String(r.student_id || ''),
       amount: Number(r.amount) || 0,
       date: String(r.date || ''),
       note: String(r.note || ''),
-    }));
-    const appointments: CoachAppointment[] = (ap.data || []).map((r) => ({
+    })),
+    appointments: ap.map((r) => ({
       id: String(r.id),
       coachId: String(r.coach_id),
       studentId: String(r.student_id || ''),
@@ -207,72 +223,27 @@ export async function fetchCoachDesk(coachId: string): Promise<CoachDesk | null>
       time: String(r.time || ''),
       minutes: Number(r.minutes) || 40,
       status: asAppt(r.status),
-    }));
-    return { students, homeworks, payments, appointments };
-  } catch {
-    return null;
-  }
+    })),
+  };
 }
 
 export async function pushCoachDesk(coachId: string, desk: CoachDesk): Promise<boolean> {
   if (!supabase || !isUuid(coachId)) return false;
   try {
-    await withTimeout(supabase.from('coach_students').delete().eq('coach_id', coachId));
-    await withTimeout(supabase.from('coach_homeworks').delete().eq('coach_id', coachId));
-    await withTimeout(supabase.from('coach_payments').delete().eq('coach_id', coachId));
-    await withTimeout(supabase.from('appointments').delete().eq('coach_id', coachId));
+    await withTimeout(supabase.from('coach_matches').delete().eq('coach_id', coachId));
     if (desk.students.length) {
-      const { error } = await supabase.from('coach_students').insert(
+      const { error } = await supabase.from('coach_matches').insert(
         desk.students.map((s) => ({
           id: s.id,
           coach_id: coachId,
-          name: s.name,
+          student_id: isUuid(s.id) ? s.id : null,
+          student_name: s.name,
           grade: s.grade,
           note: s.note,
+          status: 'active',
         })),
       );
-      if (error) throw error;
-    }
-    if (desk.homeworks.length) {
-      const { error } = await supabase.from('coach_homeworks').insert(
-        desk.homeworks.map((h) => ({
-          id: h.id,
-          coach_id: coachId,
-          student_id: h.studentId,
-          title: h.title,
-          due: h.due || null,
-          done: h.done,
-        })),
-      );
-      if (error) throw error;
-    }
-    if (desk.payments.length) {
-      const { error } = await supabase.from('coach_payments').insert(
-        desk.payments.map((p) => ({
-          id: p.id,
-          coach_id: coachId,
-          student_id: p.studentId,
-          amount: p.amount,
-          date: p.date,
-          note: p.note,
-        })),
-      );
-      if (error) throw error;
-    }
-    if (desk.appointments.length) {
-      const { error } = await supabase.from('appointments').insert(
-        desk.appointments.map((a) => ({
-          id: a.id,
-          coach_id: coachId,
-          student_id: isUuid(a.studentId) ? a.studentId : null,
-          student_name: a.studentName,
-          date: a.date,
-          time: a.time,
-          minutes: a.minutes,
-          status: a.status,
-        })),
-      );
-      if (error) throw error;
+      if (error && !isMissingRelation(error)) throw error;
     }
     return true;
   } catch {
@@ -281,13 +252,13 @@ export async function pushCoachDesk(coachId: string, desk: CoachDesk): Promise<b
 }
 
 export async function insertAppointment(appt: CoachAppointment, studentUserId?: string | null): Promise<boolean> {
-  if (!supabase || !isUuid(appt.coachId)) return false;
+  if (!supabase || !isUuid(appt.coachId) || !studentUserId || !isUuid(studentUserId)) return false;
   try {
     const { error } = await withTimeout(
       supabase.from('appointments').insert({
         id: appt.id,
         coach_id: appt.coachId,
-        student_id: studentUserId && isUuid(studentUserId) ? studentUserId : null,
+        student_id: studentUserId,
         student_name: appt.studentName,
         date: appt.date,
         time: appt.time,
@@ -344,7 +315,7 @@ export async function adminPatchCoach(id: string, patch: { name?: string; track?
 export async function adminSetAccountStatus(id: string, status: AccountStatus): Promise<boolean> {
   if (!supabase || !isUuid(id)) return false;
   try {
-    const { error } = await withTimeout(supabase.rpc('admin_set_account_status', { p_id: id, p_status: status }));
+    const { error } = await withTimeout(supabase.from('profiles').update({ account_status: status }).eq('id', id));
     if (error) throw error;
     return true;
   } catch {
@@ -398,36 +369,47 @@ export async function markFinancePaid(id: string): Promise<boolean> {
   }
 }
 
+async function tableRows(table: string) {
+  if (!supabase) return [] as Record<string, unknown>[];
+  try {
+    const { data, error } = await withTimeout(supabase.from(table).select('*'));
+    if (error) return [];
+    return (data || []) as Record<string, unknown>[];
+  } catch {
+    return [];
+  }
+}
+
 export async function fetchAdminBundle(): Promise<CloudAdminBundle | null> {
   if (!supabase) return null;
   try {
-    const [profiles, coaches, students, appts, finance, notes] = await Promise.all([
+    const [profileRes, coachRes] = await Promise.all([
       withTimeout(supabase.from('profiles').select('id,name,email,plan,role,account_status,target_department,target_rank')),
       withTimeout(supabase.from('coaches').select('*')),
-      withTimeout(supabase.from('coach_students').select('*')),
-      withTimeout(supabase.from('appointments').select('*')),
-      withTimeout(supabase.from('platform_finance').select('*')),
-      withTimeout(supabase.from('admin_notes').select('*').order('created_at', { ascending: false }).limit(80)),
     ]);
-    if (profiles.error) throw profiles.error;
-    if (coaches.error) throw coaches.error;
-    if (students.error) throw students.error;
-    if (appts.error) throw appts.error;
-    const coachRows = (coaches.data || []).map((r) => mapCoach(r as Record<string, unknown>));
+    if (profileRes.error) throw profileRes.error;
+    if (coachRes.error) throw coachRes.error;
+    const [matchRows, apptRows, financeRowsRaw, noteRowsRaw] = await Promise.all([
+      tableRows('coach_matches'),
+      tableRows('appointments'),
+      tableRows('platform_finance'),
+      tableRows('admin_notes'),
+    ]);
+    const coachRows = (coachRes.data || []).map((r) => mapCoach(r as Record<string, unknown>));
     const nameOf = (id: string) => coachRows.find((c) => c.id === id)?.name || id;
     const desks: Record<string, CoachDesk> = {};
     for (const c of coachRows) desks[c.id] = emptyDesk();
-    for (const r of students.data || []) {
+    for (const r of matchRows) {
       const cid = String(r.coach_id);
       if (!desks[cid]) desks[cid] = emptyDesk();
       desks[cid].students.push({
         id: String(r.id),
-        name: String(r.name || ''),
+        name: String(r.student_name || r.name || ''),
         grade: String(r.grade || ''),
         note: String(r.note || ''),
       });
     }
-    const cloudAppts: CloudAppointment[] = (appts.data || []).map((r) => ({
+    const cloudAppts: CloudAppointment[] = apptRows.map((r) => ({
       id: String(r.id),
       coachId: String(r.coach_id),
       studentId: String(r.student_id || ''),
@@ -448,7 +430,7 @@ export async function fetchAdminBundle(): Promise<CloudAdminBundle | null> {
         links.push({ coachId: c.id, coachName: c.name, studentName: s.name, grade: s.grade });
       }
     }
-    const financeRows: LedgerEntry[] = (finance.data || []).map((r) => ({
+    const financeRows: LedgerEntry[] = financeRowsRaw.map((r) => ({
       id: String(r.id),
       date: String(r.date || ''),
       coachId: String(r.coach_id || ''),
@@ -459,13 +441,13 @@ export async function fetchAdminBundle(): Promise<CloudAdminBundle | null> {
       status: r.status === 'odendi' || r.status === 'iade' ? r.status : 'bekliyor',
       note: String(r.note || ''),
     }));
-    const noteRows = (notes.data || []).map((r) => ({
+    const noteRows = noteRowsRaw.map((r) => ({
       id: String(r.id),
       coachId: String(r.coach_id || ''),
       text: String(r.text || ''),
       at: String(r.created_at || ''),
     }));
-    const profileRows: CloudProfile[] = (profiles.data || []).map((r) => ({
+    const profileRows: CloudProfile[] = (profileRes.data || []).map((r) => ({
       id: String(r.id),
       name: String(r.name || ''),
       email: String(r.email || ''),

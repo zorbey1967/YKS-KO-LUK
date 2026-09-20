@@ -50,6 +50,7 @@ export function examTitle(data: AppData) {
 }
 
 export function ageBand(age: number) {
+  if (age <= 0) return 'belirsiz';
   if (age <= 9) return 'ilkokul';
   if (age <= 13) return 'ortaokul';
   if (age <= 16) return 'lise-alt';

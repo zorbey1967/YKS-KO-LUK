@@ -66,10 +66,11 @@ export function suggestedBankLevels(grade: string): string[] {
   const n = Number((grade.match(/^(\d+)/) || [])[1] || 0);
   if (n === 11 || n === 12) return ['YKS TYT', 'YKS AYT', grade];
   if (n >= 1 && n <= 12) return [grade];
-  return ['YKS TYT', 'YKS AYT'];
+  return [];
 }
 
 export function defaultBankLevel(grade: string) {
+  if (!grade.trim()) return '';
   if (grade.includes('KPSS')) return 'KPSS Genel Yetenek';
   if (grade.includes('Mezun') || grade.startsWith('11') || grade.startsWith('12')) return 'YKS TYT';
   return grade;

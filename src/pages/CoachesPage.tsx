@@ -9,6 +9,7 @@ import {
   loginCoach,
   monthPayments,
   saveCoachDesk,
+  saveCoachSession,
   type AppointmentStatus,
   type CoachAppointment,
   type CoachDesk,
@@ -24,7 +25,7 @@ import { today, uid } from '../lib/util';
 type PanelTab = 'ozet' | 'ogrenci' | 'odev' | 'para' | 'randevu';
 
 export function CoachesPage() {
-  const { toast, go, user } = useApp();
+  const { toast, go, user, profile } = useApp();
   const [session, setSession] = useState<CoachSession | null>(loadCoachSession);
   const [desk, setDesk] = useState<CoachDesk>(() => (loadCoachSession() ? loadCoachDesk(loadCoachSession()!.coachId) : { students: [], homeworks: [], payments: [], appointments: [] }));
   const [tab, setTab] = useState<PanelTab>('ozet');
@@ -36,7 +37,7 @@ export function CoachesPage() {
   const [hwTitle, setHwTitle] = useState('');
   const [hwDue, setHwDue] = useState(today());
   const [stName, setStName] = useState('');
-  const [stGrade, setStGrade] = useState('12. Sınıf');
+  const [stGrade, setStGrade] = useState('');
   const [bookCoach, setBookCoach] = useState<HumanCoach | null>(null);
   const [bookName, setBookName] = useState('');
   const [bookDate, setBookDate] = useState(today());
@@ -61,12 +62,30 @@ export function CoachesPage() {
   }, [session]);
 
   useEffect(() => {
+    if (!user) return;
+    let alive = true;
+    void fetchMyCoach(user.id).then((mine) => {
+      if (!alive || !mine || mine.status === 'rejected' || mine.status === 'pasif') return;
+      const sess: CoachSession = { coachId: mine.id, name: mine.name, email: mine.email, track: mine.track };
+      saveCoachSession(sess);
+      setSession(sess);
+    });
+    return () => { alive = false; };
+  }, [user]);
+
+  useEffect(() => {
     if (!session) return;
     let alive = true;
     void fetchCoachDesk(session.coachId).then((d) => {
       if (!alive || !d) return;
-      setDesk(d);
-      saveCoachDesk(session.coachId, d);
+      const local = loadCoachDesk(session.coachId);
+      const merged = {
+        ...d,
+        homeworks: d.homeworks.length ? d.homeworks : local.homeworks,
+        payments: d.payments.length ? d.payments : local.payments,
+      };
+      setDesk(merged);
+      saveCoachDesk(session.coachId, merged);
     });
     return () => { alive = false; };
   }, [session]);
@@ -95,13 +114,21 @@ export function CoachesPage() {
           if (mine) {
             const cloudDesk = await fetchCoachDesk(mine.id);
             const sess: CoachSession = { coachId: mine.id, name: mine.name, email: mine.email, track: mine.track };
+            saveCoachSession(sess);
             setSession(sess);
-            setDesk(cloudDesk || loadCoachDesk(mine.id));
+            const local = loadCoachDesk(mine.id);
+            const merged = cloudDesk
+              ? { ...cloudDesk, homeworks: cloudDesk.homeworks.length ? cloudDesk.homeworks : local.homeworks, payments: cloudDesk.payments.length ? cloudDesk.payments : local.payments }
+              : local;
+            setDesk(merged);
+            saveCoachDesk(mine.id, merged);
             setPassword('');
             setAuthMsg(mine.status === 'pending' ? 'Başvurun incelemede; panel açık.' : '');
             toast('Koç girişi yapıldı.');
             return;
           }
+          setAuthMsg('Bu hesap koç değil. Koç kaydı Hesabım’dan yapılır.');
+          return;
         }
       } catch {
         /* yerel giriş */
@@ -119,10 +146,11 @@ export function CoachesPage() {
     toast('Koç girişi yapıldı.');
   }
 
-  function onLogout() {
+  async function onLogout() {
     clearCoachSession();
     setSession(null);
     setDesk({ students: [], homeworks: [], payments: [], appointments: [] });
+    if (supabase) await supabase.auth.signOut();
     toast('Koç oturumu kapandı.');
   }
 
@@ -155,12 +183,17 @@ export function CoachesPage() {
 
   async function studentBook() {
     if (!bookCoach) return;
-    const studentName = bookName.trim();
+    if (!user) {
+      toast('Randevu için Hesabım’dan giriş yap.');
+      go('account');
+      return;
+    }
+    const studentName = (bookName.trim() || profile?.name || '').trim();
     if (studentName.length < 2) return toast('Adını yaz.');
     const appt: CoachAppointment = {
       id: uid('ap_'),
       coachId: bookCoach.id,
-      studentId: user?.id || '',
+      studentId: user.id,
       studentName,
       date: bookDate,
       time: bookTime,
@@ -169,14 +202,13 @@ export function CoachesPage() {
     };
     const current = loadCoachDesk(bookCoach.id);
     saveCoachDesk(bookCoach.id, { ...current, appointments: [appt, ...current.appointments] });
-    const cloudOk = await insertAppointment(appt, user?.id);
-    if (!cloudOk && user) {
-      /* misafir veya tablo yok: yerel kayıt durur */
-    }
+    const cloudOk = await insertAppointment(appt, user.id);
     if (session?.coachId === bookCoach.id) setDesk(loadCoachDesk(bookCoach.id));
     setBookCoach(null);
     setBookName('');
-    toast('Randevu talebi gönderildi. Ödeme yok; koç panelinden onaylanır.');
+    toast(cloudOk
+      ? 'Randevu talebi gönderildi. Ödeme yok; koç panelinden onaylanır.'
+      : 'Randevu buluta yazılamadı. Giriş ve onaylı koç gerekir.');
   }
 
   const monthTotal = monthPayments(desk);
@@ -235,7 +267,7 @@ export function CoachesPage() {
               <div className="section-title"><h3>Öğrencilerin</h3></div>
               <div className="form-grid">
                 <div className="field"><label>Ad</label><input value={stName} onChange={(e) => setStName(e.target.value)} placeholder="Öğrenci adı" /></div>
-                <div className="field"><label>Sınıf</label><input value={stGrade} onChange={(e) => setStGrade(e.target.value)} /></div>
+                <div className="field"><label>Sınıf</label><input value={stGrade} onChange={(e) => setStGrade(e.target.value)} placeholder="belirtilmedi" /></div>
               </div>
               <div className="actions">
                 <button className="btn primary" type="button" onClick={addStudent}>Öğrenci ekle</button>
@@ -361,7 +393,7 @@ export function CoachesPage() {
               <button className="icon-btn" type="button" onClick={() => setBookCoach(null)}>×</button>
             </div>
             <div className="form-grid" style={{ marginTop: 12 }}>
-              <div className="field"><label>Adın</label><input value={bookName} onChange={(e) => setBookName(e.target.value)} placeholder="Öğrenci adı" /></div>
+              <div className="field"><label>Adın</label><input value={bookName} onChange={(e) => setBookName(e.target.value)} placeholder={profile?.name || 'Öğrenci adı'} /></div>
               <div className="field"><label>Tarih</label><input type="date" value={bookDate} onChange={(e) => setBookDate(e.target.value)} /></div>
               <div className="field"><label>Saat</label><input type="time" value={bookTime} onChange={(e) => setBookTime(e.target.value)} /></div>
             </div>

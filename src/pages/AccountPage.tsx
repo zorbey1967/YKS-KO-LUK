@@ -4,7 +4,7 @@ import { SUPABASE_UNAVAILABLE, supabase, withTimeout } from '../lib/supabase';
 import { normalizeData, saveData } from '../lib/storage';
 import { coachAdvice } from '../lib/coach';
 import { GoalEditor } from '../components/GoalEditor';
-import { COACH_TRACKS, compressCoachPhoto, registerCoach, type CoachTrack } from '../lib/coaches';
+import { COACH_TRACKS, compressCoachPhoto, registerCoach, saveCoachSession, type CoachTrack } from '../lib/coaches';
 import { submitCoachApplication } from '../lib/cloudPlatform';
 
 type AccountRole = 'ogrenci' | 'koc';
@@ -16,7 +16,7 @@ export function AccountPage() {
   const [name, setName] = useState(profile?.name || '');
   const [role, setRole] = useState<AccountRole>('ogrenci');
   const [coachTrack, setCoachTrack] = useState<CoachTrack>('YKS Sayısal');
-  const [studentCount, setStudentCount] = useState('8');
+  const [studentCount, setStudentCount] = useState('0');
   const [focus, setFocus] = useState('');
   const [photo, setPhoto] = useState('');
   const coach = coachAdvice(data);
@@ -25,6 +25,23 @@ export function AccountPage() {
     if (profile?.name) setName(profile.name);
     if (user?.email) setEmail(user.email);
   }, [profile?.name, user?.email]);
+
+  useEffect(() => {
+    if (!user) return;
+    let raw = '';
+    try { raw = localStorage.getItem('yks_pending_coach_app') || ''; } catch { return; }
+    if (!raw) return;
+    void (async () => {
+      try {
+        const p = JSON.parse(raw) as { name: string; email: string; track: CoachTrack; focus: string; photo: string; studentCount: number };
+        const cloud = await submitCoachApplication({ userId: user.id, ...p });
+        if (cloud.ok) {
+          saveCoachSession({ coachId: cloud.id, name: p.name, email: p.email, track: p.track });
+          try { localStorage.removeItem('yks_pending_coach_app'); } catch { /* ignore */ }
+        }
+      } catch { /* ignore */ }
+    })();
+  }, [user]);
 
   async function onPhoto(file?: File) {
     if (!file) return;
@@ -51,19 +68,32 @@ export function AccountPage() {
       return false;
     }
     const uid = user?.id || (await supabase?.auth.getUser())?.data.user?.id;
-    if (uid) {
-      const cloud = await submitCoachApplication({
-        userId: uid,
-        name: name.trim(),
-        email: email.trim(),
-        track: coachTrack,
-        focus: focus.trim() || 'Süreç koçluğu',
-        photo,
-        studentCount: Number(studentCount) || 0,
-      });
-      if (!cloud.ok && !cloud.missing) setAuthMsg(`Başvuru yerel kaydedildi; bulut: ${cloud.error}`);
+    const cloud = uid
+      ? await submitCoachApplication({
+          userId: uid,
+          name: name.trim(),
+          email: email.trim(),
+          track: coachTrack,
+          focus: focus.trim() || 'Süreç koçluğu',
+          photo,
+          studentCount: Number(studentCount) || 0,
+        })
+      : { ok: false as const, error: 'Bulut hesap yok', missing: true };
+    if (cloud.ok) {
+      saveCoachSession({ coachId: cloud.id, name: name.trim(), email: email.trim(), track: coachTrack });
+    } else if (!uid) {
+      try {
+        localStorage.setItem('yks_pending_coach_app', JSON.stringify({
+          name: name.trim(), email: email.trim(), track: coachTrack, focus: focus.trim() || 'Süreç koçluğu', photo, studentCount: Number(studentCount) || 0,
+        }));
+      } catch { /* ignore */ }
+    } else if (!cloud.missing) {
+      setAuthMsg(`Başvuru yerel kaydedildi; bulut: ${cloud.error}`);
+      toast('Başvuru incelemede');
+      go('coaches');
+      return true;
     }
-    setAuthMsg('Koç başvurun alındı. Yönetici onayından sonra listede görünür.');
+    setAuthMsg(uid ? 'Koç başvurun alındı. Yönetici onayından sonra listede görünür.' : 'Başvuru bu cihazda. E-posta doğrulamasından sonra buluta düşer.');
     toast('Başvuru incelemede');
     go('coaches');
     return true;
@@ -80,7 +110,7 @@ export function AccountPage() {
           const { error } = await withTimeout(supabase.auth.signUp({ email, password }));
           if (error) throw error;
         } catch (e) {
-          applyCoach();
+          await applyCoach();
           setAuthMsg(`Başvuru kaydedildi. Bulut hesap: ${e instanceof Error ? e.message : ''}`);
           return;
         }

@@ -84,59 +84,6 @@ export const COACH_TRACKS: CoachTrack[] = [
   'Okul',
 ];
 
-export const DEMO_COACHES: HumanCoach[] = [
-  {
-    id: 'c-say-1',
-    name: 'Deniz Aksoy',
-    track: 'YKS Sayısal',
-    focus: 'TYT tabanı, AYT matematik-fen temposu',
-    weeklyHours: 6,
-    approach: 'Haftalık net hedefi ve zamanlı set.',
-    photo: '',
-    studentCount: 14,
-  },
-  {
-    id: 'c-ea-1',
-    name: 'Ece Karaman',
-    track: 'YKS Eşit Ağırlık',
-    focus: 'TYT matematik-Türkçe, AYT matematik-edebiyat',
-    weeklyHours: 5,
-    approach: 'Program ve deneme analizi.',
-    photo: '',
-    studentCount: 11,
-  },
-  {
-    id: 'c-soz-1',
-    name: 'Emre Bal',
-    track: 'YKS Sözel',
-    focus: 'Paragraf hızı, tarih-coğrafya',
-    weeklyHours: 4,
-    approach: 'Kısa blok + etiketli yanlış.',
-    photo: '',
-    studentCount: 9,
-  },
-  {
-    id: 'c-kpss-1',
-    name: 'Nilay Kurt',
-    track: 'KPSS',
-    focus: 'GY-GK ve eğitim bilimleri',
-    weeklyHours: 5,
-    approach: 'GY her gün, GK konu kapatma.',
-    photo: '',
-    studentCount: 16,
-  },
-  {
-    id: 'c-okul-1',
-    name: 'Pınar Yılmaz',
-    track: 'Okul',
-    focus: '1–8. sınıf rutin',
-    weeklyHours: 3,
-    approach: 'Yaşa uygun süre ve ödev takibi.',
-    photo: '',
-    studentCount: 8,
-  },
-];
-
 const ACC_KEY = 'yks_coach_accounts_v1';
 const SES_KEY = 'yks_coach_session_v1';
 const DESK_KEY = 'yks_coach_desk_v1';
@@ -162,7 +109,7 @@ function writeJson(key: string, value: unknown) {
 }
 
 function asCoachStatus(s: unknown): CoachStatus {
-  return s === 'pending' || s === 'rejected' || s === 'pasif' || s === 'active' ? s : 'active';
+  return s === 'pending' || s === 'rejected' || s === 'pasif' || s === 'active' ? s : 'pending';
 }
 
 export function loadCoachAccounts(): CoachAccount[] {
@@ -217,6 +164,10 @@ export function loadCoachSession(): CoachSession | null {
   const s = readJson<CoachSession | null>(SES_KEY, null);
   if (!s?.coachId || !s.email) return null;
   return s;
+}
+
+export function saveCoachSession(session: CoachSession) {
+  writeJson(SES_KEY, session);
 }
 
 export function clearCoachSession() {
@@ -280,7 +231,7 @@ export function registerCoach(input: {
   writeJson(ACC_KEY, [...list, acc]);
   saveCoachDesk(acc.id, emptyDesk());
   const session: CoachSession = { coachId: acc.id, name: acc.name, email: acc.email, track: acc.track };
-  writeJson(SES_KEY, session);
+  saveCoachSession(session);
   return { ok: true, session };
 }
 
@@ -290,7 +241,7 @@ export function loginCoach(email: string, password: string): { ok: true; session
   if (!acc || acc.passHash !== hashPass(e, password)) return { ok: false, error: 'E-posta veya şifre yanlış.' };
   if (acc.status === 'rejected' || acc.status === 'pasif') return { ok: false, error: 'Bu koç hesabı kapalı.' };
   const session: CoachSession = { coachId: acc.id, name: acc.name, email: acc.email, track: acc.track };
-  writeJson(SES_KEY, session);
+  saveCoachSession(session);
   if (!desks()[acc.id]) saveCoachDesk(acc.id, emptyDesk());
   return { ok: true, session };
 }
@@ -306,7 +257,7 @@ export function publicCoaches(): HumanCoach[] {
     photo: a.photo,
     studentCount: a.studentCount,
   }));
-  return [...registered, ...DEMO_COACHES];
+  return registered;
 }
 
 export function loadAllDesks(): Record<string, CoachDesk> {

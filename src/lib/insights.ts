@@ -13,14 +13,21 @@ export function todaySchedule(data: AppData): ScheduleDay | undefined {
 }
 
 export function examCountdown(iso: string) {
+  if (!iso || !String(iso).trim()) return { days: 0, label: 'Tarih yok', past: false, unset: true };
   const end = new Date(`${iso}T00:00:00`);
-  if (Number.isNaN(end.getTime())) return { days: 0, label: 'Tarih yok', past: true };
+  if (Number.isNaN(end.getTime())) return { days: 0, label: 'Tarih yok', past: false, unset: true };
   const start = new Date();
   start.setHours(0, 0, 0, 0);
   const days = Math.round((end.getTime() - start.getTime()) / 86400000);
-  if (days > 0) return { days, label: `${days} gün`, past: false };
-  if (days === 0) return { days: 0, label: 'Bugün', past: false };
-  return { days, label: `${Math.abs(days)} gün önce`, past: true };
+  if (days > 0) return { days, label: `${days} gün`, past: false, unset: false };
+  if (days === 0) return { days: 0, label: 'Bugün', past: false, unset: false };
+  return { days, label: `${Math.abs(days)} gün önce`, past: true, unset: false };
+}
+
+export function weekGoalPct(data: AppData) {
+  const target = Math.max(0, (data.weekHours || 0) * 60);
+  if (target <= 0) return { pct: 0, hoursLabel: 'belirtilmedi' };
+  return { pct: Math.min(100, Math.round((weekMinutes(data) / target) * 100)), hoursLabel: `${data.weekHours}s` };
 }
 
 export function studyStreak(data: AppData) {

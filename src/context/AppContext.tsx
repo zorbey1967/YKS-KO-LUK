@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { User } from '@supabase/supabase-js';
 import type { AppData, PageId, Profile } from '../lib/types';
 import { isKnownPage } from '../lib/types';
-import { loadData, saveData, normalizeData } from '../lib/storage';
+import { loadData, saveData, normalizeData, dataLooksEmpty } from '../lib/storage';
 import { SUPABASE_UNAVAILABLE, isSupabaseConfigured, supabase, withTimeout } from '../lib/supabase';
 import { canAccessAdminPanel, fetchServerAdmin } from '../lib/admin';
 
@@ -38,7 +38,16 @@ export function useApp() {
 
 function pageFromHash(): PageId {
   const raw = location.hash.replace('#/', '').replace('#', '').split('?')[0];
-  return isKnownPage(raw) ? raw : 'home';
+  if (isKnownPage(raw)) return raw;
+  const path = location.pathname.replace(/^\//, '').split('/')[0];
+  return isKnownPage(path) ? path : 'home';
+}
+
+function syncHashFromPath() {
+  const hash = location.hash.replace('#/', '').replace('#', '').split('?')[0];
+  if (isKnownPage(hash)) return;
+  const path = location.pathname.replace(/^\//, '').split('/')[0];
+  if (isKnownPage(path)) location.hash = `/${path}`;
 }
 
 export function AppProvider({ children }: { children: ReactNode }) {
@@ -63,7 +72,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const pushTimer = useRef(0);
   const cloudReady = useRef(false);
   const userRef = useRef<User | null>(null);
-  userRef.current = user;
 
   const toast = useCallback((msg: string) => {
     setToastMsg(msg);
@@ -72,7 +80,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const persistLocal = useCallback((next: AppData, uid?: string | null) => {
-    saveData(next, uid ?? userRef.current?.id);
+    saveData(next, uid ?? userRef.current?.id ?? null);
   }, []);
 
   const pushCloud = useCallback(async (payload: AppData) => {
@@ -102,7 +110,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [persistLocal, pushCloud]);
 
   const loadCloudProfile = useCallback(async (u: User) => {
-    if (!supabase) return;
+    if (!supabase) return null;
     try {
       const { data: row, error } = await withTimeout(
         supabase.from('profiles').select('*').eq('id', u.id).maybeSingle(),
@@ -113,28 +121,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
             id: row.id,
             name: row.name || '',
             email: row.email || u.email || '',
-            plan: 'Ücretsiz',
+            plan: row.plan || 'Ücretsiz',
             role: row.role === 'admin' || row.role === 'coach' ? row.role : 'student',
             account_status: row.account_status === 'pasif' ? 'pasif' : 'active',
             target_department: row.target_department,
             target_rank: row.target_rank,
           }
         : { id: u.id, name: '', email: u.email || '', plan: 'Ücretsiz' };
-      setProfile(p);
-      if (row) {
-        setData((d) => ({
-          ...d,
-          dept: row.target_department || d.dept,
-          rank: row.target_rank == null ? d.rank : Number(row.target_rank),
-        }));
+      if (p.account_status === 'pasif') {
+        setAuthMsg('Bu hesap pasif. Yönetici açana kadar giriş kapalı.');
+        await supabase.auth.signOut();
+        return;
       }
+      setProfile(p);
+      return p;
     } catch (e) {
       setProfile({ name: '', email: u.email || '', plan: 'Ücretsiz' });
       setAuthMsg(`Profil alınamadı: ${e instanceof Error ? e.message : ''}`);
+      return null;
     }
-  }, [setData]);
+  }, []);
 
-  const pullCloud = useCallback(async (u: User) => {
+  const pullCloud = useCallback(async (u: User, cloudProfile?: Profile | null) => {
     if (!supabase) return;
     try {
       const { data: row, error } = await supabase
@@ -143,23 +151,31 @@ export function AppProvider({ children }: { children: ReactNode }) {
         .eq('user_id', u.id)
         .maybeSingle();
       if (error) throw error;
-      cloudReady.current = true;
+      let next: AppData;
+      let shouldPush = false;
       if (row?.data && typeof row.data === 'object') {
-        const cloud = normalizeData(row.data);
-        setDataState(cloud);
-        persistLocal(cloud, u.id);
+        next = normalizeData(row.data);
       } else {
-        const local = loadData(u.id);
-        setDataState(local);
-        persistLocal(local, u.id);
-        void pushCloud(local);
+        next = loadData(u.id);
+        if (dataLooksEmpty(next)) {
+          const guest = loadData(null);
+          if (!dataLooksEmpty(guest)) next = guest;
+        }
+        shouldPush = true;
       }
+      if (cloudProfile?.target_department) next = { ...next, dept: cloudProfile.target_department };
+      if (cloudProfile?.target_rank != null) next = { ...next, rank: Number(cloudProfile.target_rank) };
+      cloudReady.current = true;
+      setDataState(next);
+      persistLocal(next, u.id);
+      if (shouldPush) void pushCloud(next);
       setCloudStatus('Bulut senkron');
     } catch {
       cloudReady.current = false;
       setCloudStatus('Bağlantı hatası');
-      setDataState(loadData(u.id));
-      persistLocal(loadData(u.id), u.id);
+      const local = loadData(u.id);
+      setDataState(local);
+      persistLocal(local, u.id);
     }
   }, [persistLocal, pushCloud]);
 
@@ -171,10 +187,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
     const { data: sessionData } = await withTimeout(supabase.auth.getSession());
     const u = sessionData.session?.user || null;
+    userRef.current = u;
     setUser(u);
     if (u) {
-      await loadCloudProfile(u);
-      await pullCloud(u);
+      const p = await loadCloudProfile(u);
+      if (userRef.current?.id !== u.id) return;
+      await pullCloud(u, p);
       setServerAdmin(await fetchServerAdmin());
     } else {
       setServerAdmin(null);
@@ -202,13 +220,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       plan: p?.plan || 'Ücretsiz',
       role: p?.role,
       account_status: p?.account_status,
+      target_department: data.dept || p?.target_department,
+      target_rank: data.rank || p?.target_rank,
     }));
     if (!u || !supabase) return;
     const payload = {
       id: u.id,
       name: n,
       email: u.email,
-      plan: 'Ücretsiz',
       target_department: data.dept,
       target_rank: data.rank,
       updated_at: new Date().toISOString(),
@@ -222,9 +241,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         id: row?.id || u.id,
         name: row?.name || name,
         email: u.email || '',
-        plan: 'Ücretsiz',
+        plan: row?.plan || 'Ücretsiz',
         role: row?.role === 'admin' || row?.role === 'coach' ? row.role : 'student',
         account_status: row?.account_status === 'pasif' ? 'pasif' : 'active',
+        target_department: row?.target_department,
+        target_rank: row?.target_rank,
       });
     } catch (e) {
       toast(`Yerel kayıt yapıldı; bulut profilinde hata: ${e instanceof Error ? e.message : ''}`);
@@ -237,6 +258,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [theme]);
 
   useEffect(() => {
+    syncHashFromPath();
     const onHash = () => setPage(pageFromHash());
     window.addEventListener('hashchange', onHash);
     void refreshAuth();
@@ -244,6 +266,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'TOKEN_REFRESHED') return;
       const u = session?.user || null;
+      userRef.current = u;
       setUser(u);
       if (!u) {
         cloudReady.current = false;
@@ -257,7 +280,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setDataState(loadData(null));
         setServerAdmin(null);
       } else {
-        void loadCloudProfile(u).then(() => pullCloud(u));
+        void loadCloudProfile(u).then((p) => pullCloud(u, p));
         void fetchServerAdmin().then(setServerAdmin);
       }
     });

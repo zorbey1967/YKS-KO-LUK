@@ -10,9 +10,10 @@ import { assertPdfFile, clearSchedulePdf, loadSchedulePdf, saveSchedulePdf } fro
 export function SchedulePage() {
   const { data, setData, toast } = useApp();
   const age = data.age > 0 ? data.age : 0;
-  const [daily, setDaily] = useState(() => (age > 0 ? suggestedDailyMinutes(age, examKind(data)) : 150));
+  const kind = examKind(data);
+  const [daily, setDaily] = useState(() => (age > 0 ? suggestedDailyMinutes(age, kind) : 150));
   const [days, setDays] = useState(age > 0 && age <= 13 ? 5 : 6);
-  const [focus, setFocus] = useState('Dengeli TYT + AYT');
+  const [focus, setFocus] = useState(() => (kind === 'KPSS' ? 'KPSS GY + GK' : kind === 'YKS' ? 'Dengeli TYT + AYT' : 'Okul programı'));
   const [notes, setNotes] = useState(data.schedule.notes || '');
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState('');
@@ -127,6 +128,8 @@ export function SchedulePage() {
             <div className="field" style={{ gridColumn: '1 / -1' }}>
               <label>Odak</label>
               <select value={focus} onChange={(e) => setFocus(e.target.value)}>
+                <option>Okul programı</option>
+                <option>KPSS GY + GK</option>
                 <option>Dengeli TYT + AYT</option>
                 <option>TYT ağırlıklı</option>
                 <option>AYT ağırlıklı</option>
