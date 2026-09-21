@@ -39,29 +39,42 @@ export function HomePage({ onNewTask }: { onNewTask: () => void }) {
   return (
     <>
       <div className="hero">
-        <div className="eyebrow" style={{ color: '#cfe1ff' }}>Sınav temposu • {elite.phase}</div>
-        <h2>Hoş geldin, {name} 👋</h2>
-        <p>{user ? 'Giriş yaptın — bu panel yalnızca senin verin.' : 'Tek site, her öğrenci kendi hesabıyla girer. Kayıt olunca panelin sende kalır.'}</p>
-        <p>{displayText(data.grade)} • {displayAge(data.age)} • {displayText(data.dept)} • {displayText(data.track)} • hedef sıralama {displayRank(data.rank)}</p>
-        <div className="countdown-pill">{data.examDate ? (count.past ? 'Sınav tarihi geçti' : `${examTitle(data)}’ye ${count.label}`) : 'Sınav tarihi belirtilmedi'}{data.examDate ? ` • ${data.examDate}` : ''}</div>
+        <div className="eyebrow" style={{ color: '#cfe1ff' }}>{user ? `Sınav temposu • ${elite.phase}` : 'Öğrenci E-Koçluk'}</div>
+        <h2>{user ? `Hoş geldin, ${name}` : 'Sınav temposunu tek panelde tut.'}</h2>
+        <p>{user ? 'Bu panel yalnızca senin verin.' : 'Hedef, program, deneme ve soru bankası. Ücretsiz hesap; kart çekilmez.'}</p>
+        {user ? (
+          <>
+            <p>{displayText(data.grade)} • {displayAge(data.age)} • {displayText(data.dept)} • {displayText(data.track)} • hedef sıralama {displayRank(data.rank)}</p>
+            <div className="countdown-pill">{data.examDate ? (count.past ? 'Sınav tarihi geçti' : `${examTitle(data)}’ye ${count.label}`) : 'Sınav tarihi belirtilmedi'}{data.examDate ? ` • ${data.examDate}` : ''}</div>
+          </>
+        ) : (
+          <div className="countdown-pill">Ücretsiz kayıt • koç başvurusu aynı sitede</div>
+        )}
         <div className="hero-actions">
-          <button className="btn" type="button" onClick={() => go('goal')}>🎯 Hedefi / yaşı değiştir</button>
-          <button className="btn" type="button" onClick={() => go('plan')}>🤖 Akıllı Plan</button>
-          <button className="btn" type="button" onClick={() => go('schedule')}>🗓️ Ders Programım</button>
-          <button className="btn" type="button" onClick={onNewTask}>＋ Görev Ekle</button>
-          <button className="btn" type="button" onClick={() => go('timer')}>⏱ Çalışmaya Başla</button>
-          <button className="btn" type="button" onClick={() => go('questionbank')}>🧠 Soru Bankası</button>
-          <button className="btn" type="button" onClick={() => go('topics')}>📚 Konular</button>
+          {!user ? <button className="btn" type="button" onClick={() => go('account')}>Giriş / kayıt</button> : null}
+          <button className="btn" type="button" onClick={() => go('goal')}>Hedef / yaş</button>
+          <button className="btn" type="button" onClick={() => go('questionbank')}>Soru Bankası</button>
+          {user ? (
+            <>
+              <button className="btn" type="button" onClick={() => go('plan')}>Akıllı Plan</button>
+              <button className="btn" type="button" onClick={() => go('schedule')}>Ders Programım</button>
+              <button className="btn" type="button" onClick={onNewTask}>Görev Ekle</button>
+              <button className="btn" type="button" onClick={() => go('timer')}>Çalışmaya başla</button>
+              <button className="btn" type="button" onClick={() => go('topics')}>Konular</button>
+            </>
+          ) : (
+            <button className="btn" type="button" onClick={() => go('coaches')}>Koçlar</button>
+          )}
         </div>
       </div>
       {!user ? (
-        <div className="notice" style={{ marginTop: 16 }}>
-          Öğrenciler ayrı site kurmaz. <b>Hesabım</b>’dan kayıt / giriş yap; kayıtta öğrenci veya koç seç. Koç seçersen branş, öğrenci sayısı ve fotoğrafla Koçlar listesine düşersin.
-          <button className="btn primary" type="button" style={{ marginLeft: 8 }} onClick={() => go('account')}>Kayıt / giriş</button>
+        <div className="success" style={{ marginTop: 16 }}>
+          Panel misafirken yerel kalır. Kayıt olunca aynı veriler hesabına bağlanır.
+          <button className="btn primary" type="button" style={{ marginLeft: 8 }} onClick={() => go('account')}>Giriş yap</button>
         </div>
       ) : (
         <div className="success" style={{ marginTop: 16 }}>
-          Giriş açık. E-Koç sohbeti hesabınla sunucuya gider; model anahtarı tarayıcıda tutulmaz.
+          Giriş açık. E-Koç sohbeti hesabınla sunucuya gider.
         </div>
       )}
       {profileIncomplete ? (

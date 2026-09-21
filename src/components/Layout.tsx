@@ -14,8 +14,8 @@ export function Layout({ children }: { children: ReactNode }) {
   const count = examCountdown(data.examDate);
 
   useEffect(() => {
-    document.title = `${item.label} | ${SITE_NAME}`;
-  }, [item.label]);
+    document.title = `${page === 'account' && !user ? 'Giriş' : item.label} | ${SITE_NAME}`;
+  }, [item.label, page, user]);
 
   return (
     <div className="app">
@@ -32,7 +32,7 @@ export function Layout({ children }: { children: ReactNode }) {
         <nav className="nav">
           {nav.map((n) => (
             <button key={n.id} className={page === n.id ? 'active' : ''} onClick={() => go(n.id)}>
-              {n.icon} <span>{n.label}</span>
+              {n.icon} <span>{n.id === 'account' && !user ? 'Giriş' : n.label}</span>
             </button>
           ))}
         </nav>
@@ -57,13 +57,15 @@ export function Layout({ children }: { children: ReactNode }) {
             </button>
             <div>
               <div className="eyebrow">{SITE_NAME}</div>
-              <h1>{item.label}</h1>
+              <h1>{page === 'account' && !user ? 'Giriş' : item.label}</h1>
             </div>
           </div>
           <div className="top-actions">
             {!isSupabaseConfigured() ? <span className="chip">{cloudStatus === 'Yapılandırılmadı' ? 'Bulut ayarı yok' : cloudStatus}</span> : null}
-            <button className="btn secondary" type="button" onClick={() => go('goal')}>Hedef / yaş</button>
-            <button className="btn secondary" type="button" onClick={() => go('account')}>Hesabım</button>
+            {user ? (
+              <button className="btn secondary" type="button" onClick={() => go('goal')}>Hedef / yaş</button>
+            ) : null}
+            <button className={user ? 'btn secondary' : 'btn primary'} type="button" onClick={() => go('account')}>{user ? 'Hesabım' : 'Giriş'}</button>
             <button className="icon-btn" type="button" onClick={toggleTheme} aria-label="Tema">{theme === 'dark' ? '☀' : '☾'}</button>
           </div>
         </header>

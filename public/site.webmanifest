@@ -1,7 +1,7 @@
 {
   "name": "Öğrenci E-Koçluk",
   "short_name": "E-Koçluk",
-  "description": "YKS ve okul öğrencileri için e-koçluk paneli.",
+  "description": "YKS ve okul için e-koçluk paneli. Ücretsiz kayıt.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f5f7fb",
