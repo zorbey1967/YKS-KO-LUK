@@ -1,6 +1,6 @@
 import { fetchMyCoach } from './cloudPlatform';
 import type { AppointmentStatus, CoachAppointment } from './coaches';
-import { publicCloudError, supabase, withTimeout } from './supabase';
+import { publicCloudError, supabase, supabaseAnonKey, supabaseUrl, withTimeout } from './supabase';
 
 export const JOIN_BEFORE_MIN = 10;
 export const JOIN_AFTER_MIN = 15;
@@ -197,6 +197,52 @@ export async function serverCanJoin(appointmentId: string): Promise<{ join: bool
     return { join: Boolean(data), schema: true };
   } catch (e) {
     return { join: false, schema: !isMissingRpc(e) };
+  }
+}
+
+export type MeetingToken = {
+  token: string;
+  url: string;
+  room: string;
+  expiresAt: string;
+  recording: false;
+};
+
+export async function requestMeetingToken(appointmentId: string): Promise<{ ok: true; data: MeetingToken } | { ok: false; error: string; status?: number }> {
+  if (!supabase || !supabaseUrl || !supabaseAnonKey) return { ok: false, error: 'Bulut ayarı yok.' };
+  if (!appointmentId) return { ok: false, error: 'Randevu yok.' };
+  const { data: sessionData } = await supabase.auth.getSession();
+  const access = sessionData.session?.access_token;
+  if (!access) return { ok: false, error: 'Oturum gerekli.' };
+  try {
+    const res = await withTimeout(
+      fetch(`${supabaseUrl}/functions/v1/meeting-token`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: supabaseAnonKey,
+          Authorization: `Bearer ${access}`,
+        },
+        body: JSON.stringify({ appointmentId }),
+      }),
+    );
+    const raw = await res.json().catch(() => ({})) as { token?: string; url?: string; room?: string; expiresAt?: string; error?: string };
+    if (!res.ok) {
+      return { ok: false, error: String(raw.error || 'Token alınamadı'), status: res.status };
+    }
+    if (!raw.token || !raw.url || !raw.room) return { ok: false, error: 'Token yanıtı eksik.' };
+    return {
+      ok: true,
+      data: {
+        token: raw.token,
+        url: raw.url,
+        room: raw.room,
+        expiresAt: String(raw.expiresAt || ''),
+        recording: false,
+      },
+    };
+  } catch (e) {
+    return { ok: false, error: publicCloudError(e) };
   }
 }
 

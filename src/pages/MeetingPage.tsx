@@ -7,6 +7,7 @@ import {
   joinReasonLabel,
   joinWindow,
   livekitPlaceholder,
+  requestMeetingToken,
   serverCanJoin,
   type JoinBlockReason,
   type MeetingRoomRow,
@@ -14,12 +15,14 @@ import {
 } from '../lib/meeting';
 
 export function MeetingPage() {
-  const { user, go } = useApp();
+  const { user, go, toast } = useApp();
   const [apptId, setApptId] = useState(() => appointmentIdFromHash());
   const [row, setRow] = useState<MyAppointment | null>(null);
   const [reason, setReason] = useState<JoinBlockReason>(user ? 'not-found' : 'no-auth');
   const [room, setRoom] = useState<MeetingRoomRow | null>(null);
   const [roomNote, setRoomNote] = useState('');
+  const [tokenReady, setTokenReady] = useState(false);
+  const [tokenBusy, setTokenBusy] = useState(false);
   const livekit = livekitPlaceholder();
 
   useEffect(() => {
@@ -48,9 +51,11 @@ export function MeetingPage() {
         setReason(found.reason);
         setRoom(null);
         setRoomNote('');
+        setTokenReady(false);
         return;
       }
       setRow(found.row);
+      setTokenReady(false);
       const local = joinWindow(found.row);
       const remote = await serverCanJoin(found.row.id);
       if (!alive) return;
@@ -86,7 +91,7 @@ export function MeetingPage() {
       <div className="hero">
         <div className="eyebrow" style={{ color: '#cfe1ff' }}>Görüşme</div>
         <h2>{row ? `${row.coachName} • ${row.date} ${row.time}` : 'Randevuya bağlı oda'}</h2>
-        <p>Yalnızca onaylı randevu ve zaman penceresi. Kayıt kapalı. Canlı video A2’de.</p>
+        <p>Yalnızca onaylı randevu ve zaman penceresi. Kayıt kapalı. Kamera A3’te.</p>
       </div>
 
       {!user ? (
@@ -113,19 +118,41 @@ export function MeetingPage() {
 
       <div className="meeting-shell" style={{ marginTop: 16 }}>
         <div className="meeting-tile"><span>Sen</span><small>Kamera A3’te istenir</small></div>
-        <div className="meeting-tile"><span>Karşı taraf</span><small>LiveKit yok</small></div>
+        <div className="meeting-tile"><span>Karşı taraf</span><small>A3: LiveKit oda</small></div>
       </div>
 
       <div className="card" style={{ marginTop: 16 }}>
-        <div className="section-title"><h3>Bağlantı</h3><span>taslak</span></div>
-        <p style={{ color: 'var(--muted)', fontSize: 13 }}>{livekit.reason}</p>
+        <div className="section-title"><h3>Bağlantı</h3><span>token</span></div>
+        <p style={{ color: 'var(--muted)', fontSize: 13 }}>
+          {tokenReady ? 'Sunucu token verdi. Kamera/mikrofon A3’te bağlanır. Kayıt yok.' : livekit.reason}
+        </p>
         {room ? <p style={{ fontSize: 13 }}>Oda durumu: {room.status} (kayıt kapalı)</p> : null}
         {roomNote ? <div className="notice">{roomNote}</div> : null}
         <div className="actions">
-          <button className="btn primary" type="button" disabled title="A2: sunucu token">Bağlan</button>
+          <button
+            className="btn primary"
+            type="button"
+            disabled={!canShell || tokenBusy || !row}
+            onClick={() => {
+              if (!row || reason !== 'ok') return;
+              setTokenBusy(true);
+              void requestMeetingToken(row.id).then((res) => {
+                setTokenBusy(false);
+                if (!res.ok) {
+                  setTokenReady(false);
+                  toast(res.error);
+                  return;
+                }
+                setTokenReady(true);
+                toast('Görüşme yetkisi alındı. Kamera A3’te açılır.');
+              });
+            }}
+          >
+            {tokenBusy ? 'İsteniyor…' : 'Bağlan'}
+          </button>
           <button className="btn secondary" type="button" onClick={() => go('coaches')}>Ayrıl</button>
         </div>
-        {canShell ? <p style={{ fontSize: 12, color: 'var(--muted)' }}>Sunucu join onayı var. Token yok; getUserMedia yok.</p> : null}
+        {canShell ? <p style={{ fontSize: 12, color: 'var(--muted)' }}>Yetki sunucuda can_join_meeting ile. getUserMedia yok. JWT ekranda gösterilmez.</p> : null}
       </div>
     </>
   );

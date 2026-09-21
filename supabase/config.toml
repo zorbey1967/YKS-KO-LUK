@@ -2,3 +2,6 @@ project_id = "naiakscryafhvcghjmzx"
 
 [functions.student-ai]
 verify_jwt = false
+
+[functions.meeting-token]
+verify_jwt = true
