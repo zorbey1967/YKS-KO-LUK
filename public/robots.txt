@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://yks-ko-luk.vercel.app/sitemap.xml
+Sitemap: https://e-kocluk.vercel.app/sitemap.xml

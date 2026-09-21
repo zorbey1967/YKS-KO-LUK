@@ -8,6 +8,7 @@ import { ExamInsight } from '../components/ExamInsight';
 import { TaskRows } from '../components/TaskRows';
 import { examTitle } from '../lib/stage';
 import { today } from '../lib/util';
+import { SITE_ORIGIN, copySiteUrl } from '../lib/site';
 import { displayAge, displayRank, displayText } from '../lib/types';
 
 export function HomePage({ onNewTask }: { onNewTask: () => void }) {
@@ -38,6 +39,7 @@ export function HomePage({ onNewTask }: { onNewTask: () => void }) {
 
   return (
     <>
+      <div className="home-lead">
       <div className="hero">
         <div className="eyebrow" style={{ color: '#cfe1ff' }}>{user ? `Sınav temposu • ${elite.phase}` : 'Öğrenci E-Koçluk'}</div>
         <h2>{user ? `Hoş geldin, ${name}` : 'Sınav temposunu tek panelde tut.'}</h2>
@@ -66,6 +68,17 @@ export function HomePage({ onNewTask }: { onNewTask: () => void }) {
             <button className="btn" type="button" onClick={() => go('coaches')}>Koçlar</button>
           )}
         </div>
+      </div>
+      <aside className="card share-card">
+        <div className="section-title"><h3>Paylaş</h3><span>Şimdilik adres</span></div>
+        <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: 0 }}>Site linkini kopyala; WhatsApp veya başka yere yapıştır.</p>
+        <div className="share-url" title={SITE_ORIGIN}>{SITE_ORIGIN.replace('https://', '')}</div>
+        <div className="actions">
+          <button className="btn primary" type="button" onClick={() => {
+            void copySiteUrl().then((ok) => toast(ok ? 'Adres kopyalandı' : 'Kopyalanamadı — adresi elle seç.'));
+          }}>Adresi kopyala</button>
+        </div>
+      </aside>
       </div>
       {!user ? (
         <div className="success" style={{ marginTop: 16 }}>

@@ -3,12 +3,12 @@ import { useApp } from '../context/AppContext';
 import { ADMIN_NAV, NAV, displayAge, displayText } from '../lib/types';
 import { examCountdown } from '../lib/insights';
 import { examTitle } from '../lib/stage';
-import { SITE_NAME } from '../lib/site';
+import { SITE_NAME, SITE_ORIGIN, copySiteUrl } from '../lib/site';
 import { isSupabaseConfigured } from '../lib/supabase';
 import type { ReactNode } from 'react';
 
 export function Layout({ children }: { children: ReactNode }) {
-  const { page, go, menuOpen, setMenuOpen, profile, user, toggleTheme, theme, toastMsg, data, isAdmin, cloudStatus } = useApp();
+  const { page, go, menuOpen, setMenuOpen, profile, user, toggleTheme, theme, toastMsg, toast, data, isAdmin, cloudStatus } = useApp();
   const nav = isAdmin ? [NAV[0], ADMIN_NAV, ...NAV.slice(1)] : NAV;
   const item = nav.find((n) => n.id === page) || (page === 'admin' ? ADMIN_NAV : NAV[0]);
   const count = examCountdown(data.examDate);
@@ -59,6 +59,17 @@ export function Layout({ children }: { children: ReactNode }) {
               <div className="eyebrow">{SITE_NAME}</div>
               <h1>{page === 'account' && !user ? 'Giriş' : item.label}</h1>
             </div>
+            {page === 'home' ? (
+              <button
+                className="btn secondary"
+                type="button"
+                onClick={() => {
+                  void copySiteUrl().then((ok) => toast(ok ? 'Adres kopyalandı' : SITE_ORIGIN));
+                }}
+              >
+                Paylaş
+              </button>
+            ) : null}
           </div>
           <div className="top-actions">
             {!isSupabaseConfigured() ? <span className="chip">{cloudStatus === 'Yapılandırılmadı' ? 'Bulut ayarı yok' : cloudStatus}</span> : null}
