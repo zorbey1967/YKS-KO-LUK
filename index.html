@@ -24,15 +24,20 @@
     <meta name="twitter:image" content="https://yks-ko-luk.vercel.app/logo.svg" />
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div id="boot" style="font-family:sans-serif;padding:32px;max-width:40rem;line-height:1.5">
+        <h1>Öğrenci E-Koçluk</h1>
+        <p>Yükleniyor…</p>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
     <script>
       setTimeout(function () {
-        var root = document.getElementById('root');
-        if (root && !root.childElementCount) {
-          root.innerHTML = '<div style="font-family:sans-serif;padding:32px;max-width:40rem;line-height:1.5"><h1>Öğrenci E-Koçluk</h1><p>Sayfa yüklenemedi. Lütfen yenileyin. Sorun sürerse biraz sonra tekrar deneyin.</p></div>';
+        var boot = document.getElementById('boot');
+        if (boot) {
+          boot.innerHTML = '<h1>Öğrenci E-Koçluk</h1><p>Sayfa yüklenemedi. <a href="/">Yenile</a>.</p>';
         }
-      }, 8000);
+      }, 20000);
     </script>
   </body>
 </html>

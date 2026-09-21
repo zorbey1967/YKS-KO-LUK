@@ -22,7 +22,9 @@ export function loadSubscription(): SubState {
 }
 
 export function saveSubscription(s: SubState) {
-  localStorage.setItem(KEY, JSON.stringify(s));
+  try {
+    localStorage.setItem(KEY, JSON.stringify(s));
+  } catch { /* ignore */ }
 }
 
 export function trialLabel(s: SubState) {

@@ -40,6 +40,20 @@ export function hash32(s: string) {
   return h >>> 0;
 }
 
+export function readLocal(key: string, fallback = '') {
+  try {
+    return localStorage.getItem(key) ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+export function writeLocal(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value);
+  } catch { /* ignore */ }
+}
+
 export function seededOrder(n: number, seed: number) {
   const a = Array.from({ length: n }, (_, i) => i);
   let x = seed >>> 0;

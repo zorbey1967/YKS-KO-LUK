@@ -5,6 +5,7 @@ import { isKnownPage } from '../lib/types';
 import { loadData, saveData, normalizeData, dataLooksEmpty } from '../lib/storage';
 import { SUPABASE_UNAVAILABLE, isSupabaseConfigured, supabase, withTimeout } from '../lib/supabase';
 import { canAccessAdminPanel, fetchServerAdmin } from '../lib/admin';
+import { readLocal, writeLocal } from '../lib/util';
 
 type Ctx = {
   page: PageId;
@@ -54,15 +55,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [page, setPage] = useState<PageId>(pageFromHash);
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(() => {
-    try {
-      const name = localStorage.getItem('yks_guest_name') || '';
-      return { name, email: '', plan: 'Ücretsiz' };
-    } catch {
-      return { name: '', email: '', plan: 'Ücretsiz' };
-    }
+    const name = readLocal('yks_guest_name');
+    return { name, email: '', plan: 'Ücretsiz' };
   });
   const [data, setDataState] = useState<AppData>(() => loadData(null));
-  const [theme, setTheme] = useState(() => localStorage.getItem('yks_theme') || 'light');
+  const [theme, setTheme] = useState(() => readLocal('yks_theme', 'light') || 'light');
   const [toastMsg, setToastMsg] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
   const [authMsg, setAuthMsg] = useState('');
@@ -197,12 +194,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } else {
       setServerAdmin(null);
       setCloudStatus('Giriş yok');
-      try {
-        const name = localStorage.getItem('yks_guest_name') || '';
-        setProfile({ name, email: '', plan: 'Ücretsiz' });
-      } catch {
-        setProfile({ name: '', email: '', plan: 'Ücretsiz' });
-      }
+      setProfile({ name: readLocal('yks_guest_name'), email: '', plan: 'Ücretsiz' });
       setDataState(loadData(null));
     }
   }, [loadCloudProfile, pullCloud]);
@@ -211,7 +203,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const n = (name || '').trim();
     const u = userRef.current;
     if (!u) {
-      try { localStorage.setItem('yks_guest_name', n); } catch { /* ignore */ }
+      writeLocal('yks_guest_name', n);
     }
     setProfile((p) => ({
       id: p?.id,
@@ -254,7 +246,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('yks_theme', theme);
+    writeLocal('yks_theme', theme);
   }, [theme]);
 
   useEffect(() => {
@@ -271,12 +263,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (!u) {
         cloudReady.current = false;
         setCloudStatus(isSupabaseConfigured() ? 'Giriş yok' : 'Yapılandırılmadı');
-        try {
-          const name = localStorage.getItem('yks_guest_name') || '';
-          setProfile({ name, email: '', plan: 'Ücretsiz' });
-        } catch {
-          setProfile({ name: '', email: '', plan: 'Ücretsiz' });
-        }
+        setProfile({ name: readLocal('yks_guest_name'), email: '', plan: 'Ücretsiz' });
         setDataState(loadData(null));
         setServerAdmin(null);
       } else {
