@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { ADMIN_NAV, NAV, displayAge, displayText } from '../lib/types';
+import { ADMIN_NAV, MEETING_NAV, NAV, displayAge, displayText } from '../lib/types';
 import { examCountdown } from '../lib/insights';
 import { examTitle } from '../lib/stage';
 import { SITE_NAME, SITE_ORIGIN, copySiteUrl } from '../lib/site';
@@ -10,7 +10,7 @@ import type { ReactNode } from 'react';
 export function Layout({ children }: { children: ReactNode }) {
   const { page, go, menuOpen, setMenuOpen, profile, user, toggleTheme, theme, toastMsg, toast, data, isAdmin, cloudStatus } = useApp();
   const nav = isAdmin ? [NAV[0], ADMIN_NAV, ...NAV.slice(1)] : NAV;
-  const item = nav.find((n) => n.id === page) || (page === 'admin' ? ADMIN_NAV : NAV[0]);
+  const item = nav.find((n) => n.id === page) || (page === 'admin' ? ADMIN_NAV : page === 'meeting' ? MEETING_NAV : NAV[0]);
   const count = examCountdown(data.examDate);
 
   useEffect(() => {

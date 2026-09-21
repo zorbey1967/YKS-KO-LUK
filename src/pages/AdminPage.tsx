@@ -377,6 +377,7 @@ export function AdminPage() {
       {tab === 'randevu' ? (
         <div className="card" style={{ marginTop: 16 }}>
           <div className="section-title"><h3>Randevular</h3></div>
+          <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: 0 }}>Yönetici görüşme odasına katılmaz. Katılma öğrenci veya koç hesabı ile Koçlar sayfasındadır.</p>
           <div className="form-grid">
             <div className="field"><label>Tarih</label><input type="date" value={apptDate} onChange={(e) => setApptDate(e.target.value)} /></div>
             <div className="field">

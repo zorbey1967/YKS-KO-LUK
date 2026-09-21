@@ -35,7 +35,7 @@ SQL şeması: `supabase/migrations/` — SQL Editor’de bilinçli uygulanır; u
 
 ## Üyelik
 
-Üyelik ekranı arayüz denemesidir. Gerçek ödeme ve görüntülü görüşme bağlı değildir.
+Üyelik ekranı arayüz denemesidir. Gerçek ödeme bağlı değildir. Görüntülü görüşme A1 kabuğudur (`#/meeting?id=`); LiveKit token ve kayıt yok. `004_meetings.sql` otomatik çalışmaz.
 
 ## Google indeksleme
 

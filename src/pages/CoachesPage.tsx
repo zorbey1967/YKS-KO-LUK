@@ -19,10 +19,35 @@ import {
   type HumanCoach,
 } from '../lib/coaches';
 import { fetchActiveCoaches, fetchCoachDesk, fetchMyCoach, insertAppointment, pushCoachDesk, updateAppointmentStatus } from '../lib/cloudPlatform';
+import { isAppointmentParty, joinReasonLabel, joinWindow, listMyAppointments, openMeeting, type MyAppointment } from '../lib/meeting';
 import { supabase, withTimeout } from '../lib/supabase';
 import { today, uid } from '../lib/util';
 
 type PanelTab = 'ozet' | 'ogrenci' | 'odev' | 'para' | 'randevu';
+
+function MeetingJoinButton({
+  appt,
+  userId,
+  coachId,
+}: {
+  appt: Pick<CoachAppointment, 'id' | 'date' | 'time' | 'minutes' | 'status' | 'studentId' | 'coachId'>;
+  userId?: string | null;
+  coachId?: string | null;
+}) {
+  const w = joinWindow(appt);
+  if (!isAppointmentParty(appt, userId, coachId)) return null;
+  return (
+    <button
+      className="btn secondary"
+      type="button"
+      disabled={!w.can}
+      title={joinReasonLabel(w.reason)}
+      onClick={() => openMeeting(appt.id)}
+    >
+      Görüşme
+    </button>
+  );
+}
 
 export function CoachesPage() {
   const { toast, go, user, profile } = useApp();
@@ -45,6 +70,9 @@ export function CoachesPage() {
 
   const [list, setList] = useState<HumanCoach[]>([]);
   const [listError, setListError] = useState('');
+  const [myAppts, setMyAppts] = useState<MyAppointment[]>([]);
+  const [myApptsMsg, setMyApptsMsg] = useState('');
+  const [cloudCoachId, setCloudCoachId] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -62,10 +90,36 @@ export function CoachesPage() {
   }, [session]);
 
   useEffect(() => {
+    if (!user) {
+      setMyAppts([]);
+      setMyApptsMsg('');
+      setCloudCoachId(null);
+      return;
+    }
+    let alive = true;
+    void listMyAppointments(user.id, cloudCoachId).then((res) => {
+      if (!alive) return;
+      if (res.ok) {
+        setMyAppts(res.rows);
+        setMyApptsMsg('');
+      } else {
+        setMyAppts([]);
+        setMyApptsMsg(res.error === 'no-cloud' ? '' : res.error);
+      }
+    });
+    return () => { alive = false; };
+  }, [user, cloudCoachId, desk.appointments.length]);
+
+  useEffect(() => {
     if (!user) return;
     let alive = true;
     void fetchMyCoach(user.id).then((mine) => {
-      if (!alive || !mine || mine.status === 'rejected' || mine.status === 'pasif') return;
+      if (!alive) return;
+      if (!mine || mine.status === 'rejected' || mine.status === 'pasif') {
+        setCloudCoachId(null);
+        return;
+      }
+      setCloudCoachId(mine.status === 'active' ? mine.id : null);
       const sess: CoachSession = { coachId: mine.id, name: mine.name, email: mine.email, track: mine.track };
       saveCoachSession(sess);
       setSession(sess);
@@ -342,13 +396,37 @@ export function CoachesPage() {
                       <button className="btn primary" type="button" onClick={() => setAppt(a.id, 'onay')}>Onayla</button>
                       <button className="btn secondary" type="button" onClick={() => setAppt(a.id, 'iptal')}>Reddet</button>
                     </span>
-                  ) : <span className="chip">{a.status}</span>}
+                  ) : (
+                    <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <span className="chip">{a.status}</span>
+                      <MeetingJoinButton appt={a} userId={user?.id} coachId={cloudCoachId} />
+                    </span>
+                  )}
                 </div>
               )) : <div className="empty">Randevu yok.</div>}
             </div>
           ) : null}
         </>
       )}
+
+      <div className="card" style={{ marginTop: 16 }}>
+        <div className="section-title"><h3>Randevularım</h3><span>Görüşme</span></div>
+        <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: 0 }}>Onaylı randevuda, saatten 10 dk önce / süre + 15 dk içinde odaya girilir. Kayıt yok. Yerel koç oturumu yetmez; Hesabım girişi gerekir.</p>
+        {!user ? (
+          <div className="empty">Görüşme listesi için giriş yap.</div>
+        ) : myApptsMsg ? (
+          <div className="notice">{myApptsMsg}</div>
+        ) : myAppts.length ? myAppts.map((a) => (
+          <div className="plan-item" key={a.id}>
+            <span>
+              {a.coachName} • {a.studentName} • {a.date} {a.time} ({a.minutes} dk)
+              <br />
+              <small style={{ color: 'var(--muted)' }}>{joinReasonLabel(joinWindow(a).reason)}</small>
+            </span>
+            <MeetingJoinButton appt={a} userId={user.id} coachId={cloudCoachId} />
+          </div>
+        )) : <div className="empty">Bulutta randevu yok.</div>}
+      </div>
 
       <div className="card" style={{ marginTop: 16 }}>
         <div className="section-title"><h3>Randevu al</h3><span>Öğrenciler</span></div>

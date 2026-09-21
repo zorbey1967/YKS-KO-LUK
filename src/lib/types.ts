@@ -1,4 +1,4 @@
-export type PageId = 'home' | 'questionbank' | 'coaches' | 'goal' | 'schedule' | 'tasks' | 'plan' | 'exams' | 'calculator' | 'topics' | 'questions' | 'calendar' | 'timer' | 'analytics' | 'membership' | 'account' | 'settings' | 'admin';
+export type PageId = 'home' | 'questionbank' | 'coaches' | 'goal' | 'schedule' | 'tasks' | 'plan' | 'exams' | 'calculator' | 'topics' | 'questions' | 'calendar' | 'timer' | 'analytics' | 'membership' | 'account' | 'settings' | 'admin' | 'meeting';
 
 export type Task = {
   id: string;
@@ -214,6 +214,8 @@ export const NAV: { id: PageId; icon: string; label: string }[] = [
 /** Öğrenci menüsünde yok; hash ve yetkili menü için. */
 export const ADMIN_NAV = { id: 'admin' as const, icon: '🛡', label: 'Yönetici' };
 
+export const MEETING_NAV = { id: 'meeting' as const, icon: '📹', label: 'Görüşme' };
+
 export function isKnownPage(id: string): id is PageId {
-  return id === 'admin' || NAV.some((n) => n.id === id);
+  return id === 'admin' || id === 'meeting' || NAV.some((n) => n.id === id);
 }

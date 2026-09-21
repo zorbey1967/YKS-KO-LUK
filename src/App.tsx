@@ -22,6 +22,7 @@ import { MembershipPage } from './pages/MembershipPage';
 import { AccountPage } from './pages/AccountPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { AdminGate, AdminPage } from './pages/AdminPage';
+import { MeetingPage } from './pages/MeetingPage';
 import { today, uid } from './lib/util';
 import { STUDY_SUBJECTS } from './lib/insights';
 
@@ -84,6 +85,7 @@ function Shell() {
       {page === 'account' && <AccountPage />}
       {page === 'settings' && <SettingsPage />}
       {page === 'admin' && (isAdmin ? <AdminPage /> : <AdminGate />)}
+      {page === 'meeting' && <MeetingPage />}
       </ErrorBoundary>
       {taskOpen && <TaskModal onClose={() => setTaskOpen(false)} />}
       <CommandPalette open={cmd} onClose={() => setCmd(false)} />
