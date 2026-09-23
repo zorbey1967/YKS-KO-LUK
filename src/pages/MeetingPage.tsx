@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { Room, RoomEvent, Track } from 'livekit-client';
 import { useApp } from '../context/AppContext';
 import {
   appointmentIdFromHash,
@@ -14,6 +15,15 @@ import {
   type MyAppointment,
 } from '../lib/meeting';
 
+function mediaErrorMessage(e: unknown) {
+  const name = e && typeof e === 'object' && 'name' in e ? String((e as { name: string }).name) : '';
+  if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
+    return 'Kamera veya mikrofon izni reddedildi.';
+  }
+  if (name === 'NotFoundError') return 'Kamera veya mikrofon bulunamadı.';
+  return 'Görüşmeye bağlanılamadı.';
+}
+
 export function MeetingPage() {
   const { user, go, toast } = useApp();
   const [apptId, setApptId] = useState(() => appointmentIdFromHash());
@@ -21,9 +31,13 @@ export function MeetingPage() {
   const [reason, setReason] = useState<JoinBlockReason>(user ? 'not-found' : 'no-auth');
   const [room, setRoom] = useState<MeetingRoomRow | null>(null);
   const [roomNote, setRoomNote] = useState('');
-  const [tokenReady, setTokenReady] = useState(false);
-  const [tokenBusy, setTokenBusy] = useState(false);
+  const [connected, setConnected] = useState(false);
+  const [busy, setBusy] = useState(false);
   const livekit = livekitPlaceholder();
+  const localRef = useRef<HTMLVideoElement>(null);
+  const remoteRef = useRef<HTMLVideoElement>(null);
+  const remoteAudioRef = useRef<HTMLAudioElement>(null);
+  const sessionRef = useRef<Room | null>(null);
 
   useEffect(() => {
     const sync = () => setApptId(appointmentIdFromHash());
@@ -31,15 +45,31 @@ export function MeetingPage() {
     return () => window.removeEventListener('hashchange', sync);
   }, []);
 
+  function detach() {
+    const lk = sessionRef.current;
+    sessionRef.current = null;
+    if (lk) {
+      lk.removeAllListeners();
+      void lk.disconnect();
+    }
+    if (localRef.current) localRef.current.srcObject = null;
+    if (remoteRef.current) remoteRef.current.srcObject = null;
+    setConnected(false);
+  }
+
+  useEffect(() => () => { detach(); }, []);
+
   useEffect(() => {
     if (!user) {
       setReason('no-auth');
       setRow(null);
+      detach();
       return;
     }
     if (!apptId) {
       setReason('not-found');
       setRow(null);
+      detach();
       return;
     }
     let alive = true;
@@ -51,11 +81,10 @@ export function MeetingPage() {
         setReason(found.reason);
         setRoom(null);
         setRoomNote('');
-        setTokenReady(false);
+        detach();
         return;
       }
       setRow(found.row);
-      setTokenReady(false);
       const local = joinWindow(found.row);
       const remote = await serverCanJoin(found.row.id);
       if (!alive) return;
@@ -78,7 +107,7 @@ export function MeetingPage() {
       } else {
         setReason(local.can ? 'missing-schema' : local.reason);
         setRoom(null);
-        setRoomNote(local.can ? 'Sunucu join kontrolü yok (004 uygulanmadı). İstemci saati yetki sayılmaz; bağlantı kapalı.' : '');
+        setRoomNote(local.can ? 'Sunucu join kontrolü yok. İstemci saati yetki sayılmaz; bağlantı kapalı.' : '');
       }
     })();
     return () => { alive = false; };
@@ -86,12 +115,44 @@ export function MeetingPage() {
 
   const canShell = reason === 'ok';
 
+  async function joinLive() {
+    if (!row || reason !== 'ok' || busy) return;
+    setBusy(true);
+    detach();
+    try {
+      const tok = await requestMeetingToken(row.id);
+      if (!tok.ok) {
+        toast(tok.error);
+        return;
+      }
+      const lk = new Room({ adaptiveStream: true, dynacast: true });
+      sessionRef.current = lk;
+      lk.on(RoomEvent.TrackSubscribed, (track) => {
+        if (track.kind === Track.Kind.Video && remoteRef.current) track.attach(remoteRef.current);
+        if (track.kind === Track.Kind.Audio && remoteAudioRef.current) track.attach(remoteAudioRef.current);
+      });
+      lk.on(RoomEvent.TrackUnsubscribed, (track) => { track.detach(); });
+      lk.on(RoomEvent.Disconnected, () => setConnected(false));
+      await lk.connect(tok.data.url, tok.data.token);
+      await lk.localParticipant.enableCameraAndMicrophone();
+      const cam = lk.localParticipant.getTrackPublication(Track.Source.Camera)?.track;
+      if (cam && localRef.current) cam.attach(localRef.current);
+      setConnected(true);
+      toast('Görüşme açık. Kayıt yok.');
+    } catch (e) {
+      detach();
+      toast(mediaErrorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <>
       <div className="hero">
         <div className="eyebrow" style={{ color: '#cfe1ff' }}>Görüşme</div>
         <h2>{row ? `${row.coachName} • ${row.date} ${row.time}` : 'Randevuya bağlı oda'}</h2>
-        <p>Yalnızca onaylı randevu ve zaman penceresi. Kayıt kapalı. Kamera A3’te.</p>
+        <p>Onaylı randevu ve zaman penceresi. Kayıt kapalı. Kamera ve mikrofon izni istenir.</p>
       </div>
 
       {!user ? (
@@ -102,7 +163,7 @@ export function MeetingPage() {
       ) : null}
 
       {user && reason !== 'ok' ? (
-        <div className={reason === 'missing-schema' ? 'notice' : 'notice'} style={{ marginTop: 16 }} role="status">
+        <div className="notice" style={{ marginTop: 16 }} role="status">
           {joinReasonLabel(reason)}
         </div>
       ) : null}
@@ -117,42 +178,31 @@ export function MeetingPage() {
       ) : null}
 
       <div className="meeting-shell" style={{ marginTop: 16 }}>
-        <div className="meeting-tile"><span>Sen</span><small>Kamera A3’te istenir</small></div>
-        <div className="meeting-tile"><span>Karşı taraf</span><small>A3: LiveKit oda</small></div>
+        <div className="meeting-tile">
+          <video ref={localRef} autoPlay muted playsInline />
+          <span>Sen</span>
+        </div>
+        <div className="meeting-tile">
+          <video ref={remoteRef} autoPlay playsInline />
+          <span>Karşı taraf</span>
+          <audio ref={remoteAudioRef} autoPlay style={{ display: 'none' }} />
+        </div>
       </div>
 
       <div className="card" style={{ marginTop: 16 }}>
-        <div className="section-title"><h3>Bağlantı</h3><span>token</span></div>
+        <div className="section-title"><h3>Bağlantı</h3><span>{connected ? 'canlı' : 'kayıt kapalı'}</span></div>
         <p style={{ color: 'var(--muted)', fontSize: 13 }}>
-          {tokenReady ? 'Sunucu token verdi. Kamera/mikrofon A3’te bağlanır. Kayıt yok.' : livekit.reason}
+          {connected ? 'Oda açık. Kayıt alınmıyor.' : livekit.reason}
         </p>
-        {room ? <p style={{ fontSize: 13 }}>Oda durumu: {room.status} (kayıt kapalı)</p> : null}
+        {room ? <p style={{ fontSize: 13 }}>Oda durumu: {room.status}</p> : null}
         {roomNote ? <div className="notice">{roomNote}</div> : null}
         <div className="actions">
-          <button
-            className="btn primary"
-            type="button"
-            disabled={!canShell || tokenBusy || !row}
-            onClick={() => {
-              if (!row || reason !== 'ok') return;
-              setTokenBusy(true);
-              void requestMeetingToken(row.id).then((res) => {
-                setTokenBusy(false);
-                if (!res.ok) {
-                  setTokenReady(false);
-                  toast(res.error);
-                  return;
-                }
-                setTokenReady(true);
-                toast('Görüşme yetkisi alındı. Kamera A3’te açılır.');
-              });
-            }}
-          >
-            {tokenBusy ? 'İsteniyor…' : 'Bağlan'}
+          <button className="btn primary" type="button" disabled={!canShell || busy || !row || connected} onClick={() => void joinLive()}>
+            {busy ? 'Bağlanıyor…' : 'Bağlan'}
           </button>
-          <button className="btn secondary" type="button" onClick={() => go('coaches')}>Ayrıl</button>
+          <button className="btn secondary" type="button" onClick={() => { detach(); go('coaches'); }}>Ayrıl</button>
         </div>
-        {canShell ? <p style={{ fontSize: 12, color: 'var(--muted)' }}>Yetki sunucuda can_join_meeting ile. getUserMedia yok. JWT ekranda gösterilmez.</p> : null}
+        {canShell ? <p style={{ fontSize: 12, color: 'var(--muted)' }}>Token sunucuda üretilir. İzin tarayıcıdan istenir. 18 yaş kilidi yok.</p> : null}
       </div>
     </>
   );
