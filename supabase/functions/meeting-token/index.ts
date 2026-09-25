@@ -24,6 +24,10 @@ function appointmentIdOk(id: string) {
   return id.length > 0 && id.length <= 80;
 }
 
+function livekitUrlOk(u: string) {
+  return /^wss:\/\/\S+$/i.test(u) || /^https:\/\/\S+$/i.test(u);
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ error: "Yalnızca POST" }, 405);
@@ -71,7 +75,7 @@ Deno.serve(async (req) => {
   const livekitUrl = (Deno.env.get("LIVEKIT_URL") || "").trim();
   const apiKey = (Deno.env.get("LIVEKIT_API_KEY") || "").trim();
   const apiSecret = (Deno.env.get("LIVEKIT_API_SECRET") || "").trim();
-  if (!livekitUrl || !apiKey || !apiSecret) {
+  if (!livekitUrlOk(livekitUrl) || !apiKey || !apiSecret) {
     return json({ error: "Görüşme sunucusu ayarı yok" }, 503);
   }
 

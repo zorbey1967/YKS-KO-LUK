@@ -75,7 +75,7 @@ export type MeetingRoomRow = {
   recordingEnabled: false;
 };
 
-/** LiveKit A2’ye kadar: token, URL ve secret yok. */
+/** A2: tarayıcıda secret yok; jeton yalnızca Edge Function’da üretilir. */
 export type LivekitPlaceholder = {
   connected: false;
   token: null;
@@ -88,7 +88,7 @@ export function livekitPlaceholder(): LivekitPlaceholder {
     connected: false,
     token: null,
     url: null,
-    reason: 'Canlı oda henüz açık değil. Token üretilmedi; API anahtarı yok.',
+    reason: 'Bağlan, sunucudan kısa ömürlü oda jetonu ister. Kayıt yok. Anahtar tarayıcıda değil.',
   };
 }
 
@@ -273,13 +273,17 @@ export async function requestMeetingToken(appointmentId: string): Promise<{ ok: 
     if (!res.ok) {
       return { ok: false, error: String(raw.error || 'Token alınamadı'), status: res.status };
     }
-    if (!raw.token || !raw.url || !raw.room) return { ok: false, error: 'Token yanıtı eksik.' };
+    const token = String(raw.token || '').trim();
+    const url = String(raw.url || '').trim();
+    const room = String(raw.room || '').trim();
+    if (!token || !url || !room) return { ok: false, error: 'Token yanıtı eksik.' };
+    if (!/^wss:\/\//i.test(url) && !/^https:\/\//i.test(url)) return { ok: false, error: 'Token yanıtı geçersiz.' };
     return {
       ok: true,
       data: {
-        token: raw.token,
-        url: raw.url,
-        room: raw.room,
+        token,
+        url,
+        room,
         expiresAt: String(raw.expiresAt || ''),
         recording: false,
       },
