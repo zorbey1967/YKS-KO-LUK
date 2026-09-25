@@ -5,6 +5,49 @@ import { publicCloudError, supabase, supabaseAnonKey, supabaseUrl, withTimeout }
 export const JOIN_BEFORE_MIN = 10;
 export const JOIN_AFTER_MIN = 15;
 
+function istanbulParts(d = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/Istanbul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(d);
+  const g = (type: string) => parts.find((p) => p.type === type)?.value || '';
+  return {
+    date: `${g('year')}-${g('month')}-${g('day')}`,
+    hour: Number(g('hour')) % 24,
+    minute: Number(g('minute')),
+  };
+}
+
+function addIsoDays(iso: string, days: number) {
+  const [y, m, d] = iso.split('-').map(Number);
+  const dt = new Date(Date.UTC(y, (m || 1) - 1, (d || 1) + days));
+  return `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, '0')}-${String(dt.getUTCDate()).padStart(2, '0')}`;
+}
+
+/** Türkiye saati; varsayılan slot pencerede açılsın diye şimdi + 10 dk, 5 dk’ya yuvarlanır. */
+export function nextBookSlot(from = new Date()) {
+  const now = istanbulParts(from);
+  let minutes = now.hour * 60 + now.minute + JOIN_BEFORE_MIN;
+  minutes = Math.ceil(minutes / 5) * 5;
+  let date = now.date;
+  if (minutes >= 24 * 60) {
+    minutes -= 24 * 60;
+    date = addIsoDays(date, 1);
+  }
+  const hh = String(Math.floor(minutes / 60)).padStart(2, '0');
+  const mm = String(minutes % 60).padStart(2, '0');
+  return { date, time: `${hh}:${mm}` };
+}
+
+export function istanbulToday() {
+  return istanbulParts().date;
+}
+
 export type MeetingRoomStatus = 'idle' | 'waiting' | 'live' | 'ended' | 'blocked';
 
 export type MyAppointment = CoachAppointment & {

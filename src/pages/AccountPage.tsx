@@ -4,7 +4,7 @@ import { SUPABASE_UNAVAILABLE, supabase, withTimeout } from '../lib/supabase';
 import { normalizeData, saveData } from '../lib/storage';
 import { coachAdvice } from '../lib/coach';
 import { GoalEditor } from '../components/GoalEditor';
-import { COACH_TRACKS, compressCoachPhoto, registerCoach, saveCoachSession, type CoachTrack } from '../lib/coaches';
+import { COACH_TRACKS, clearCoachSession, compressCoachPhoto, registerCoach, saveCoachSession, type CoachTrack } from '../lib/coaches';
 import { submitCoachApplication } from '../lib/cloudPlatform';
 
 type AccountRole = 'ogrenci' | 'koc';
@@ -155,6 +155,7 @@ export function AccountPage() {
   }
 
   async function signOut() {
+    clearCoachSession();
     if (supabase) await supabase.auth.signOut();
     setAuthMsg('Çıkış yapıldı.');
     toast('Çıkış yapıldı');

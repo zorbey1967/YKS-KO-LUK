@@ -19,7 +19,7 @@ import {
   type HumanCoach,
 } from '../lib/coaches';
 import { fetchActiveCoaches, fetchCoachDesk, fetchMyCoach, insertAppointment, pushCoachDesk, updateAppointmentStatus } from '../lib/cloudPlatform';
-import { isAppointmentParty, joinReasonLabel, joinWindow, listMyAppointments, openMeeting, type MyAppointment } from '../lib/meeting';
+import { appointmentStartMs, isAppointmentParty, istanbulToday, joinReasonLabel, joinWindow, listMyAppointments, nextBookSlot, openMeeting, type MyAppointment } from '../lib/meeting';
 import { supabase, withTimeout } from '../lib/supabase';
 import { today, uid } from '../lib/util';
 
@@ -51,7 +51,7 @@ function MeetingJoinButton({
 
 export function CoachesPage() {
   const { toast, go, user, profile } = useApp();
-  const [session, setSession] = useState<CoachSession | null>(loadCoachSession);
+  const [session, setSession] = useState<CoachSession | null>(null);
   const [desk, setDesk] = useState<CoachDesk>(() => (loadCoachSession() ? loadCoachDesk(loadCoachSession()!.coachId) : { students: [], homeworks: [], payments: [], appointments: [] }));
   const [tab, setTab] = useState<PanelTab>('ozet');
   const [track, setTrack] = useState<CoachTrack | 'Tümü'>('Tümü');
@@ -65,8 +65,8 @@ export function CoachesPage() {
   const [stGrade, setStGrade] = useState('');
   const [bookCoach, setBookCoach] = useState<HumanCoach | null>(null);
   const [bookName, setBookName] = useState('');
-  const [bookDate, setBookDate] = useState(today());
-  const [bookTime, setBookTime] = useState('18:00');
+  const [bookDate, setBookDate] = useState(() => nextBookSlot().date);
+  const [bookTime, setBookTime] = useState(() => nextBookSlot().time);
 
   const [list, setList] = useState<HumanCoach[]>([]);
   const [listError, setListError] = useState('');
@@ -111,11 +111,17 @@ export function CoachesPage() {
   }, [user, cloudCoachId, desk.appointments.length]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      setCloudCoachId(null);
+      setSession(loadCoachSession());
+      return;
+    }
     let alive = true;
     void fetchMyCoach(user.id).then((mine) => {
       if (!alive) return;
       if (!mine || mine.status === 'rejected' || mine.status === 'pasif') {
+        clearCoachSession();
+        setSession(null);
         setCloudCoachId(null);
         return;
       }
@@ -201,11 +207,12 @@ export function CoachesPage() {
   }
 
   async function onLogout() {
+    const mine = user ? await fetchMyCoach(user.id) : null;
     clearCoachSession();
     setSession(null);
     setDesk({ students: [], homeworks: [], payments: [], appointments: [] });
-    if (supabase) await supabase.auth.signOut();
-    toast('Koç oturumu kapandı.');
+    if (mine && supabase) await supabase.auth.signOut();
+    toast('Koç paneli kapandı.');
   }
 
   function addHomework() {
@@ -244,6 +251,10 @@ export function CoachesPage() {
     }
     const studentName = (bookName.trim() || profile?.name || '').trim();
     if (studentName.length < 2) return toast('Adını yaz.');
+    const start = appointmentStartMs(bookDate, bookTime);
+    if (Number.isNaN(start) || start < Date.now() - 60_000) {
+      return toast('Saat geçmiş. Türkiye saatiyle ileri bir saat seç.');
+    }
     const appt: CoachAppointment = {
       id: uid('ap_'),
       coachId: bookCoach.id,
@@ -430,7 +441,7 @@ export function CoachesPage() {
 
       <div className="card" style={{ marginTop: 16 }}>
         <div className="section-title"><h3>Randevu al</h3><span>Öğrenciler</span></div>
-        <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: 0 }}>Tarih ve saat seç; koç panelinden onaylanır. Ücret burada tahsil edilmez.</p>
+        <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: 0 }}>Tarih ve saat Türkiye. Varsayılan, görüşme penceresinin açık olacağı en yakın 5 dk. Koç onaylar; ücret yok.</p>
         {listError ? <div className="notice" style={{ marginBottom: 12 }} role="alert">{listError}</div> : null}
         <div className="chip-row" style={{ marginBottom: 12 }}>
           <button className={`chip ${track === 'Tümü' ? 'on' : ''}`} type="button" onClick={() => setTrack('Tümü')}>Tümü</button>
@@ -456,7 +467,12 @@ export function CoachesPage() {
               <p style={{ color: 'var(--muted)', fontSize: 13 }}>{c.focus}</p>
               <div className="plan-item"><span>Süre</span><b>40 dk</b></div>
               <div className="actions">
-                <button className="btn primary" type="button" onClick={() => setBookCoach(c)}>Randevu talep et</button>
+                <button className="btn primary" type="button" onClick={() => {
+                  const slot = nextBookSlot();
+                  setBookDate(slot.date);
+                  setBookTime(slot.time);
+                  setBookCoach(c);
+                }}>Randevu talep et</button>
               </div>
             </div>
           ))}
@@ -472,9 +488,10 @@ export function CoachesPage() {
             </div>
             <div className="form-grid" style={{ marginTop: 12 }}>
               <div className="field"><label>Adın</label><input value={bookName} onChange={(e) => setBookName(e.target.value)} placeholder={profile?.name || 'Öğrenci adı'} /></div>
-              <div className="field"><label>Tarih</label><input type="date" value={bookDate} onChange={(e) => setBookDate(e.target.value)} /></div>
-              <div className="field"><label>Saat</label><input type="time" value={bookTime} onChange={(e) => setBookTime(e.target.value)} /></div>
+              <div className="field"><label>Tarih (Türkiye)</label><input type="date" min={istanbulToday()} value={bookDate} onChange={(e) => setBookDate(e.target.value)} /></div>
+              <div className="field"><label>Saat (24s, 5 dk)</label><input type="time" step={300} value={bookTime} onChange={(e) => setBookTime(e.target.value)} /></div>
             </div>
+            <p style={{ color: 'var(--muted)', fontSize: 13, margin: '8px 0 0' }}>Pencere saatten 10 dk önce açılır. Geçmiş saat gönderilmez.</p>
             <div className="actions">
               <button className="btn primary" type="button" onClick={studentBook}>Talep gönder</button>
             </div>
