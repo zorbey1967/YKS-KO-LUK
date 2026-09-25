@@ -1,9 +1,11 @@
 import { fetchMyCoach } from './cloudPlatform';
 import type { AppointmentStatus, CoachAppointment } from './coaches';
+import { asCancelReason } from './coaches';
 import { publicCloudError, supabase, supabaseAnonKey, supabaseUrl, withTimeout } from './supabase';
 
 export const JOIN_BEFORE_MIN = 10;
 export const JOIN_AFTER_MIN = 15;
+export const BOOKING_LEAD_MIN = 30;
 
 function istanbulParts(d = new Date()) {
   const parts = new Intl.DateTimeFormat('en-GB', {
@@ -29,10 +31,16 @@ function addIsoDays(iso: string, days: number) {
   return `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, '0')}-${String(dt.getUTCDate()).padStart(2, '0')}`;
 }
 
-/** Türkiye saati; varsayılan slot pencerede açılsın diye şimdi + 10 dk, 5 dk’ya yuvarlanır. */
+/** Türkiye duvar saati; UTC saklama sunucuda. Türkiye kalıcı UTC+3. */
+export function istanbulWallIso(date: string, time: string) {
+  const t = time.length >= 5 ? time.slice(0, 5) : time;
+  return `${date}T${t}:00+03:00`;
+}
+
+/** Türkiye saati; varsayılan slot, 30 dk kuralına uyacak en yakın 5 dk. */
 export function nextBookSlot(from = new Date()) {
   const now = istanbulParts(from);
-  let minutes = now.hour * 60 + now.minute + JOIN_BEFORE_MIN;
+  let minutes = now.hour * 60 + now.minute + BOOKING_LEAD_MIN;
   minutes = Math.ceil(minutes / 5) * 5;
   let date = now.date;
   if (minutes >= 24 * 60) {
@@ -128,6 +136,7 @@ function mapAppointment(r: Record<string, unknown>, coachName: string): MyAppoin
     time: String(r.time || ''),
     minutes: Number(r.minutes) || 40,
     status: asStatus(r.status),
+    cancelReason: asCancelReason(r.cancel_reason),
     coachName,
     startsAt: null,
   };
@@ -179,7 +188,7 @@ export async function listMyAppointments(userId: string, coachId: string | null)
   if (!userId) return { ok: true, rows: [] };
   try {
     const { data, error } = await withTimeout(
-      supabase.from('appointments').select('id, coach_id, student_id, student_name, date, time, minutes, status').order('date', { ascending: false }),
+      supabase.from('appointments').select('id, coach_id, student_id, student_name, date, time, minutes, status, cancel_reason').order('date', { ascending: false }),
     );
     if (error) throw error;
     const rows = (data || []) as Record<string, unknown>[];
@@ -206,7 +215,7 @@ export async function fetchAppointmentForMeeting(id: string, userId: string): Pr
   if (!id || !userId) return { ok: false, reason: 'not-found' };
   try {
     const { data, error } = await withTimeout(
-      supabase.from('appointments').select('id, coach_id, student_id, student_name, date, time, minutes, status').eq('id', id).maybeSingle(),
+      supabase.from('appointments').select('id, coach_id, student_id, student_name, date, time, minutes, status, cancel_reason').eq('id', id).maybeSingle(),
     );
     if (error) throw error;
     if (!data) return { ok: false, reason: 'not-found' };

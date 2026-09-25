@@ -20,6 +20,7 @@ import {
   formatTry,
   loadCoachDesk,
   patchCoachAccount,
+  appointmentStatusLabel,
   type AppointmentStatus,
   type CoachStatus,
   type CoachTrack,
@@ -32,6 +33,7 @@ import {
   insertAdminNote,
   insertFinanceRow,
   markFinancePaid,
+  respondAppointment,
   updateAppointmentStatus,
   type CloudAdminBundle,
   type CloudCoach,
@@ -52,10 +54,6 @@ const TABS: { id: Tab; label: string }[] = [
 
 function statusLabel(s: CoachStatus) {
   return s === 'pending' ? 'Başvuru' : s === 'active' ? 'Aktif' : s === 'pasif' ? 'Pasif' : 'Red';
-}
-
-function apptLabel(s: AppointmentStatus) {
-  return s === 'bekliyor' ? 'Bekleyen' : s === 'onay' ? 'Onaylı' : s === 'tamamlandi' ? 'Tamamlanan' : 'İptal';
 }
 
 export function AdminGate() {
@@ -399,12 +397,15 @@ export function AdminPage() {
                 <small style={{ color: 'var(--muted)' }}>{a.date} {a.time} • {a.minutes} dk</small>
               </span>
               <span>
-                <span className="chip">{apptLabel(a.status)}</span>
+                <span className="chip">{appointmentStatusLabel(a, 'coach')}</span>
                 {a.status === 'bekliyor' ? (
                   <button className="btn primary" type="button" style={{ marginLeft: 8 }} onClick={() => {
-                    void updateAppointmentStatus(a.id, 'onay').then((ok) => {
-                      if (!ok) setApptStatus(a.coachId, a.id, 'onay');
-                      toast('Onaylandı.');
+                    void respondAppointment(a.id, true).then((res) => {
+                      if (!res.ok) {
+                        toast(res.error);
+                        return;
+                      }
+                      toast(res.message);
                       refresh();
                     });
                   }}>Onayla</button>

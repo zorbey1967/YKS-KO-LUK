@@ -26,6 +26,7 @@ export type CoachAccount = {
   photo: string;
   studentCount: number;
   status: CoachStatus;
+  score?: number;
 };
 
 export type CoachSession = {
@@ -58,6 +59,8 @@ export type CoachPayment = {
   note: string;
 };
 
+export type AppointmentCancelReason = 'student_no_show' | 'sibling_accepted' | 'coach_rejected' | 'expired';
+
 export type CoachAppointment = {
   id: string;
   coachId: string;
@@ -67,7 +70,33 @@ export type CoachAppointment = {
   time: string;
   minutes: number;
   status: AppointmentStatus;
+  cancelReason?: AppointmentCancelReason | null;
 };
+
+export function asCancelReason(v: unknown): AppointmentCancelReason | null {
+  return v === 'student_no_show' || v === 'sibling_accepted' || v === 'coach_rejected' || v === 'expired'
+    ? v
+    : null;
+}
+
+export function appointmentStatusLabel(a: Pick<CoachAppointment, 'status' | 'cancelReason'>, party: 'student' | 'coach' = 'student') {
+  if (a.status === 'bekliyor') return party === 'coach' ? 'Onay bekliyor' : 'Bekliyor — koç onayı yok, kesin değil';
+  if (a.status === 'onay') return 'Onaylı — randevu kesin';
+  if (a.status === 'tamamlandi') return 'Tamamlandı';
+  if (a.cancelReason === 'student_no_show') {
+    return party === 'student'
+      ? 'İptal (no-show): 10 dk içinde katılmadın. Puanın düştü.'
+      : 'İptal: öğrenci 10 dk içinde katılmadı (no-show).';
+  }
+  if (a.cancelReason === 'sibling_accepted') {
+    return party === 'student'
+      ? 'İptal: aynı saatte başka koç kabul etti'
+      : 'İptal: öğrenci başka koçta kesinleşti';
+  }
+  if (a.cancelReason === 'coach_rejected') return party === 'coach' ? 'Reddettin' : 'İptal: koç reddetti';
+  if (a.cancelReason === 'expired') return 'İptal: onay süresi doldu';
+  return 'İptal';
+}
 
 export type CoachDesk = {
   students: CoachStudent[];

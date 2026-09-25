@@ -251,6 +251,7 @@ export function AccountPage() {
         <div className="status-grid">
           <div className="status"><b>Oturum</b><span>Açık</span></div>
           <div className="status"><b>Plan</b><span>{profile?.plan || 'Ücretsiz'}</span></div>
+          <div className="status"><b>Puan</b><span>{profile?.score ?? 100}</span></div>
           <div className="status"><b>Veri</b><span>{cloudStatus}</span></div>
         </div>
         {isAdmin ? (
@@ -263,6 +264,7 @@ export function AccountPage() {
           <div className="field"><label>Görünen ad</label><input value={name} onChange={(e) => setName(e.target.value)} /></div>
           <div className="field"><label>Plan</label><input value={profile?.plan || 'Ücretsiz'} disabled /></div>
         </div>
+        <p style={{ color: 'var(--muted)', fontSize: 13 }}>Onaylı derse ilk 10 dakikada katılmazsan randevu iptal olur ve puanın bir kez 5 düşer (taban 0). Aynı saat için farklı koçlara talep gönderebilirsin. 18 yaş altı giriş açıktır. Görüşme kaydı yoktur.</p>
         <div className="actions">
           <button className="btn primary" type="button" onClick={() => {
             void saveProfile(name);

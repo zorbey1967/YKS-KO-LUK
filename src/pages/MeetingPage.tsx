@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Room, RoomEvent, Track } from 'livekit-client';
 import { useApp } from '../context/AppContext';
+import { appointmentStatusLabel } from '../lib/coaches';
 import {
   appointmentIdFromHash,
   ensureMeetingRoom,
@@ -32,7 +33,7 @@ function mediaErrorMessage(e: unknown) {
 }
 
 export function MeetingPage() {
-  const { user, go, toast } = useApp();
+  const { user, go, toast, profile } = useApp();
   const [apptId, setApptId] = useState(() => appointmentIdFromHash());
   const [row, setRow] = useState<MyAppointment | null>(null);
   const [reason, setReason] = useState<JoinBlockReason>(user ? 'not-found' : 'no-auth');
@@ -185,6 +186,14 @@ export function MeetingPage() {
           <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: 0 }}>
             {row.studentName} • {row.minutes} dk • kayıt yok
           </p>
+          <p style={{ fontSize: 13, marginTop: 0 }}>{appointmentStatusLabel(row, row.studentId === user?.id ? 'student' : 'coach')}</p>
+          {row.cancelReason === 'student_no_show' ? (
+            <div className="notice" role="status">
+              {row.studentId === user?.id
+                ? `Otomatik iptal: derse ilk 10 dakikada katılmadın. Puanın düştü. Kalan puan: ${profile?.score ?? '—'}.`
+                : 'Öğrenci ilk 10 dakikada katılmadığı için randevu no-show iptal edildi.'}
+            </div>
+          ) : null}
         </div>
       ) : null}
 

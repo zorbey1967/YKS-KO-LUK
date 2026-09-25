@@ -123,6 +123,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             account_status: row.account_status === 'pasif' ? 'pasif' : 'active',
             target_department: row.target_department,
             target_rank: row.target_rank,
+            score: Math.max(0, Math.min(100, Number(row.score) || 100)),
           }
         : { id: u.id, name: '', email: u.email || '', plan: 'Ücretsiz' };
       if (p.account_status === 'pasif') {
@@ -214,6 +215,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       account_status: p?.account_status,
       target_department: data.dept || p?.target_department,
       target_rank: data.rank || p?.target_rank,
+      score: p?.score,
     }));
     if (!u || !supabase) return;
     const payload = {
@@ -238,6 +240,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         account_status: row?.account_status === 'pasif' ? 'pasif' : 'active',
         target_department: row?.target_department,
         target_rank: row?.target_rank,
+        score: Math.max(0, Math.min(100, Number(row?.score) || 100)),
       });
     } catch (e) {
       toast(`Yerel kayıt yapıldı; bulut profilinde hata: ${e instanceof Error ? e.message : ''}`);

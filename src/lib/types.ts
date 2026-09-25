@@ -153,6 +153,7 @@ export type Profile = {
   account_status?: AccountStatus;
   target_department?: string;
   target_rank?: number;
+  score?: number;
 };
 
 export const UNSET_LABEL = 'belirtilmedi';

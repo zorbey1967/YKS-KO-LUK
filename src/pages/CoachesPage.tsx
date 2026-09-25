@@ -10,7 +10,7 @@ import {
   monthPayments,
   saveCoachDesk,
   saveCoachSession,
-  type AppointmentStatus,
+  appointmentStatusLabel,
   type CoachAppointment,
   type CoachDesk,
   type CoachHomework,
@@ -18,12 +18,15 @@ import {
   type CoachTrack,
   type HumanCoach,
 } from '../lib/coaches';
-import { fetchActiveCoaches, fetchCoachDesk, fetchMyCoach, insertAppointment, pushCoachDesk, updateAppointmentStatus } from '../lib/cloudPlatform';
-import { appointmentStartMs, isAppointmentParty, istanbulToday, joinReasonLabel, joinWindow, listMyAppointments, nextBookSlot, openMeeting, type MyAppointment } from '../lib/meeting';
+import { addCoachSlot, closeCoachSlot, fetchActiveCoaches, fetchCoachDesk, fetchMyCoach, listMySlots, listOpenSlots, pushCoachDesk, requestAppointment, respondAppointment, runAppointmentJobs } from '../lib/cloudPlatform';
+import { isAppointmentParty, istanbulToday, istanbulWallIso, joinReasonLabel, joinWindow, listMyAppointments, nextBookSlot, openMeeting, type MyAppointment } from '../lib/meeting';
 import { supabase, withTimeout } from '../lib/supabase';
 import { today, uid } from '../lib/util';
 
-type PanelTab = 'ozet' | 'ogrenci' | 'odev' | 'para' | 'randevu';
+type PanelTab = 'ozet' | 'ogrenci' | 'odev' | 'para' | 'randevu' | 'musait';
+
+const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
+const MINS = Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, '0'));
 
 function MeetingJoinButton({
   appt,
@@ -66,14 +69,26 @@ export function CoachesPage() {
   const [stGrade, setStGrade] = useState('');
   const [bookCoach, setBookCoach] = useState<HumanCoach | null>(null);
   const [bookName, setBookName] = useState('');
-  const [bookDate, setBookDate] = useState(() => nextBookSlot().date);
-  const [bookTime, setBookTime] = useState(() => nextBookSlot().time);
+  const [bookSlots, setBookSlots] = useState<{ id: string; date: string; time: string }[]>([]);
+  const [bookSlotId, setBookSlotId] = useState('');
+  const [bookSlotsMsg, setBookSlotsMsg] = useState('');
+  const [slotDate, setSlotDate] = useState(() => nextBookSlot().date);
+  const [slotHour, setSlotHour] = useState(() => nextBookSlot().time.slice(0, 2));
+  const [slotMin, setSlotMin] = useState(() => nextBookSlot().time.slice(3, 5));
+  const [mySlots, setMySlots] = useState<{ id: string; date: string; time: string; status: string }[]>([]);
+  const [coachScore, setCoachScore] = useState<number | null>(null);
 
   const [list, setList] = useState<HumanCoach[]>([]);
   const [listError, setListError] = useState('');
   const [myAppts, setMyAppts] = useState<MyAppointment[]>([]);
   const [myApptsMsg, setMyApptsMsg] = useState('');
   const [cloudCoachId, setCloudCoachId] = useState<string | null>(null);
+
+  useEffect(() => {
+    void runAppointmentJobs().then((res) => {
+      if (!res.ok) toast(res.error);
+    });
+  }, [user, session, toast]);
 
   useEffect(() => {
     let alive = true;
@@ -124,15 +139,35 @@ export function CoachesPage() {
         clearCoachSession();
         setSession(null);
         setCloudCoachId(null);
+        setCoachScore(null);
         return;
       }
       setCloudCoachId(mine.status === 'active' ? mine.id : null);
+      setCoachScore(typeof mine.score === 'number' ? mine.score : 100);
       const sess: CoachSession = { coachId: mine.id, name: mine.name, email: mine.email, track: mine.track };
       saveCoachSession(sess);
       setSession(sess);
     });
     return () => { alive = false; };
   }, [user]);
+
+  useEffect(() => {
+    if (!session || !cloudCoachId) {
+      setMySlots([]);
+      return;
+    }
+    let alive = true;
+    void listMySlots().then((res) => {
+      if (!alive) return;
+      if (!res.ok) {
+        toast(res.error);
+        setMySlots([]);
+        return;
+      }
+      setMySlots(res.rows);
+    });
+    return () => { alive = false; };
+  }, [session, cloudCoachId, desk.appointments.length, tab, toast]);
 
   useEffect(() => {
     if (!session) return;
@@ -234,13 +269,17 @@ export function CoachesPage() {
     toast('Öğrenci eklendi.');
   }
 
-  function setAppt(id: string, status: AppointmentStatus) {
+  async function setAppt(id: string, accept: boolean) {
+    const res = await respondAppointment(id, accept);
+    if (!res.ok) {
+      toast(res.error);
+      return;
+    }
     persist({
       ...desk,
-      appointments: desk.appointments.map((a) => (a.id === id ? { ...a, status } : a)),
+      appointments: desk.appointments.map((a) => (a.id === id ? { ...a, status: accept ? 'onay' : 'iptal' } : a)),
     });
-    void updateAppointmentStatus(id, status);
-    toast(status === 'onay' ? 'Randevu onaylandı.' : 'Randevu iptal.');
+    toast(res.message);
   }
 
   async function studentBook() {
@@ -252,29 +291,46 @@ export function CoachesPage() {
     }
     const studentName = (bookName.trim() || profile?.name || '').trim();
     if (studentName.length < 2) return toast('Adını yaz.');
-    const start = appointmentStartMs(bookDate, bookTime);
-    if (Number.isNaN(start) || start < Date.now() - 60_000) {
-      return toast('Saat geçmiş. Türkiye saatiyle ileri bir saat seç.');
-    }
-    const appt: CoachAppointment = {
-      id: uid('ap_'),
-      coachId: bookCoach.id,
-      studentId: user.id,
-      studentName,
-      date: bookDate,
-      time: bookTime,
-      minutes: 40,
-      status: 'bekliyor',
-    };
-    const current = loadCoachDesk(bookCoach.id);
-    saveCoachDesk(bookCoach.id, { ...current, appointments: [appt, ...current.appointments] });
-    const cloudOk = await insertAppointment(appt, user.id);
-    if (session?.coachId === bookCoach.id) setDesk(loadCoachDesk(bookCoach.id));
+    if (!bookSlotId) return toast('Koçun açtığı bir saat seç.');
+    const res = await requestAppointment(bookSlotId);
     setBookCoach(null);
     setBookName('');
-    toast(cloudOk
-      ? 'Randevu talebi gönderildi. Ödeme yok; koç panelinden onaylanır.'
-      : 'Randevu buluta yazılamadı. Giriş ve onaylı koç gerekir.');
+    setBookSlotId('');
+    toast(res.ok
+      ? 'Talep gönderildi. Koç onaylamadan randevu kesinleşmez. Aynı saat için başka koça da talep gönderebilirsin; biri kabul edince diğerleri düşer.'
+      : res.error);
+  }
+
+  async function addMySlot() {
+    const iso = istanbulWallIso(slotDate, `${slotHour}:${slotMin}`);
+    const res = await addCoachSlot(iso);
+    if (!res.ok) return toast(res.error);
+    toast('Müsait saat açıldı.');
+    const slots = await listMySlots();
+    if (!slots.ok) return toast(slots.error);
+    setMySlots(slots.rows);
+  }
+
+  async function closeMySlot(id: string) {
+    const res = await closeCoachSlot(id);
+    if (!res.ok) return toast(res.error);
+    toast('Saat kapatıldı.');
+    setMySlots((prev) => prev.filter((s) => s.id !== id));
+  }
+
+  async function openBook(c: HumanCoach) {
+    setBookCoach(c);
+    setBookSlotId('');
+    setBookSlots([]);
+    setBookSlotsMsg('Saatler yükleniyor…');
+    const res = await listOpenSlots(c.id);
+    if (!res.ok) {
+      setBookSlots([]);
+      setBookSlotsMsg(res.error);
+      return;
+    }
+    setBookSlots(res.rows);
+    setBookSlotsMsg(res.rows.length ? '' : 'Bu koçun en az 30 dk sonrası için açık saati yok.');
   }
 
   const monthTotal = monthPayments(desk);
@@ -316,7 +372,7 @@ export function CoachesPage() {
               <button className="btn" type="button" onClick={onLogout}>Çıkış</button>
             </div>
             <div className="chip-row" style={{ marginBottom: 12 }}>
-              {([['ozet', 'Özet'], ['ogrenci', 'Öğrenciler'], ['odev', 'Ödev'], ['para', 'Tahsilat'], ['randevu', 'Randevu']] as const).map(([id, label]) => (
+              {([['ozet', 'Özet'], ['ogrenci', 'Öğrenciler'], ['odev', 'Ödev'], ['para', 'Tahsilat'], ['randevu', 'Randevu'], ['musait', 'Boşum']] as const).map(([id, label]) => (
                 <button key={id} className={`chip ${tab === id ? 'on' : ''}`} type="button" onClick={() => setTab(id)}>{label}</button>
               ))}
             </div>
@@ -324,6 +380,7 @@ export function CoachesPage() {
               <div className="card stat" style={{ boxShadow: 'none' }}><div className="label">Öğrenci</div><div className="value">{desk.students.length}</div></div>
               <div className="card stat" style={{ boxShadow: 'none' }}><div className="label">Açık ödev</div><div className="value">{desk.homeworks.filter((h) => !h.done).length}</div></div>
               <div className="card stat" style={{ boxShadow: 'none' }}><div className="label">Bu ay</div><div className="value" style={{ fontSize: 20 }}>{formatTry(monthTotal)}</div></div>
+              <div className="card stat" style={{ boxShadow: 'none' }}><div className="label">Puan</div><div className="value">{coachScore ?? '—'}</div></div>
               <div className="card stat" style={{ boxShadow: 'none' }}><div className="label">Bekleyen randevu</div><div className="value">{desk.appointments.filter((a) => a.status === 'bekliyor').length}</div></div>
             </div>
           </div>
@@ -401,12 +458,12 @@ export function CoachesPage() {
                   <span>
                     {a.studentName} • {a.date} {a.time} ({a.minutes} dk)
                     <br />
-                    <small style={{ color: 'var(--muted)' }}>{a.status === 'bekliyor' ? 'Onay bekliyor' : a.status === 'onay' ? 'Onaylı' : a.status === 'tamamlandi' ? 'Tamamlandı' : 'İptal'}</small>
+                    <small style={{ color: 'var(--muted)' }}>{appointmentStatusLabel(a, 'coach')}</small>
                   </span>
                   {a.status === 'bekliyor' ? (
                     <span style={{ display: 'flex', gap: 8 }}>
-                      <button className="btn primary" type="button" onClick={() => setAppt(a.id, 'onay')}>Onayla</button>
-                      <button className="btn secondary" type="button" onClick={() => setAppt(a.id, 'iptal')}>Reddet</button>
+                      <button className="btn primary" type="button" onClick={() => void setAppt(a.id, true)}>Onayla</button>
+                      <button className="btn secondary" type="button" onClick={() => void setAppt(a.id, false)}>Reddet</button>
                     </span>
                   ) : (
                     <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -418,12 +475,45 @@ export function CoachesPage() {
               )) : <div className="empty">Randevu yok.</div>}
             </div>
           ) : null}
+
+          {tab === 'ozet' || tab === 'musait' ? (
+            <div className="card" style={{ marginTop: 16 }}>
+              <div className="section-title"><h3>Boşum / Müsaitlik</h3><span>Türkiye saati</span></div>
+              <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: 0 }}>Öğrenci yalnız burada açtığın 40 dk’lık saatlerden seçer. Saat en az 30 dk sonra olmalı. Onaylı ders sessiz silinmez.</p>
+              <div className="form-grid">
+                <div className="field"><label>Tarih</label><input type="date" min={istanbulToday()} value={slotDate} onChange={(e) => setSlotDate(e.target.value)} /></div>
+                <div className="field">
+                  <label>Saat</label>
+                  <select value={slotHour} onChange={(e) => setSlotHour(e.target.value)}>
+                    {HOURS.map((h) => <option key={h} value={h}>{h}</option>)}
+                  </select>
+                </div>
+                <div className="field">
+                  <label>Dakika</label>
+                  <select value={slotMin} onChange={(e) => setSlotMin(e.target.value)}>
+                    {MINS.map((m) => <option key={m} value={m}>{m}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div className="actions">
+                <button className="btn primary" type="button" onClick={() => void addMySlot()}>Saat aç</button>
+              </div>
+              {mySlots.length ? mySlots.map((s) => (
+                <div className="plan-item" key={s.id}>
+                  <span>{s.date} {s.time} • 40 dk<br /><small style={{ color: 'var(--muted)' }}>{s.status === 'open' ? 'Açık' : s.status === 'held' ? 'Talep var' : 'Onaylı'}</small></span>
+                  {s.status === 'booked' ? <span className="chip">kilitli</span> : (
+                    <button className="btn secondary" type="button" onClick={() => void closeMySlot(s.id)}>Kapat</button>
+                  )}
+                </div>
+              )) : <div className="empty">Açık saat yok.</div>}
+            </div>
+          ) : null}
         </>
       )}
 
       <div className="card" style={{ marginTop: 16 }}>
         <div className="section-title"><h3>Randevularım</h3><span>Görüşme</span></div>
-        <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: 0 }}>Onaylı randevuda, saatten 10 dk önce / süre + 15 dk içinde odaya girilir. Kayıt yok. Yerel koç oturumu yetmez; Hesabım girişi gerekir.</p>
+        <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: 0 }}>Onaylı randevuda, saatten 10 dk önce / süre + 15 dk içinde odaya girilir. İlk 10 dk katılmazsan randevu no-show iptal olur ve puanın bir kez 5 düşer. Aynı saat için farklı koçlara talep gönderebilirsin; biri kabul edince diğerleri düşer. Aynı koça aynı saat için ikinci talep yok. Kayıt yok.</p>
         {!user ? (
           <div className="empty">Görüşme listesi için giriş yap.</div>
         ) : myApptsMsg ? (
@@ -433,7 +523,18 @@ export function CoachesPage() {
             <span>
               {a.coachName} • {a.studentName} • {a.date} {a.time} ({a.minutes} dk)
               <br />
-              <small style={{ color: 'var(--muted)' }}>{joinReasonLabel(joinWindow(a).reason)}</small>
+              <small style={{ color: 'var(--muted)' }}>{appointmentStatusLabel(a, a.studentId === user.id ? 'student' : 'coach')}</small>
+              {a.studentId === user.id && a.cancelReason === 'student_no_show' ? (
+                <>
+                  <br />
+                  <small style={{ color: 'var(--muted)' }}>Kalan puanın: {profile?.score ?? '—'}. Detay Hesabım’da.</small>
+                </>
+              ) : (
+                <>
+                  <br />
+                  <small style={{ color: 'var(--muted)' }}>{joinReasonLabel(joinWindow(a).reason)}</small>
+                </>
+              )}
             </span>
             <MeetingJoinButton appt={a} userId={user.id} coachId={cloudCoachId} />
           </div>
@@ -442,7 +543,7 @@ export function CoachesPage() {
 
       <div className="card" style={{ marginTop: 16 }}>
         <div className="section-title"><h3>Randevu al</h3><span>Öğrenciler</span></div>
-        <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: 0 }}>Tarih ve saat Türkiye. Varsayılan, görüşme penceresinin açık olacağı en yakın 5 dk. Koç onaylar; ücret yok.</p>
+        <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: 0 }}>Koçun açtığı saatlerden seç. Son talep, randevudan 30 dk önce kapanır (15.00 için 14.30). Koç onaylamadan kesinleşmez. Aynı saat için başka koça da talep gönderebilirsin. Saatler Türkiye.</p>
         {listError ? <div className="notice" style={{ marginBottom: 12 }} role="alert">{listError}</div> : null}
         <div className="chip-row" style={{ marginBottom: 12 }}>
           <button className={`chip ${track === 'Tümü' ? 'on' : ''}`} type="button" onClick={() => setTrack('Tümü')}>Tümü</button>
@@ -468,12 +569,7 @@ export function CoachesPage() {
               <p style={{ color: 'var(--muted)', fontSize: 13 }}>{c.focus}</p>
               <div className="plan-item"><span>Süre</span><b>40 dk</b></div>
               <div className="actions">
-                <button className="btn primary" type="button" onClick={() => {
-                  const slot = nextBookSlot();
-                  setBookDate(slot.date);
-                  setBookTime(slot.time);
-                  setBookCoach(c);
-                }}>Randevu talep et</button>
+                <button className="btn primary" type="button" onClick={() => void openBook(c)}>Randevu talep et</button>
               </div>
             </div>
           ))}
@@ -489,12 +585,21 @@ export function CoachesPage() {
             </div>
             <div className="form-grid" style={{ marginTop: 12 }}>
               <div className="field"><label>Adın</label><input value={bookName} onChange={(e) => setBookName(e.target.value)} placeholder={profile?.name || 'Öğrenci adı'} /></div>
-              <div className="field"><label>Tarih (Türkiye)</label><input type="date" min={istanbulToday()} value={bookDate} onChange={(e) => setBookDate(e.target.value)} /></div>
-              <div className="field"><label>Saat (24s, 5 dk)</label><input type="time" step={300} value={bookTime} onChange={(e) => setBookTime(e.target.value)} /></div>
+              <div className="field" style={{ gridColumn: '1 / -1' }}>
+                <label>Açık saat (Türkiye, 30 dk kuralı)</label>
+                <select value={bookSlotId} onChange={(e) => setBookSlotId(e.target.value)}>
+                  <option value="">Seç</option>
+                  {bookSlots.map((s) => (
+                    <option key={s.id} value={s.id}>{s.date} {s.time}</option>
+                  ))}
+                </select>
+              </div>
             </div>
-            <p style={{ color: 'var(--muted)', fontSize: 13, margin: '8px 0 0' }}>Pencere saatten 10 dk önce açılır. Geçmiş saat gönderilmez.</p>
+            {bookSlotsMsg ? <p style={{ color: 'var(--muted)', fontSize: 13, margin: '8px 0 0' }}>{bookSlotsMsg}</p> : (
+              <p style={{ color: 'var(--muted)', fontSize: 13, margin: '8px 0 0' }}>Onaylanmayan talepler süre sonunda düşer.</p>
+            )}
             <div className="actions">
-              <button className="btn primary" type="button" onClick={studentBook}>Talep gönder</button>
+              <button className="btn primary" type="button" disabled={!bookSlotId} onClick={() => void studentBook()}>Talep gönder</button>
             </div>
           </div>
         </div>

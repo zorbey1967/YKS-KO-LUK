@@ -1,5 +1,5 @@
 import type { AppointmentStatus, CoachAccount, CoachAppointment, CoachDesk, CoachStatus, CoachStudent, CoachTrack, HumanCoach } from './coaches';
-import { COACH_TRACKS, emptyDesk } from './coaches';
+import { asCancelReason, COACH_TRACKS, emptyDesk } from './coaches';
 import { SUPABASE_UNAVAILABLE, publicCloudError, supabase, withTimeout } from './supabase';
 
 type LedgerKind = 'odeme' | 'iade';
@@ -74,6 +74,32 @@ export function isUuid(id: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
 }
 
+function rpcUserMessage(e: unknown): string {
+  const msg = e && typeof e === 'object' && 'message' in e ? String((e as { message: unknown }).message || '') : e instanceof Error ? e.message : '';
+  const known = [
+    'koç hesabı yok',
+    'geçmiş saat eklenemez',
+    'slot en az 30 dk sonra olmalı',
+    'müsaitlik çakışıyor',
+    'slot yok',
+    'onaylı randevu sessiz silinemez',
+    'oturum gerekli',
+    'slot müsait değil',
+    'koç aktif değil',
+    'son talep 30 dk kala kapanır',
+    'randevu yok',
+    'yetkisiz',
+    'talep açık değil',
+    'onay penceresi kapandı',
+    'bu saat başka koçta onaylı',
+    'bu koçta bu saat için talebin var',
+    'yalnız açık saatten talep',
+  ];
+  const hit = known.find((k) => msg.toLowerCase().includes(k));
+  if (hit) return hit.charAt(0).toUpperCase() + hit.slice(1) + '.';
+  return publicCloudError(e);
+}
+
 function mapCoach(row: Record<string, unknown>): CloudCoach {
   return {
     id: String(row.id),
@@ -85,6 +111,7 @@ function mapCoach(row: Record<string, unknown>): CloudCoach {
     photo: String(row.photo || ''),
     studentCount: Number(row.student_count) || 0,
     status: asStatus(row.status),
+    score: Math.max(0, Math.min(100, Number(row.score) || 100)),
   };
 }
 
@@ -113,7 +140,7 @@ export async function fetchActiveCoaches(): Promise<{ ok: true; coaches: HumanCo
     if (error) throw error;
     return { ok: true, coaches: (data || []).map((r) => directoryToHuman(r as Record<string, unknown>)) };
   } catch (e) {
-    return { ok: false, error: publicCloudError(e) };
+    return { ok: false, error: rpcUserMessage(e) };
   }
 }
 
@@ -223,6 +250,7 @@ export async function fetchCoachDesk(coachId: string): Promise<CoachDesk | null>
       time: String(r.time || ''),
       minutes: Number(r.minutes) || 40,
       status: asAppt(r.status),
+      cancelReason: asCancelReason(r.cancel_reason),
     })),
   };
 }
@@ -251,25 +279,116 @@ export async function pushCoachDesk(coachId: string, desk: CoachDesk): Promise<b
   }
 }
 
-export async function insertAppointment(appt: CoachAppointment, studentUserId?: string | null): Promise<boolean> {
-  if (!supabase || !isUuid(appt.coachId) || !studentUserId || !isUuid(studentUserId)) return false;
+function asSlotRows(data: unknown): Record<string, unknown>[] {
+  if (Array.isArray(data)) return data as Record<string, unknown>[];
+  if (typeof data === 'string') {
+    try {
+      const parsed = JSON.parse(data) as unknown;
+      return Array.isArray(parsed) ? parsed as Record<string, unknown>[] : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
+export async function requestAppointment(availabilityId: string): Promise<{ ok: true; id: string; message?: string } | { ok: false; error: string }> {
+  if (!supabase || !availabilityId) return { ok: false, error: 'Slot yok.' };
   try {
-    const { error } = await withTimeout(
-      supabase.from('appointments').insert({
-        id: appt.id,
-        coach_id: appt.coachId,
-        student_id: studentUserId,
-        student_name: appt.studentName,
-        date: appt.date,
-        time: appt.time,
-        minutes: appt.minutes,
-        status: appt.status,
-      }),
-    );
+    const { data, error } = await withTimeout(supabase.rpc('request_appointment', { p_availability_id: availabilityId }));
     if (error) throw error;
-    return true;
-  } catch {
-    return false;
+    const row = data as { id?: string } | null;
+    if (!row?.id) return { ok: false, error: 'Talep oluşmadı. Müsaitlik şeması yok olabilir.' };
+    return { ok: true, id: String(row.id) };
+  } catch (e) {
+    return { ok: false, error: rpcUserMessage(e) };
+  }
+}
+
+export async function respondAppointment(apptId: string, accept: boolean): Promise<{ ok: true; cancelled: number; message: string } | { ok: false; error: string }> {
+  if (!supabase || !apptId) return { ok: false, error: 'Randevu yok.' };
+  try {
+    const { data, error } = await withTimeout(supabase.rpc('respond_appointment', { p_id: apptId, p_accept: accept }));
+    if (error) throw error;
+    const row = data as { cancelled?: number; message?: string; status?: string } | null;
+    return {
+      ok: true,
+      cancelled: Number(row?.cancelled) || 0,
+      message: String(row?.message || (accept ? 'Randevu onaylandı.' : 'Randevu iptal.')),
+    };
+  } catch (e) {
+    return { ok: false, error: rpcUserMessage(e) };
+  }
+}
+
+export async function listOpenSlots(coachId: string): Promise<{ ok: true; rows: { id: string; startsAt: string; date: string; time: string }[] } | { ok: false; error: string }> {
+  if (!supabase) return { ok: false, error: 'Bulut ayarı yok.' };
+  if (!coachId) return { ok: false, error: 'Koç yok.' };
+  try {
+    const { data, error } = await withTimeout(supabase.rpc('list_open_slots', { p_coach_id: coachId }));
+    if (error) throw error;
+    const rows = asSlotRows(data).map((r) => ({
+      id: String(r.id || ''),
+      startsAt: String(r.starts_at || ''),
+      date: String(r.date || ''),
+      time: String(r.time || ''),
+    })).filter((s) => s.id);
+    return { ok: true, rows };
+  } catch (e) {
+    return { ok: false, error: rpcUserMessage(e) };
+  }
+}
+
+export async function listMySlots(): Promise<{ ok: true; rows: { id: string; startsAt: string; date: string; time: string; status: string }[] } | { ok: false; error: string }> {
+  if (!supabase) return { ok: false, error: 'Bulut ayarı yok.' };
+  try {
+    const { data, error } = await withTimeout(supabase.rpc('list_my_slots'));
+    if (error) throw error;
+    const rows = asSlotRows(data).map((r) => ({
+      id: String(r.id || ''),
+      startsAt: String(r.starts_at || ''),
+      date: String(r.date || ''),
+      time: String(r.time || ''),
+      status: String(r.status || ''),
+    })).filter((s) => s.id);
+    return { ok: true, rows };
+  } catch (e) {
+    return { ok: false, error: rpcUserMessage(e) };
+  }
+}
+
+export async function addCoachSlot(startsAtIso: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!supabase || !startsAtIso) return { ok: false, error: 'Saat yok.' };
+  try {
+    const { error } = await withTimeout(supabase.rpc('add_coach_slot', { p_starts_at: startsAtIso }));
+    if (error) throw error;
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: rpcUserMessage(e) };
+  }
+}
+
+export async function closeCoachSlot(id: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!supabase || !id) return { ok: false, error: 'Slot yok.' };
+  try {
+    const { error } = await withTimeout(supabase.rpc('close_coach_slot', { p_id: id }));
+    if (error) throw error;
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: rpcUserMessage(e) };
+  }
+}
+
+export async function runAppointmentJobs(): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!supabase) return { ok: true };
+  try {
+    const expire = await withTimeout(supabase.rpc('expire_my_pending_appointments'));
+    if (expire.error) throw expire.error;
+    const apply = await withTimeout(supabase.rpc('apply_my_lesson_outcomes'));
+    if (apply.error) throw apply.error;
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: rpcUserMessage(e) };
   }
 }
 
@@ -419,6 +538,7 @@ export async function fetchAdminBundle(): Promise<CloudAdminBundle | null> {
       minutes: Number(r.minutes) || 40,
       status: asAppt(r.status),
       coachName: nameOf(String(r.coach_id)),
+      cancelReason: asCancelReason(r.cancel_reason),
     }));
     for (const a of cloudAppts) {
       if (!desks[a.coachId]) desks[a.coachId] = emptyDesk();
