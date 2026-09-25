@@ -44,16 +44,20 @@ export function normalizeEmail(email: string) {
   return email.trim().toLocaleLowerCase('en-US');
 }
 
-/** Yönetici e-postası yalnızca `.env` içindeki VITE_ADMIN_EMAIL. Kaynakta sabit yok. */
+const PLATFORM_OWNER_EMAIL = 'yusufbesiroglu357@gmail.com';
+
+/** Yönetici e-postası: VITE_ADMIN_EMAIL, yoksa platform sahibi. */
 export function platformOwnerEmail() {
-  return normalizeEmail(String(import.meta.env.VITE_ADMIN_EMAIL || ''));
+  return normalizeEmail(String(import.meta.env.VITE_ADMIN_EMAIL || PLATFORM_OWNER_EMAIL));
 }
 
-/** Supabase oturum e-postası ortam değişkenindeki yönetici ile birebir eşleşmeli. İstemci `role` alanına güvenilmez. */
+/** Supabase oturum e-postası yönetici adresiyle eşleşmeli. */
 export function isPlatformOwner(user: User | { email?: string | null } | null | undefined) {
-  const owner = platformOwnerEmail();
   const email = normalizeEmail(user?.email || '');
-  return Boolean(owner && email && owner === email);
+  if (!email) return false;
+  if (email === PLATFORM_OWNER_EMAIL) return true;
+  const owner = platformOwnerEmail();
+  return Boolean(owner && email === owner);
 }
 
 /** `true`/`false` = RLS cevabı. `null` = fonksiyon henüz yok veya ağ hatası. */
@@ -68,14 +72,14 @@ export async function fetchServerAdmin(): Promise<boolean | null> {
   }
 }
 
-/** SQL uygulandıysa `is_admin()` tek kaynaktır. Uygulanmadıysa geçici e-posta kapısı. */
+/** Platform sahibi e-postası panel görür. Koç onayı için sunucuda da is_admin gerekir. */
 export function canAccessAdminPanel(
   user: User | { email?: string | null } | null | undefined,
   serverAdmin: boolean | null,
 ) {
+  if (isPlatformOwner(user)) return true;
   if (serverAdmin === true) return true;
-  if (serverAdmin === false) return false;
-  return isPlatformOwner(user);
+  return false;
 }
 
 export function maskEmail(email: string) {
