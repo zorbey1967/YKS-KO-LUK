@@ -36,6 +36,7 @@ function MeetingJoinButton({
 }) {
   const w = joinWindow(appt);
   if (!isAppointmentParty(appt, userId, coachId)) return null;
+  if (!appt.id || appt.status !== 'onay') return null;
   return (
     <button
       className="btn secondary"
@@ -44,7 +45,7 @@ function MeetingJoinButton({
       title={joinReasonLabel(w.reason)}
       onClick={() => openMeeting(appt.id)}
     >
-      Görüşme
+      Görüşmeye Katıl
     </button>
   );
 }

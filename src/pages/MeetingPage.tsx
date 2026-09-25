@@ -15,6 +15,13 @@ import {
   type MyAppointment,
 } from '../lib/meeting';
 
+function tokenErrorMessage(error: string, status?: number) {
+  if (status === 401) return 'Oturum gerekli veya süresi doldu. Hesabım’dan tekrar gir.';
+  if (status === 403) return 'Bu görüşmeye katılamazsın. Onaylı randevu, tarafın olman ve zaman penceresi gerekir.';
+  if (status === 503) return 'Görüşme sunucusu ayarı yok veya geçici hata.';
+  return error;
+}
+
 function mediaErrorMessage(e: unknown) {
   const name = e && typeof e === 'object' && 'name' in e ? String((e as { name: string }).name) : '';
   if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
@@ -117,12 +124,16 @@ export function MeetingPage() {
 
   async function joinLive() {
     if (!row || reason !== 'ok' || busy) return;
+    if (row.status !== 'onay' || !row.id) {
+      toast('Yalnız onaylı randevuya katılınır.');
+      return;
+    }
     setBusy(true);
     detach();
     try {
       const tok = await requestMeetingToken(row.id);
       if (!tok.ok) {
-        toast(tok.error);
+        toast(tokenErrorMessage(tok.error, tok.status));
         return;
       }
       const lk = new Room({ adaptiveStream: true, dynacast: true });
