@@ -99,6 +99,10 @@ Deno.serve(async (req) => {
   });
 
   const accessToken = await at.toJwt();
+  const { error: logError } = await supabase.rpc("log_meeting_token_ok", {
+    p_appointment_id: appointmentId,
+  });
+  if (logError) return json({ error: "Katılım kaydı yazılamadı" }, 503);
   return json({
     token: accessToken,
     url: livekitUrl,
