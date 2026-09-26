@@ -3,8 +3,7 @@ import type { AppointmentStatus, CoachAppointment } from './coaches';
 import { asCancelReason } from './coaches';
 import { publicCloudError, supabase, supabaseAnonKey, supabaseUrl, withTimeout } from './supabase';
 
-export const JOIN_BEFORE_MIN = 10;
-export const JOIN_AFTER_MIN = 15;
+export const LESSON_MIN = 40;
 export const BOOKING_LEAD_MIN = 30;
 
 function istanbulParts(d = new Date()) {
@@ -152,20 +151,6 @@ export function appointmentStartMs(date: string, time: string, startsAt?: string
   return Date.parse(`${date}T${hm}:00+03:00`);
 }
 
-export function joinWindow(appt: Pick<CoachAppointment, 'date' | 'time' | 'minutes' | 'status'> & { startsAt?: string | null }, now = Date.now()) {
-  const start = appointmentStartMs(appt.date, appt.time, appt.startsAt);
-  if (Number.isNaN(start)) return { can: false, reason: 'pending' as JoinBlockReason, start: 0, end: 0 };
-  const end = start + (appt.minutes + JOIN_AFTER_MIN) * 60_000;
-  const open = start - JOIN_BEFORE_MIN * 60_000;
-  if (appt.status === 'bekliyor') return { can: false, reason: 'pending' as JoinBlockReason, start: open, end };
-  if (appt.status === 'iptal') return { can: false, reason: 'cancelled' as JoinBlockReason, start: open, end };
-  if (appt.status === 'tamamlandi') return { can: false, reason: 'done' as JoinBlockReason, start: open, end };
-  if (appt.status !== 'onay') return { can: false, reason: 'pending' as JoinBlockReason, start: open, end };
-  if (now < open) return { can: false, reason: 'early' as JoinBlockReason, start: open, end };
-  if (now > end) return { can: false, reason: 'late' as JoinBlockReason, start: open, end };
-  return { can: true, reason: 'ok' as JoinBlockReason, start: open, end };
-}
-
 export function joinReasonLabel(reason: JoinBlockReason) {
   switch (reason) {
     case 'ok': return 'Pencere açık.';
@@ -177,8 +162,8 @@ export function joinReasonLabel(reason: JoinBlockReason) {
     case 'pending': return 'Koç onayı bekleniyor.';
     case 'cancelled': return 'Randevu iptal.';
     case 'done': return 'Görüşme tamamlandı.';
-    case 'early': return 'Görüşme saati henüz gelmedi.';
-    case 'late': return 'Katılma penceresi kapandı.';
+    case 'early': return 'Görüşme henüz başlatılmadı.';
+    case 'late': return 'Görüşme kapalı.';
     default: return 'Görüşmeye girilemez.';
   }
 }
@@ -322,4 +307,73 @@ export async function ensureMeetingRoom(appointmentId: string): Promise<MeetingR
     const missing = isMissingRpc(e);
     return { error: missing ? 'Görüşme şeması henüz uygulanmadı.' : publicCloudError(e), missing };
   }
+}
+
+export type MeetingSessionState = {
+  status: MeetingRoomStatus | 'idle';
+  lessonStartedAt: string | null;
+  endedAt: string | null;
+  studentIn: boolean;
+  coachIn: boolean;
+  remainingSec: number | null;
+  serverNow: string | null;
+};
+
+function asSessionState(raw: Record<string, unknown> | null): MeetingSessionState {
+  const statusRaw = String(raw?.status || 'idle');
+  const status: MeetingSessionState['status'] = ['idle', 'waiting', 'live', 'ended', 'blocked'].includes(statusRaw)
+    ? statusRaw as MeetingSessionState['status']
+    : 'idle';
+  const remaining = raw?.remaining_sec;
+  return {
+    status,
+    lessonStartedAt: raw?.lesson_started_at ? String(raw.lesson_started_at) : null,
+    endedAt: raw?.ended_at ? String(raw.ended_at) : null,
+    studentIn: Boolean(raw?.student_in),
+    coachIn: Boolean(raw?.coach_in),
+    remainingSec: remaining === null || remaining === undefined ? null : Math.max(0, Math.floor(Number(remaining) || 0)),
+    serverNow: raw?.server_now ? String(raw.server_now) : null,
+  };
+}
+
+export async function fetchMeetingSession(appointmentId: string): Promise<{ ok: true; state: MeetingSessionState } | { ok: false; missing?: boolean; error: string }> {
+  if (!supabase) return { ok: false, error: 'Bulut yok.' };
+  try {
+    const { data, error } = await withTimeout(supabase.rpc('meeting_session_state', { p_appointment_id: appointmentId }));
+    if (error) throw error;
+    return { ok: true, state: asSessionState((data || {}) as Record<string, unknown>) };
+  } catch (e) {
+    const missing = isMissingRpc(e);
+    return { ok: false, missing, error: missing ? 'Görüşme oturumu henüz uygulanmadı.' : publicCloudError(e) };
+  }
+}
+
+export async function setMeetingPresence(appointmentId: string, present: boolean): Promise<{ ok: true; state: MeetingSessionState } | { ok: false; error: string }> {
+  if (!supabase) return { ok: false, error: 'Bulut yok.' };
+  try {
+    const { data, error } = await withTimeout(supabase.rpc('set_meeting_presence', { p_appointment_id: appointmentId, p_present: present }));
+    if (error) throw error;
+    return { ok: true, state: asSessionState((data || {}) as Record<string, unknown>) };
+  } catch (e) {
+    return { ok: false, error: publicCloudError(e) };
+  }
+}
+
+export async function endMeetingSession(appointmentId: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!supabase) return { ok: false, error: 'Bulut yok.' };
+  try {
+    const { error } = await withTimeout(supabase.rpc('end_meeting', { p_appointment_id: appointmentId }));
+    if (error) throw error;
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: publicCloudError(e) };
+  }
+}
+
+export function formatLessonClock(sec: number | null) {
+  if (sec === null || !Number.isFinite(sec)) return '';
+  const s = Math.max(0, Math.floor(sec));
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  return `${String(m).padStart(2, '0')}:${String(r).padStart(2, '0')}`;
 }

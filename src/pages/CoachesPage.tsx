@@ -19,7 +19,7 @@ import {
   type HumanCoach,
 } from '../lib/coaches';
 import { addCoachSlot, closeCoachSlot, fetchActiveCoaches, fetchCoachDesk, fetchMyCoach, listMySlots, listOpenSlots, pushCoachDesk, requestAppointment, respondAppointment, runAppointmentJobs } from '../lib/cloudPlatform';
-import { isAppointmentParty, istanbulToday, istanbulWallIso, joinReasonLabel, joinWindow, listMyAppointments, nextBookSlot, openMeeting, type MyAppointment } from '../lib/meeting';
+import { isAppointmentParty, istanbulToday, istanbulWallIso, listMyAppointments, nextBookSlot, openMeeting, type MyAppointment } from '../lib/meeting';
 import { supabase, withTimeout } from '../lib/supabase';
 import { today, uid } from '../lib/util';
 
@@ -37,15 +37,12 @@ function MeetingJoinButton({
   userId?: string | null;
   coachId?: string | null;
 }) {
-  const w = joinWindow(appt);
   if (!isAppointmentParty(appt, userId, coachId)) return null;
   if (!appt.id || appt.status !== 'onay') return null;
   return (
     <button
       className="btn secondary"
       type="button"
-      disabled={!w.can}
-      title={joinReasonLabel(w.reason)}
       onClick={() => openMeeting(appt.id)}
     >
       Görüşmeye Katıl
@@ -547,7 +544,7 @@ export function CoachesPage() {
 
       <div className="card" style={{ marginTop: 16 }}>
         <div className="section-title"><h3>Randevularım</h3><span>Görüşme</span></div>
-        <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: 0 }}>Onaylı randevuda, saatten 10 dk önce / süre + 15 dk içinde odaya girilir. İlk 10 dk katılmazsan randevu no-show iptal olur ve puanın bir kez 5 düşer. Aynı saat için farklı koçlara talep gönderebilirsin; biri kabul edince diğerleri düşer. Aynı koça aynı saat için ikinci talep yok. Kayıt yok.</p>
+        <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: 0 }}>Onaylı randevuya istediğin zaman girilir. Sayaç, randevu saati gelmişken iki taraf da odadayken 40 dk başlar; biri bitirince veya süre dolunca görüşme kapanır ve yeniden açılmaz. Aynı saat için farklı koçlara talep gönderebilirsin; biri kabul edince diğerleri düşer. Aynı koça aynı saat için ikinci talep yok. Kayıt yok.</p>
         {!user ? (
           <div className="empty">Görüşme listesi için giriş yap.</div>
         ) : myApptsMsg ? (
@@ -563,12 +560,7 @@ export function CoachesPage() {
                   <br />
                   <small style={{ color: 'var(--muted)' }}>Kalan puanın: {profile?.score ?? '—'}. Detay Hesabım’da.</small>
                 </>
-              ) : (
-                <>
-                  <br />
-                  <small style={{ color: 'var(--muted)' }}>{joinReasonLabel(joinWindow(a).reason)}</small>
-                </>
-              )}
+              ) : null}
             </span>
             <MeetingJoinButton appt={a} userId={user.id} coachId={cloudCoachId} />
           </div>
