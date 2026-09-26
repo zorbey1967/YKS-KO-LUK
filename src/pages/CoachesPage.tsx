@@ -83,10 +83,25 @@ export function CoachesPage() {
   const [myAppts, setMyAppts] = useState<MyAppointment[]>([]);
   const [myApptsMsg, setMyApptsMsg] = useState('');
   const [cloudCoachId, setCloudCoachId] = useState<string | null>(null);
+  const [listTick, setListTick] = useState(0);
 
   useEffect(() => {
-    void runAppointmentJobs().then((res) => {
+    void runAppointmentJobs().then(async (res) => {
       if (!res.ok) toast(res.error);
+      if (session) {
+        const d = await fetchCoachDesk(session.coachId);
+        if (d) {
+          const local = loadCoachDesk(session.coachId);
+          const merged = {
+            ...d,
+            homeworks: d.homeworks.length ? d.homeworks : local.homeworks,
+            payments: d.payments.length ? d.payments : local.payments,
+          };
+          setDesk(merged);
+          saveCoachDesk(session.coachId, merged);
+        }
+      }
+      setListTick((n) => n + 1);
     });
   }, [user, session, toast]);
 
@@ -124,7 +139,7 @@ export function CoachesPage() {
       }
     });
     return () => { alive = false; };
-  }, [user, cloudCoachId, desk.appointments.length]);
+  }, [user, cloudCoachId, listTick]);
 
   useEffect(() => {
     if (!user) {
@@ -167,7 +182,7 @@ export function CoachesPage() {
       setMySlots(res.rows);
     });
     return () => { alive = false; };
-  }, [session, cloudCoachId, desk.appointments.length, tab, toast]);
+  }, [session, cloudCoachId, listTick, tab, toast]);
 
   useEffect(() => {
     if (!session) return;
@@ -269,16 +284,35 @@ export function CoachesPage() {
     toast('Öğrenci eklendi.');
   }
 
+  async function applyCloudDesk(coachId: string) {
+    const d = await fetchCoachDesk(coachId);
+    if (!d) return false;
+    const local = loadCoachDesk(coachId);
+    const merged = {
+      ...d,
+      homeworks: d.homeworks.length ? d.homeworks : local.homeworks,
+      payments: d.payments.length ? d.payments : local.payments,
+    };
+    setDesk(merged);
+    saveCoachDesk(coachId, merged);
+    return true;
+  }
+
   async function setAppt(id: string, accept: boolean) {
     const res = await respondAppointment(id, accept);
     if (!res.ok) {
       toast(res.error);
       return;
     }
-    persist({
-      ...desk,
-      appointments: desk.appointments.map((a) => (a.id === id ? { ...a, status: accept ? 'onay' : 'iptal' } : a)),
-    });
+    if (session) await applyCloudDesk(session.coachId);
+    if (user) {
+      const mine = await listMyAppointments(user.id, cloudCoachId);
+      if (mine.ok) {
+        setMyAppts(mine.rows);
+        setMyApptsMsg('');
+      }
+    }
+    setListTick((n) => n + 1);
     toast(res.message);
   }
 
