@@ -27,13 +27,57 @@ function tokenErrorMessage(error: string, status?: number) {
   return error;
 }
 
-function mediaErrorMessage(e: unknown) {
-  const name = e && typeof e === 'object' && 'name' in e ? String((e as { name: string }).name) : '';
-  if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
-    return 'Kamera veya mikrofon izni reddedildi.';
+function describeUnknownError(err: unknown, depth = 0): {
+  name: string;
+  message: string;
+  reason?: string;
+  code?: string;
+  status?: string;
+  cause?: ReturnType<typeof describeUnknownError>;
+  stack?: string;
+} {
+  if (depth > 4) return { name: 'truncated', message: '' };
+  if (err instanceof Error) {
+    const extra = err as Error & { reason?: unknown; code?: unknown; status?: unknown; cause?: unknown };
+    return {
+      name: err.name,
+      message: err.message,
+      reason: extra.reason === undefined ? undefined : String(extra.reason),
+      code: extra.code === undefined ? undefined : String(extra.code),
+      status: extra.status === undefined ? undefined : String(extra.status),
+      cause: extra.cause === undefined ? undefined : describeUnknownError(extra.cause, depth + 1),
+      stack: err.stack,
+    };
   }
-  if (name === 'NotFoundError') return 'Kamera veya mikrofon bulunamadı.';
-  return 'Görüşmeye bağlanılamadı.';
+  return { name: typeof err, message: String(err) };
+}
+
+function logMeetingErr(where: string, err: unknown) {
+  const info = describeUnknownError(err);
+  console.error('[meeting]', where, info, err);
+  return info;
+}
+
+async function tryEnableCamera(lk: Room, videoEl: HTMLVideoElement | null) {
+  try {
+    await lk.localParticipant.setCameraEnabled(true);
+    const cam = lk.localParticipant.getTrackPublication(Track.Source.Camera)?.track;
+    if (cam && videoEl) cam.attach(videoEl);
+    return true;
+  } catch (err) {
+    logMeetingErr('setCameraEnabled', err);
+    return false;
+  }
+}
+
+async function tryEnableMicrophone(lk: Room) {
+  try {
+    await lk.localParticipant.setMicrophoneEnabled(true);
+    return true;
+  } catch (err) {
+    logMeetingErr('setMicrophoneEnabled', err);
+    return false;
+  }
 }
 
 export function MeetingPage() {
@@ -45,6 +89,8 @@ export function MeetingPage() {
   const [roomNote, setRoomNote] = useState('');
   const [session, setSession] = useState<MeetingSessionState | null>(null);
   const [connected, setConnected] = useState(false);
+  const [camOn, setCamOn] = useState(false);
+  const [micOn, setMicOn] = useState(false);
   const [busy, setBusy] = useState(false);
   const livekit = livekitPlaceholder();
   const localRef = useRef<HTMLVideoElement>(null);
@@ -77,6 +123,8 @@ export function MeetingPage() {
     if (localRef.current) localRef.current.srcObject = null;
     if (remoteRef.current) remoteRef.current.srcObject = null;
     setConnected(false);
+    setCamOn(false);
+    setMicOn(false);
   }
 
   useEffect(() => () => { detach(); }, []);
@@ -213,18 +261,19 @@ export function MeetingPage() {
           try {
             await lk.disconnect();
             await lk.connect(tok.data.url, tok.data.token);
-            await lk.localParticipant.enableCameraAndMicrophone();
-            const cam = lk.localParticipant.getTrackPublication(Track.Source.Camera)?.track;
-            if (cam && localRef.current) cam.attach(localRef.current);
-            if (alive) schedule();
-          } catch {
+          } catch (err) {
+            const info = logMeetingErr('Room.connect.refresh', err);
             if (alive) {
               detach();
-              toast('Görüşme bağlantısı yenilenemedi.');
+              toast(`Görüşme bağlantısı yenilenemedi. ${info.name}: ${info.message}`);
             }
+            return;
           } finally {
             refreshingRef.current = false;
           }
+          setCamOn(false);
+          setMicOn(false);
+          if (alive) schedule();
         })();
       }, Math.max(5_000, left));
     };
@@ -249,37 +298,69 @@ export function MeetingPage() {
     setBusy(true);
     detach();
     try {
-      const tok = await requestMeetingToken(row.id);
+      let tok: Awaited<ReturnType<typeof requestMeetingToken>>;
+      try {
+        tok = await requestMeetingToken(row.id);
+      } catch {
+        toast('Token alınamadı.');
+        return;
+      }
       if (!tok.ok) {
         toast(tokenErrorMessage(tok.error, tok.status));
         return;
       }
       const lk = new Room({ adaptiveStream: true, dynacast: true });
       sessionRef.current = lk;
+      lk.on(RoomEvent.Connected, () => { console.info('[meeting]', 'connected', lk.state); });
+      lk.on(RoomEvent.Disconnected, (reason) => {
+        console.info('[meeting]', 'disconnected', reason, 'refreshing=', refreshingRef.current);
+        if (refreshingRef.current) return;
+        connectedRef.current = false;
+        setConnected(false);
+      });
+      lk.on(RoomEvent.ConnectionStateChanged, (state) => { console.info('[meeting]', 'connectionStateChanged', state); });
+      lk.on(RoomEvent.MediaDevicesError, (err) => { logMeetingErr('mediaDevicesError', err); });
+      lk.on(RoomEvent.TrackSubscriptionFailed, (sid, err) => { console.error('[meeting]', 'trackSubscriptionFailed', sid, err); });
+      lk.on(RoomEvent.ParticipantConnected, (p) => { console.info('[meeting]', 'participantConnected', p.identity); });
+      lk.on(RoomEvent.ParticipantDisconnected, (p) => { console.info('[meeting]', 'participantDisconnected', p.identity); });
       lk.on(RoomEvent.TrackSubscribed, (track) => {
         if (track.kind === Track.Kind.Video && remoteRef.current) track.attach(remoteRef.current);
         if (track.kind === Track.Kind.Audio && remoteAudioRef.current) track.attach(remoteAudioRef.current);
       });
       lk.on(RoomEvent.TrackUnsubscribed, (track) => { track.detach(); });
-      lk.on(RoomEvent.Disconnected, () => {
-        if (refreshingRef.current) return;
-        connectedRef.current = false;
-        setConnected(false);
-      });
-      await lk.connect(tok.data.url, tok.data.token);
-      await lk.localParticipant.enableCameraAndMicrophone();
-      const cam = lk.localParticipant.getTrackPublication(Track.Source.Camera)?.track;
-      if (cam && localRef.current) cam.attach(localRef.current);
+      try {
+        await lk.connect(tok.data.url, tok.data.token);
+      } catch (err) {
+        const info = logMeetingErr('Room.connect', err);
+        detach();
+        toast(`Görüşmeye bağlanılamadı. ${info.name}: ${info.message}`);
+        return;
+      }
       tokenExpiresAtRef.current = Date.parse(tok.data.expiresAt) || Date.now() + 600_000;
       connectedRef.current = true;
       setConnected(true);
-      toast('Görüşme açık. Kayıt yok.');
-    } catch (e) {
-      detach();
-      toast(mediaErrorMessage(e));
+      setCamOn(false);
+      setMicOn(false);
+      toast('Görüşme açık. Kamera ve mikrofon kapalı; sonra açabilirsin. Kayıt yok.');
     } finally {
       setBusy(false);
     }
+  }
+
+  async function openCamera() {
+    const lk = sessionRef.current;
+    if (!lk || !connectedRef.current) return;
+    const ok = await tryEnableCamera(lk, localRef.current);
+    setCamOn(ok);
+    if (!ok) toast('Kamera açılamadı. Görüşme açık kalır.');
+  }
+
+  async function openMicrophone() {
+    const lk = sessionRef.current;
+    if (!lk || !connectedRef.current) return;
+    const ok = await tryEnableMicrophone(lk);
+    setMicOn(ok);
+    if (!ok) toast('Mikrofon açılamadı. Görüşme açık kalır.');
   }
 
   async function finishMeeting() {
@@ -362,12 +443,18 @@ export function MeetingPage() {
           <button className="btn primary" type="button" disabled={!canShell || busy || !row || connected || ended} onClick={() => void joinLive()}>
             {busy ? 'Bağlanıyor…' : 'Bağlan'}
           </button>
+          <button className="btn secondary" type="button" disabled={!connected || ended || camOn} onClick={() => void openCamera()}>
+            Kamerayı aç
+          </button>
+          <button className="btn secondary" type="button" disabled={!connected || ended || micOn} onClick={() => void openMicrophone()}>
+            Mikrofonu aç
+          </button>
           <button className="btn secondary" type="button" disabled={!row || ended} onClick={() => void finishMeeting()}>
             Görüşmeyi Bitir
           </button>
           <button className="btn secondary" type="button" onClick={() => { detach(); go('coaches'); }}>Ayrıl</button>
         </div>
-        {canShell ? <p style={{ fontSize: 12, color: 'var(--muted)' }}>Token sunucuda üretilir. İzin tarayıcıdan istenir. 18 yaş kilidi yok.</p> : null}
+        {canShell ? <p style={{ fontSize: 12, color: 'var(--muted)' }}>Token sunucuda üretilir. Kamera ve mikrofon zorunlu değil. 18 yaş kilidi yok.</p> : null}
       </div>
     </>
   );
