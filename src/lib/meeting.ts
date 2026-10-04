@@ -115,6 +115,59 @@ export function meetingHref(appointmentId: string) {
   return `#/meeting?id=${encodeURIComponent(appointmentId)}`;
 }
 
+type AppointmentClock = { date?: string; time?: string; minutes?: number; status?: string; startsAt?: string | null };
+
+const JOIN_VISIBLE_MS = 24 * 60 * 60 * 1000;
+
+function joinWallDate(raw: string) {
+  const iso = String(raw || '').match(/(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+  const dmy = String(raw || '').match(/(\d{1,2})[./](\d{1,2})[./](\d{4})/);
+  if (dmy) {
+    return `${dmy[3]}-${dmy[2].padStart(2, '0')}-${dmy[1].padStart(2, '0')}`;
+  }
+  return '';
+}
+
+function joinWallTime(raw: string) {
+  const m = String(raw || '').match(/(\d{1,2})[:.](\d{2})/);
+  if (!m) return '';
+  const hh = Number(m[1]);
+  const mm = Number(m[2]);
+  if (!Number.isFinite(hh) || !Number.isFinite(mm) || hh > 23 || mm > 59) return '';
+  return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+}
+
+function hasExplicitTz(raw: string) {
+  return /(?:[zZ]|[+-]\d{2}:?\d{2})$/.test(String(raw).trim().replace(/\.\d+/, ''));
+}
+
+function plannedJoinStartMs(a: AppointmentClock) {
+  const date = joinWallDate(String(a.date || ''));
+  const time = joinWallTime(String(a.time || ''));
+  if (date && time) {
+    const ms = new Date(istanbulWallIso(date, time)).getTime();
+    if (Number.isFinite(ms) && ms > 0) return ms;
+  }
+  const raw = String(a.startsAt || '').trim();
+  if (!raw) return 0;
+  const fromWall = joinWallDate(raw);
+  const fromTime = joinWallTime(raw);
+  if (fromWall && fromTime && !hasExplicitTz(raw)) {
+    const ms = new Date(istanbulWallIso(fromWall, fromTime)).getTime();
+    if (Number.isFinite(ms) && ms > 0) return ms;
+  }
+  const ms = Date.parse(raw);
+  return Number.isFinite(ms) && ms > 0 ? ms : 0;
+}
+
+/** Onaylı randevu başlangıcından 1 tam gün sonra katılma aksiyonu gizlenir (yalnız UI). */
+export function isMeetingJoinVisible(a: AppointmentClock, now = Date.now()) {
+  const start = plannedJoinStartMs(a);
+  if (!start) return false;
+  return now < start + JOIN_VISIBLE_MS;
+}
+
 export function openMeeting(appointmentId: string) {
   location.hash = `/meeting?id=${encodeURIComponent(appointmentId)}`;
 }
@@ -156,6 +209,35 @@ export function appointmentStartMs(date: string, time: string, startsAt?: string
   const t = (time || '00:00').trim();
   const hm = /^\d{2}:\d{2}/.test(t) ? t.slice(0, 5) : '00:00';
   return Date.parse(`${date}T${hm}:00+03:00`);
+}
+
+export function splitAppointmentsBySlot<T extends AppointmentClock>(rows: T[], now = Date.now()) {
+  const live: T[] = [];
+  const laterToday: T[] = [];
+  const past: T[] = [];
+  const today = istanbulParts(new Date(now)).date;
+  for (const a of rows) {
+    if (a.status === 'iptal' || a.status === 'tamamlandi') {
+      past.push(a);
+      continue;
+    }
+    const start = appointmentStartMs(String(a.date || ''), String(a.time || ''), a.startsAt);
+    const end = start ? start + Math.max(1, a.minutes || 40) * 60_000 : 0;
+    if (!start || now >= end) {
+      past.push(a);
+      continue;
+    }
+    const day = istanbulParts(new Date(start)).date;
+    if (now >= start) live.push(a);
+    else if (day === today) laterToday.push(a);
+    else past.push(a);
+  }
+  live.sort((x, y) => appointmentStartMs(String(x.date || ''), String(x.time || ''), x.startsAt) - appointmentStartMs(String(y.date || ''), String(y.time || ''), y.startsAt));
+  laterToday.sort((x, y) => appointmentStartMs(String(x.date || ''), String(x.time || ''), x.startsAt) - appointmentStartMs(String(y.date || ''), String(y.time || ''), y.startsAt));
+  past.sort((x, y) => appointmentStartMs(String(y.date || ''), String(y.time || ''), y.startsAt) - appointmentStartMs(String(x.date || ''), String(x.time || ''), x.startsAt));
+  const current = live.length ? live : laterToday.slice(0, 1);
+  const restToday = live.length ? laterToday : laterToday.slice(1);
+  return { current, past: [...restToday, ...past] };
 }
 
 export function joinReasonLabel(reason: JoinBlockReason) {

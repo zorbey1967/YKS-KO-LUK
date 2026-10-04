@@ -11,7 +11,6 @@ import {
   saveCoachDesk,
   saveCoachSession,
   appointmentStatusLabel,
-  type CoachAppointment,
   type CoachDesk,
   type CoachHomework,
   type CoachSession,
@@ -19,36 +18,15 @@ import {
   type HumanCoach,
 } from '../lib/coaches';
 import { addCoachSlot, closeCoachSlot, fetchActiveCoaches, fetchCoachDesk, fetchMyCoach, listMySlots, listOpenSlots, pushCoachDesk, requestAppointment, respondAppointment, runAppointmentJobs } from '../lib/cloudPlatform';
-import { isAppointmentParty, istanbulToday, istanbulWallIso, listMyAppointments, nextBookSlot, openMeeting, type MyAppointment } from '../lib/meeting';
+import { istanbulToday, istanbulWallIso, listMyAppointments, nextBookSlot, splitAppointmentsBySlot, type MyAppointment } from '../lib/meeting';
 import { supabase, withTimeout } from '../lib/supabase';
 import { today, uid } from '../lib/util';
+import { MeetingJoinButton } from '../components/MeetingJoinButton';
 
 type PanelTab = 'ozet' | 'ogrenci' | 'odev' | 'para' | 'randevu' | 'musait';
 
 const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
 const MINS = Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, '0'));
-
-function MeetingJoinButton({
-  appt,
-  userId,
-  coachId,
-}: {
-  appt: Pick<CoachAppointment, 'id' | 'date' | 'time' | 'minutes' | 'status' | 'studentId' | 'coachId'>;
-  userId?: string | null;
-  coachId?: string | null;
-}) {
-  if (!isAppointmentParty(appt, userId, coachId)) return null;
-  if (!appt.id || appt.status !== 'onay') return null;
-  return (
-    <button
-      className="btn secondary"
-      type="button"
-      onClick={() => openMeeting(appt.id)}
-    >
-      Görüşmeye Katıl
-    </button>
-  );
-}
 
 export function CoachesPage() {
   const { toast, go, user, profile } = useApp();
@@ -81,6 +59,20 @@ export function CoachesPage() {
   const [myApptsMsg, setMyApptsMsg] = useState('');
   const [cloudCoachId, setCloudCoachId] = useState<string | null>(null);
   const [listTick, setListTick] = useState(0);
+  const [nowTick, setNowTick] = useState(0);
+  const [showOldSlots, setShowOldSlots] = useState(false);
+
+  useEffect(() => {
+    const apply = () => {
+      const q = location.hash.split('?')[1] || '';
+      if (new URLSearchParams(q).get('eski') === '1') {
+        setTab('randevu');
+      }
+    };
+    apply();
+    window.addEventListener('hashchange', apply);
+    return () => window.removeEventListener('hashchange', apply);
+  }, [session]);
 
   useEffect(() => {
     void runAppointmentJobs().then(async (res) => {
@@ -198,7 +190,26 @@ export function CoachesPage() {
     return () => { alive = false; };
   }, [session]);
 
+  useEffect(() => {
+    const id = window.setInterval(() => setNowTick((n) => n + 1), 20_000);
+    return () => window.clearInterval(id);
+  }, []);
+
   const coaches = useMemo(() => (track === 'Tümü' ? list : list.filter((c) => c.track === track)), [list, track]);
+  const allAppts = useMemo(() => {
+    const map = new Map<string, MyAppointment>();
+    for (const a of myAppts) map.set(a.id, a);
+    const coachName = session?.name || 'Koç';
+    for (const a of desk.appointments) {
+      if (map.has(a.id)) continue;
+      map.set(a.id, { ...a, coachName, startsAt: a.startsAt ?? null });
+    }
+    return [...map.values()];
+  }, [myAppts, desk.appointments, session]);
+  const slotSplit = useMemo(
+    () => splitAppointmentsBySlot(mySlots.map((s) => ({ ...s, minutes: 40 }))),
+    [mySlots, nowTick],
+  );
 
   function persist(next: CoachDesk) {
     if (!session) return;
@@ -367,15 +378,45 @@ export function CoachesPage() {
   const monthTotal = monthPayments(desk);
   const studentName = (id: string) => desk.students.find((s) => s.id === id)?.name || 'Öğrenci';
 
+  function apptRow(a: MyAppointment) {
+    const asCoach = Boolean(session && a.coachId === (cloudCoachId || session.coachId));
+    return (
+      <div className="plan-item" key={a.id}>
+        <span>
+          {a.coachName} • {a.studentName} • {a.date} {a.time} ({a.minutes} dk)
+          <br />
+          <small className="muted">{appointmentStatusLabel(a, asCoach ? 'coach' : 'student')}</small>
+          {user && a.studentId === user.id && a.cancelReason === 'student_no_show' ? (
+            <>
+              <br />
+              <small className="muted">Kalan puanın: {profile?.score ?? '—'}. Detay Hesabım’da.</small>
+            </>
+          ) : null}
+        </span>
+        {asCoach && a.status === 'bekliyor' ? (
+          <span style={{ display: 'flex', gap: 8 }}>
+            <button className="btn primary" type="button" onClick={() => void setAppt(a.id, true)}>Onayla</button>
+            <button className="btn secondary" type="button" onClick={() => void setAppt(a.id, false)}>Reddet</button>
+          </span>
+        ) : (
+          <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            {asCoach ? <span className="chip">{a.status}</span> : null}
+            <MeetingJoinButton appt={a} userId={user?.id} coachId={cloudCoachId} now={Date.now()} />
+          </span>
+        )}
+      </div>
+    );
+  }
+
   return (
     <>
       <div className="hero">
-        <div className="eyebrow" style={{ color: '#cfe1ff' }}>Koç listesi ve panel</div>
+        <div className="eyebrow" style={{ color: '#cfe1ff' }}>Koçluk</div>
         <h2>{session ? `Koç paneli • ${session.name}` : 'Koçlar'}</h2>
         <p>
           {session
-            ? 'Bu ekranı yalnızca koç oturumu görür: öğrenciler, ödev, tahsilat, randevu.'
-            : 'Koç olmak Hesabım’da kayıt olurken “Koç” seçmekle olur. Burada giriş, randevu ve yayınlanan koçlar var.'}
+            ? 'Öğrenciler, ödev, tahsilat ve randevular bu panelde.'
+            : 'Yayınlanan koçlardan randevu al. Koç olmak için Hesabım’dan “Koç” seçerek kayıt ol.'}
         </p>
       </div>
 
@@ -385,14 +426,21 @@ export function CoachesPage() {
             <h3>Koç girişi</h3>
             <button className="btn secondary" type="button" onClick={() => go('account')}>Koç olmak</button>
           </div>
-          <p style={{ color: 'var(--muted)', fontSize: 13 }}>Kayıt Hesabım’dadır (branş, öğrenci sayısı, fotoğraf). Panel için aynı e-posta ile gir.</p>
+          <p className="muted">Kayıt Hesabım’dadır. Panel için aynı e-posta ile gir.</p>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void onLogin();
+            }}
+          >
           <div className="form-grid">
-            <div className="field"><label>E-posta</label><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="koc@mail.com" /></div>
-            <div className="field"><label>Şifre</label><input type="password" value={password} onChange={(e) => setPassword(e.target.value)} /></div>
+            <div className="field"><label>E-posta</label><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="koc@mail.com" autoComplete="email" maxLength={120} /></div>
+            <div className="field"><label>Şifre</label><input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" maxLength={72} /></div>
           </div>
           <div className="actions">
-            <button className="btn primary" type="button" onClick={() => void onLogin()}>Koç paneline gir</button>
+            <button className="btn primary" type="submit">Koç paneline gir</button>
           </div>
+          </form>
           {authMsg ? <div className="notice" style={{ marginTop: 12 }}>{authMsg}</div> : null}
         </div>
       ) : (
@@ -452,18 +500,18 @@ export function CoachesPage() {
               <div className="actions">
                 <button className="btn primary" type="button" onClick={addHomework}>Ödev ver</button>
               </div>
-              {desk.homeworks.map((h) => (
+              {desk.homeworks.length ? desk.homeworks.map((h) => (
                 <div className="plan-item" key={h.id}>
                   <span>
                     {h.title}
                     <br />
-                    <small style={{ color: 'var(--muted)' }}>{studentName(h.studentId)} • {h.due}</small>
+                    <small className="muted">{studentName(h.studentId)} • {h.due}</small>
                   </span>
                   <button className="btn secondary" type="button" onClick={() => persist({ ...desk, homeworks: desk.homeworks.map((x) => x.id === h.id ? { ...x, done: !x.done } : x) })}>
                     {h.done ? 'Aç' : 'Tamam'}
                   </button>
                 </div>
-              ))}
+              )) : <div className="empty">Ödev yok.</div>}
             </div>
           ) : null}
 
@@ -478,32 +526,6 @@ export function CoachesPage() {
                 </div>
               )) : <div className="empty">Kayıt yok.</div>}
               <div className="plan-item"><span>Toplam</span><b>{formatTry(desk.payments.reduce((a, p) => a + p.amount, 0))}</b></div>
-            </div>
-          ) : null}
-
-          {tab === 'ozet' || tab === 'randevu' ? (
-            <div className="card" style={{ marginTop: 16 }}>
-              <div className="section-title"><h3>Randevular</h3></div>
-              {desk.appointments.length ? desk.appointments.map((a) => (
-                <div className="plan-item" key={a.id}>
-                  <span>
-                    {a.studentName} • {a.date} {a.time} ({a.minutes} dk)
-                    <br />
-                    <small style={{ color: 'var(--muted)' }}>{appointmentStatusLabel(a, 'coach')}</small>
-                  </span>
-                  {a.status === 'bekliyor' ? (
-                    <span style={{ display: 'flex', gap: 8 }}>
-                      <button className="btn primary" type="button" onClick={() => void setAppt(a.id, true)}>Onayla</button>
-                      <button className="btn secondary" type="button" onClick={() => void setAppt(a.id, false)}>Reddet</button>
-                    </span>
-                  ) : (
-                    <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                      <span className="chip">{a.status}</span>
-                      <MeetingJoinButton appt={a} userId={user?.id} coachId={cloudCoachId} />
-                    </span>
-                  )}
-                </div>
-              )) : <div className="empty">Randevu yok.</div>}
             </div>
           ) : null}
 
@@ -529,14 +551,29 @@ export function CoachesPage() {
               <div className="actions">
                 <button className="btn primary" type="button" onClick={() => void addMySlot()}>Saat aç</button>
               </div>
-              {mySlots.length ? mySlots.map((s) => (
+              {slotSplit.current.length ? slotSplit.current.map((s) => (
                 <div className="plan-item" key={s.id}>
                   <span>{s.date} {s.time} • 40 dk<br /><small style={{ color: 'var(--muted)' }}>{s.status === 'open' ? 'Açık' : s.status === 'held' ? 'Talep var' : 'Onaylı'}</small></span>
                   {s.status === 'booked' ? <span className="chip">kilitli</span> : (
                     <button className="btn secondary" type="button" onClick={() => void closeMySlot(s.id)}>Kapat</button>
                   )}
                 </div>
-              )) : <div className="empty">Açık saat yok.</div>}
+              )) : <div className="empty">{mySlots.length ? 'Bu saat için açık slot yok.' : 'Açık saat yok.'}</div>}
+              {slotSplit.past.length ? (
+                <div className="actions" style={{ marginTop: 12 }}>
+                  <button className="btn secondary" type="button" onClick={() => setShowOldSlots((v) => !v)}>
+                    {showOldSlots ? 'Eski saatleri gizle' : `Eski saatler (${slotSplit.past.length})`}
+                  </button>
+                </div>
+              ) : null}
+              {showOldSlots ? slotSplit.past.map((s) => (
+                <div className="plan-item" key={s.id}>
+                  <span>{s.date} {s.time} • 40 dk<br /><small style={{ color: 'var(--muted)' }}>{s.status === 'open' ? 'Açık' : s.status === 'held' ? 'Talep var' : 'Onaylı'}</small></span>
+                  {s.status === 'booked' ? <span className="chip">kilitli</span> : (
+                    <button className="btn secondary" type="button" onClick={() => void closeMySlot(s.id)}>Kapat</button>
+                  )}
+                </div>
+              )) : null}
             </div>
           ) : null}
         </>
@@ -544,32 +581,26 @@ export function CoachesPage() {
 
       <div className="card" style={{ marginTop: 16 }}>
         <div className="section-title"><h3>Randevularım</h3><span>Görüşme</span></div>
-        <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: 0 }}>Onaylı randevuya istediğin zaman girilir. Sayaç, randevu saati gelmişken iki taraf da odadayken 40 dk başlar; biri bitirince veya süre dolunca görüşme kapanır ve yeniden açılmaz. Aynı saat için farklı koçlara talep gönderebilirsin; biri kabul edince diğerleri düşer. Aynı koça aynı saat için ikinci talep yok. Kayıt yok.</p>
+        <p className="muted" style={{ marginTop: 0 }}>Geçmiş randevular listede kalır. Katılma, başlangıçtan 24 saat sonra kapanır. Sayaç, iki taraf da odadayken 40 dk başlar. Kayıt yok.</p>
         {!user ? (
-          <div className="empty">Görüşme listesi için giriş yap.</div>
-        ) : myApptsMsg ? (
-          <div className="notice">{myApptsMsg}</div>
-        ) : myAppts.length ? myAppts.map((a) => (
-          <div className="plan-item" key={a.id}>
-            <span>
-              {a.coachName} • {a.studentName} • {a.date} {a.time} ({a.minutes} dk)
-              <br />
-              <small style={{ color: 'var(--muted)' }}>{appointmentStatusLabel(a, a.studentId === user.id ? 'student' : 'coach')}</small>
-              {a.studentId === user.id && a.cancelReason === 'student_no_show' ? (
-                <>
-                  <br />
-                  <small style={{ color: 'var(--muted)' }}>Kalan puanın: {profile?.score ?? '—'}. Detay Hesabım’da.</small>
-                </>
-              ) : null}
-            </span>
-            <MeetingJoinButton appt={a} userId={user.id} coachId={cloudCoachId} />
+          <div className="empty">
+            Görüşmeleri görmek için giriş yap.
+            <div className="actions" style={{ marginTop: 10 }}>
+              <button className="btn primary" type="button" onClick={() => go('account')}>Giriş</button>
+            </div>
           </div>
-        )) : <div className="empty">Bulutta randevu yok.</div>}
+        ) : myApptsMsg && !allAppts.length ? (
+          <div className="notice">{myApptsMsg}</div>
+        ) : allAppts.length ? (
+          allAppts.map((a) => apptRow(a))
+        ) : (
+          <div className="empty">Bulutta randevu yok.</div>
+        )}
       </div>
 
       <div className="card" style={{ marginTop: 16 }}>
         <div className="section-title"><h3>Randevu al</h3><span>Öğrenciler</span></div>
-        <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: 0 }}>Koçun açtığı saatlerden seç. Son talep, randevudan 30 dk önce kapanır (15.00 için 14.30). Koç onaylamadan kesinleşmez. Aynı saat için başka koça da talep gönderebilirsin. Saatler Türkiye.</p>
+        <p className="muted" style={{ marginTop: 0 }}>Koçun açtığı saatlerden seç. Son talep, dersten 30 dk önce kapanır. Saatler Türkiye.</p>
         {listError ? <div className="notice" style={{ marginBottom: 12 }} role="alert">{listError}</div> : null}
         <div className="chip-row" style={{ marginBottom: 12 }}>
           <button className={`chip ${track === 'Tümü' ? 'on' : ''}`} type="button" onClick={() => setTrack('Tümü')}>Tümü</button>
@@ -580,11 +611,11 @@ export function CoachesPage() {
         <div className="grid two">
           {!listError && !coaches.length ? <div className="empty" style={{ gridColumn: '1 / -1' }}>Onaylı koç yok.</div> : null}
           {coaches.map((c) => (
-            <div className="card" key={c.id} style={{ boxShadow: 'none' }}>
+            <div className="coach-card" key={c.id}>
               <div className="subject">
                 <div className="subject-icon" style={{ overflow: 'hidden', padding: 0 }}>
                   {c.photo
-                    ? <img src={c.photo} alt="" width={42} height={42} style={{ width: 42, height: 42, objectFit: 'cover' }} />
+                    ? <img className="coach-photo" src={c.photo} alt="" width={42} height={42} />
                     : c.name.trim().charAt(0)}
                 </div>
                 <div>
@@ -592,7 +623,7 @@ export function CoachesPage() {
                   <div><span className="chip">{c.track}</span> <span className="chip">{c.studentCount} öğrenci</span></div>
                 </div>
               </div>
-              <p style={{ color: 'var(--muted)', fontSize: 13 }}>{c.focus}</p>
+              <p className="muted">{c.focus}</p>
               <div className="plan-item"><span>Süre</span><b>40 dk</b></div>
               <div className="actions">
                 <button className="btn primary" type="button" onClick={() => void openBook(c)}>Randevu talep et</button>
@@ -603,11 +634,11 @@ export function CoachesPage() {
       </div>
 
       {bookCoach ? (
-        <div className="modal" onClick={() => setBookCoach(null)}>
+        <div className="modal" role="dialog" aria-modal="true" aria-label={`Randevu • ${bookCoach.name}`} onClick={() => setBookCoach(null)}>
           <div className="modal-box" onClick={(e) => e.stopPropagation()}>
             <div className="section-title">
               <h3>Randevu • {bookCoach.name}</h3>
-              <button className="icon-btn" type="button" onClick={() => setBookCoach(null)}>×</button>
+              <button className="btn secondary" type="button" onClick={() => setBookCoach(null)}>Kapat</button>
             </div>
             <div className="form-grid" style={{ marginTop: 12 }}>
               <div className="field"><label>Adın</label><input value={bookName} onChange={(e) => setBookName(e.target.value)} placeholder={profile?.name || 'Öğrenci adı'} /></div>
@@ -621,8 +652,8 @@ export function CoachesPage() {
                 </select>
               </div>
             </div>
-            {bookSlotsMsg ? <p style={{ color: 'var(--muted)', fontSize: 13, margin: '8px 0 0' }}>{bookSlotsMsg}</p> : (
-              <p style={{ color: 'var(--muted)', fontSize: 13, margin: '8px 0 0' }}>Onaylanmayan talepler süre sonunda düşer.</p>
+            {bookSlotsMsg ? <p className="muted" style={{ margin: '8px 0 0' }}>{bookSlotsMsg}</p> : (
+              <p className="muted" style={{ margin: '8px 0 0' }}>Onaylanmayan talepler süre sonunda düşer.</p>
             )}
             <div className="actions">
               <button className="btn primary" type="button" disabled={!bookSlotId} onClick={() => void studentBook()}>Talep gönder</button>
