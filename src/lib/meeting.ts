@@ -6,6 +6,13 @@ import { publicCloudError, supabase, supabaseAnonKey, supabaseUrl, withTimeout }
 export const LESSON_MIN = 40;
 export const BOOKING_LEAD_MIN = 30;
 
+export function tokenErrorMessage(error: string, status?: number) {
+  if (status === 401) return 'Oturum gerekli veya süresi doldu. Hesabım’dan tekrar gir.';
+  if (status === 403) return 'Bu görüşmeye katılamazsın. Onaylı randevu, tarafın olman ve zaman penceresi gerekir.';
+  if (status === 503) return 'Görüşme sunucusu ayarı yok veya geçici hata.';
+  return error;
+}
+
 function istanbulParts(d = new Date()) {
   const parts = new Intl.DateTimeFormat('en-GB', {
     timeZone: 'Europe/Istanbul',
