@@ -12,6 +12,7 @@ import {
   joinReasonLabel,
   livekitPlaceholder,
   requestMeetingToken,
+  newMeetingConnectionId,
   serverCanJoin,
   setMeetingPresence,
   type JoinBlockReason,
@@ -101,6 +102,7 @@ export function MeetingPage() {
   const endingRef = useRef(false);
   const tokenExpiresAtRef = useRef(0);
   const refreshingRef = useRef(false);
+  const lkConnIdRef = useRef('');
 
   useEffect(() => {
     const sync = () => setApptId(appointmentIdFromHash());
@@ -110,6 +112,7 @@ export function MeetingPage() {
 
   useEffect(() => {
     endingRef.current = false;
+    lkConnIdRef.current = '';
   }, [apptId]);
 
   function detach() {
@@ -246,7 +249,7 @@ export function MeetingPage() {
       timer = window.setTimeout(() => {
         void (async () => {
           if (!alive || !connectedRef.current || endingRef.current) return;
-          const tok = await requestMeetingToken(row.id);
+          const tok = await requestMeetingToken(row.id, lkConnIdRef.current);
           if (!alive || !connectedRef.current) return;
           if (!tok.ok) {
             detach();
@@ -297,10 +300,11 @@ export function MeetingPage() {
     }
     setBusy(true);
     detach();
+    if (!lkConnIdRef.current) lkConnIdRef.current = newMeetingConnectionId();
     try {
       let tok: Awaited<ReturnType<typeof requestMeetingToken>>;
       try {
-        tok = await requestMeetingToken(row.id);
+        tok = await requestMeetingToken(row.id, lkConnIdRef.current);
       } catch {
         toast('Token alınamadı.');
         return;

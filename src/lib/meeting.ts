@@ -245,9 +245,16 @@ export type MeetingToken = {
   recording: false;
 };
 
-export async function requestMeetingToken(appointmentId: string): Promise<{ ok: true; data: MeetingToken } | { ok: false; error: string; status?: number }> {
+export function newMeetingConnectionId() {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+export async function requestMeetingToken(appointmentId: string, connectionId: string): Promise<{ ok: true; data: MeetingToken } | { ok: false; error: string; status?: number }> {
   if (!supabase || !supabaseUrl || !supabaseAnonKey) return { ok: false, error: 'Bulut ayarı yok.' };
   if (!appointmentId) return { ok: false, error: 'Randevu yok.' };
+  if (!/^[a-f0-9]{32}$/.test(connectionId)) return { ok: false, error: 'Bağlantı kimliği yok.' };
   const { data: sessionData } = await supabase.auth.getSession();
   const access = sessionData.session?.access_token;
   if (!access) return { ok: false, error: 'Oturum gerekli.' };
@@ -260,7 +267,7 @@ export async function requestMeetingToken(appointmentId: string): Promise<{ ok: 
           apikey: supabaseAnonKey,
           Authorization: `Bearer ${access}`,
         },
-        body: JSON.stringify({ appointmentId }),
+        body: JSON.stringify({ appointmentId, connectionId }),
       }),
     );
     const raw = await res.json().catch(() => ({})) as { token?: string; url?: string; room?: string; expiresAt?: string; error?: string };

@@ -24,6 +24,10 @@ function appointmentIdOk(id: string) {
   return id.length > 0 && id.length <= 80;
 }
 
+function connectionIdOk(id: string) {
+  return /^[a-f0-9]{32}$/.test(id);
+}
+
 function livekitUrlOk(u: string) {
   return /^wss:\/\/\S+$/i.test(u) || /^https:\/\/\S+$/i.test(u);
 }
@@ -47,7 +51,7 @@ Deno.serve(async (req) => {
   const { data: authData, error: authError } = await supabase.auth.getUser(token);
   if (authError || !authData.user) return json({ error: "Geçersiz veya süresi dolmuş oturum" }, 401);
 
-  let body: { appointmentId?: unknown } = {};
+  let body: { appointmentId?: unknown; connectionId?: unknown } = {};
   try {
     body = await req.json();
   } catch {
@@ -56,6 +60,8 @@ Deno.serve(async (req) => {
 
   const appointmentId = String(body.appointmentId || "").trim();
   if (!appointmentIdOk(appointmentId)) return json({ error: "Geçersiz randevu" }, 400);
+  const connectionId = String(body.connectionId || "").trim();
+  if (!connectionIdOk(connectionId)) return json({ error: "Geçersiz bağlantı" }, 400);
 
   const { data: canJoin, error: joinError } = await supabase.rpc("can_join_meeting", {
     p_appointment_id: appointmentId,
@@ -79,10 +85,11 @@ Deno.serve(async (req) => {
     return json({ error: "Görüşme sunucusu ayarı yok" }, 503);
   }
 
+  const userId = authData.user.id;
   const at = new AccessToken(apiKey, apiSecret, {
-    identity: authData.user.id,
+    identity: `${userId}:${connectionId}`,
     ttl: TOKEN_TTL_SEC,
-    name: authData.user.id,
+    name: userId,
   });
   at.addGrant({
     roomJoin: true,
