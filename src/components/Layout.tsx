@@ -61,6 +61,9 @@ export function Layout({ children }: { children: ReactNode }) {
               {n.icon} <span>{n.id === 'account' && !user ? 'Giriş' : n.label}</span>
             </button>
           ))}
+            <button type="button" onClick={() => window.dispatchEvent(new Event('yks-open-zorro'))}>
+              🦊 <span>ZORRO</span>
+            </button>
         </nav>
         <div className="sidebar-bottom">
           <div className="mini-user">

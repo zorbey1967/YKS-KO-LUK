@@ -94,7 +94,7 @@ async function invokeAi(body: Record<string, unknown>, ms: number): Promise<{ ok
     let rec: Record<string, unknown> | null = null;
     try { rec = rawText ? JSON.parse(rawText) as Record<string, unknown> : null; } catch { rec = null; }
     if (res.ok && rec && (rec.reply || rec.plan || rec.schedule)) {
-      return { ok: true, data: rec, model: String(rec.model || 'Bulut koç') };
+      return { ok: true, data: rec, model: 'ZORRO' };
     }
     if (res.status === 401) return { ok: false, error: 'Oturum doğrulanamadı. Hesabım’dan tekrar giriş yap.' };
     if (res.status === 404) return { ok: false, error: 'student-ai fonksiyonu bulunamadı (HTTP 404). Supabase Edge Function yayında olmayabilir.' };

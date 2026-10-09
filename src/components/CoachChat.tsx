@@ -46,8 +46,13 @@ export function CoachChat() {
 
   useEffect(() => {
     const onEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    const openZorro = () => setOpen(true);
     window.addEventListener('keydown', onEsc);
-    return () => window.removeEventListener('keydown', onEsc);
+    window.addEventListener('yks-open-zorro', openZorro);
+    return () => {
+      window.removeEventListener('keydown', onEsc);
+      window.removeEventListener('yks-open-zorro', openZorro);
+    };
   }, []);
 
   useEffect(() => {
@@ -108,12 +113,12 @@ export function CoachChat() {
 
   return (
     <>
-      <button className="fab" type="button" aria-label="E-Koç" onClick={() => setOpen((v) => !v)}>🤖</button>
+      <button className="fab" type="button" aria-label="ZORRO" onClick={() => setOpen((v) => !v)}>ZORRO</button>
       {open && (
-        <section className="chat-panel" aria-label="E-Koç sohbet">
+        <section className="chat-panel" aria-label="ZORRO sohbet">
           <div className="section-title" style={{ padding: '12px 14px', margin: 0, borderBottom: '1px solid rgba(255,255,255,.1)' }}>
             <div>
-              <b>E-Koç</b>
+              <b>ZORRO</b>
               <div style={{ fontSize: 11, opacity: 0.7 }}>{snap.exam} • {displayText(snap.grade)} • {displayAge(snap.age)}</div>
             </div>
             <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
@@ -125,7 +130,7 @@ export function CoachChat() {
             {msgs.map((m, i) => (
               <div key={i} className={`chat-msg ${m.who === 'bot' ? 'chat-bot' : 'chat-user'}`}>
                 {m.text}
-                {m.who === 'bot' && m.source ? <div className="chat-src">{m.source === 'ai' ? (m.model || 'Gerçek model') : 'Yerel koç'}</div> : null}
+                {m.who === 'bot' && m.source ? <div className="chat-src">ZORRO</div> : null}
               </div>
             ))}
             {busy ? <div className="chat-msg chat-bot">Yazıyor…</div> : null}
