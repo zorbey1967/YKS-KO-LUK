@@ -49,15 +49,6 @@ export function examTitle(data: AppData) {
   return 'Okul';
 }
 
-export function ageBand(age: number) {
-  if (age <= 0) return 'belirsiz';
-  if (age <= 9) return 'ilkokul';
-  if (age <= 13) return 'ortaokul';
-  if (age <= 16) return 'lise-alt';
-  if (age <= 19) return 'lise-yks';
-  return 'yetiskin';
-}
-
 export function suggestedDailyMinutes(age: number, kind: 'YKS' | 'KPSS' | 'Okul') {
   if (age > 0 && age <= 9) return 60;
   if (age > 0 && age <= 13) return 120;

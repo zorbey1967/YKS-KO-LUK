@@ -1,6 +1,8 @@
 import { q } from './bankQ';
 import type { BankQuestion } from '../lib/types';
 import { hash32 } from '../lib/util';
+import { catalogQuestions } from './bankCatalog';
+import { isValidQuestion, questionFingerprint } from './bankDedupe';
 
 function idOf(level: string, subject: string, topic: string, n: number) {
   return `cv-${hash32(`${level}|${subject}|${topic}|${n}`).toString(16)}`;
@@ -213,47 +215,124 @@ function byTopic(level: string, subject: string, topic: string): Item[] {
     ];
   }
 
-  const others = ['Başka bir ünitenin kuralı', 'Konu dışı bir tanım', 'Sınavda sorulmayan rastgele bilgi', 'Bu dersin hedefiyle ilgisiz örnek'];
-  return [
-    [
-      `“${topic}” konusu (${subject}) için hangisi doğrudur?`,
-      [`${topic} bu dersin müfredatındaki kavram, kural ve uygulamaları kapsar.`, others[0], others[1], others[2], others[3]],
-      0,
-      'Kök, ünitenin kapsamını ölçer; çeldiriciler konu dışıdır.',
-      g <= 4 ? 'Kolay' : 'Orta',
-    ],
-    [
-      `Bu ünitede başarı için hangisi en uygundur?`,
-      ['Yalnızca ezber slogan', 'Tanım + örnek + benzer soru çözümü', 'Konuyu hiç tekrar etmemek', 'Başka dersin formülünü yapıştırmak', 'Süre tutmadan rastgele işaret'],
-      1,
-      'ÖSYM tarzı: bilgiyi örnek ve soruyla pekiştirmek.',
-      'Orta',
-    ],
-  ];
+  return [];
 }
 
 export function makeTopicQuestions(level: string, subject: string, topic: string, need: number): BankQuestion[] {
-  const items = byTopic(level, subject, topic);
-  const extra: Item = [
-    `“${topic}” konusunda hangisi yanlıştır?`,
-    [
-      'Konunun temel tanım ve kuralları bu ünitenin parçasıdır.',
-      'Bu ünite yalnızca başka bir dersin formüllerini ezberletir.',
-      'Sınavda bu konu hiç ölçülmez.',
-      'Örnek çözmek konuyu bozar.',
-      'Tanım öğrenmek gereksizdir.',
-    ],
-    1,
-    'Çeldirici, üniteyi yok sayar; doğru şık yanlışı işaretler.',
-    'Zor',
-  ];
-  const pool = items.length >= 2 ? items : [...items, extra];
-  const out: BankQuestion[] = [];
-  for (let i = 0; i < need; i++) {
-    const it = pool[i % pool.length];
-    out.push(q(idOf(level, subject, topic, i + 1), it[0], it[1], it[2], it[3], it[4]));
+  const items = byTopic(level, subject, topic).slice(0, Math.max(0, need));
+  return items.map((it, i) => q(idOf(level, subject, topic, i + 1), it[0], it[1], it[2], it[3], it[4]));
+}
+
+function pick<T>(arr: T[], i: number): T {
+  return arr[Math.abs(i) % arr.length];
+}
+
+/** Konu adına göre ek, doğru cevaplı 5 şıklı soru üretir (katalog bitince). */
+function generatedFillers(level: string, subject: string, topic: string, need: number): Item[] {
+  if (need <= 0) return [];
+  const t = topic.toLocaleLowerCase('tr-TR');
+  const s = subject.toLocaleLowerCase('tr-TR');
+  const g = Number((level.match(/^(\d+)/) || [])[1] || (level.includes('KPSS') ? 12 : 11));
+  const out: Item[] = [];
+  for (let i = 0; i < need * 4 + 16 && out.length < need; i++) {
+    const n = 4 + ((hash32(`${topic}|${i}|${level}`) % 9));
+    const m = 2 + ((hash32(`${subject}|${i}`) % 6));
+    let item: Item | null = null;
+
+    const num5 = (correct: number): [string, string, string, string, string] => {
+      const raw = [correct - 3, correct - 1, correct, correct + 2, correct + 5].map(String);
+      return raw as [string, string, string, string, string];
+    };
+    if (t.includes('toplama') || t.includes('sayılar 1-') || (t.includes('doğal') && s.includes('mat'))) {
+      const a = n + m;
+      item = [`${n} + ${m} işleminin sonucu kaçtır? (${topic})`, num5(a), 2, `${n}+${m}=${a}.`, g <= 4 ? 'Kolay' : 'Orta'];
+    } else if (t.includes('çıkarma')) {
+      const a = n + 6;
+      item = [`${a} − ${n} işleminin sonucu kaçtır?`, num5(6), 2, `${a}−${n}=6.`, 'Kolay'];
+    } else if (t.includes('çarpma') || t.includes('işlem')) {
+      const a = n * 3;
+      item = [`${n} × 3 işleminin sonucu kaçtır?`, num5(a), 2, `${n}·3=${a}.`, 'Kolay'];
+    } else if (t.includes('bölme') || t.includes('çarpma-bölme')) {
+      const a = n;
+      item = [`${n * 4} ÷ 4 işleminin sonucu kaçtır?`, num5(a), 2, `${n * 4}/4=${a}.`, 'Kolay'];
+    } else if (t.includes('kesir')) {
+      item = pick([
+        [`${n}/${n + n} kesri sadeleştirilince hangisine eşittir?`, ['1/4', '1/2', '2/3', '3/4', '1'], 1, 'Pay ve payda 2 ile sadeleşir: 1/2.', 'Orta'],
+        [`1/${n} + 1/${n} kaçtır?`, [`1/${n}`, `2/${n}`, `1/${2 * n}`, '0', `${n}`], 1, 'Paydalar eşit: 2/n.', 'Kolay'],
+      ] as Item[], i);
+    } else if (t.includes('yüzde') || t.includes('faiz')) {
+      const a = n * 10;
+      item = [`${a} sayısının %10’u kaçtır?`, num5(n), 2, `%10 = 1/10 → ${n}.`, 'Orta'];
+    } else if (t.includes('üslü') || t.includes('köklü')) {
+      const sq = n * n;
+      item = [`${n}² değeri kaçtır?`, num5(sq), 2, `${n}·${n}=${sq}.`, 'Orta'];
+    } else if (t.includes('denklem') || t.includes('eşitlik')) {
+      item = [`x + ${n} = ${n + m} denkleminde x kaçtır?`, num5(m), 2, `x=${m}.`, 'Orta'];
+    } else if (t.includes('fonksiyon')) {
+      item = [`f(x)=x+${m} için f(${n}) kaçtır?`, num5(n + m), 2, `${n}+${m}=${n + m}.`, 'Kolay'];
+    } else if (t.includes('olasılık')) {
+      item = [`${n} yüzlü adil zarda 1 gelme olasılığı nedir?`, [`1/${n - 1}`, `1/${n}`, `1/${n + 1}`, '1', '0'], 1, `n eşit çıktıdan biri.`, 'Orta'];
+    } else if (t.includes('üçgen') || t.includes('açı')) {
+      const a = 180 - 50 - (30 + (i % 4) * 5);
+      item = [`Bir üçgende iki iç açı 50° ve ${30 + (i % 4) * 5}° ise üçüncü açı kaçtır?`, num5(a), 2, `İç açılar toplamı 180.`, 'Orta'];
+    } else if (t.includes('çember') || t.includes('daire')) {
+      item = [`Yarıçapı ${n} birim olan çemberin çapı kaçtır?`, num5(2 * n), 2, 'Çap=2r.', 'Kolay'];
+    } else if (t.includes('alan') || t.includes('çevre')) {
+      item = [`Kenarı ${n} birim karede çevre kaçtır?`, num5(4 * n), 2, '4·kenar.', 'Kolay'];
+    } else if (t.includes('paragraf') || t.includes('anlam') || t.includes('okuduğunu') || s.includes('türkçe')) {
+      item = pick([
+        [`“${topic}” konusunda hangisi metnin bütününden çıkarılır?`, ['Yalnız noktalama', 'Ana yargı / ana fikir', 'Kapak rengi', 'Sayfa sayısı', 'Yayınevi'], 1, 'Ana fikir bütünün yargısıdır.', 'Orta'],
+        [`Aşağıdakilerden hangisi yardımcı düşünceye örnektir?`, ['Metnin temel tezi', 'Tezi destekleyen örnek veya gerekçe', 'Kitabın ISBN’i', 'Yazarın doğum yılı zorunlu', 'Kapak tasarımı'], 1, 'Yardımcı, ana fikri taşır.', 'Kolay'],
+        [`Hangisi anlatımda tutarlılığı bozar?`, ['Aynı bakış açısını sürdürmek', 'Konuyu gerekçesiz değiştirmek', 'Örnek vermek', 'Tanım yapmak', 'Karşılaştırma'], 1, 'Kopuk geçiş tutarsızlıktır.', 'Zor'],
+        [`“Oysa / ne var ki” bağlaçları çoğunlukla hangi ilişkiyi kurar?`, ['Örnekleme', 'Karşıtlık / düzeltme', 'Zaman sırası zorunlu', 'Tanım', 'Alıntı'], 1, 'Yön değiştirir.', 'Zor'],
+      ] as Item[], i);
+    } else if (s.includes('fen') || s.includes('fizik') || s.includes('kimya') || s.includes('biyoloji')) {
+      item = pick([
+        [`${topic} bağlamında bilimsel bilgi hangisine dayanır?`, ['Söylenti', 'Gözlem-deney ve tekrarlanabilirlik', 'Yalnızca tahmin', 'Rastgele tercih', 'Reklam'], 1, 'Bilimsel yöntem.', 'Orta'],
+        [`Bir büyüklüğün birimi değişince hangisi değişmez?`, ['Ölçülen niceliğin kendisi (doğru çevrimde)', 'Sayısal değer her zaman aynı kalır', 'Cihaz markası', 'Renk', 'Tarih'], 0, 'Birim dönüşümü niceliği korur.', 'Zor'],
+        [`Kontrol değişkeni deneyde ne işe yarar?`, ['Sonucu rastgele değiştirir', 'Karşılaştırmayı adil tutar', 'Hipotezi yasaklar', 'Veri siler', 'Grafiği boyar'], 1, 'Tek değişken kuralı.', 'Orta'],
+      ] as Item[], i);
+    } else if (s.includes('tarih') || s.includes('inkılap') || s.includes('sosyal') || s.includes('coğrafya')) {
+      item = pick([
+        [`${topic} konusunda kaynak kullanırken hangisi daha güvenilirdir?`, ['Doğrulanmamış forum yazısı', 'Birincil belge / akademik kaynak', 'Anonim söylenti', 'Uydurma anı', 'Reklam metni'], 1, 'Kaynak kritiği.', 'Orta'],
+        [`Tarihsel olay incelenirken hangisi yapılmalıdır?`, ['Tek cümleyle hüküm', 'Neden-sonuç ve bağlam kurmak', 'Tarihleri yok saymak', 'Kahramanı silmek zorunlu', 'Coğrafyayı yok saymak'], 1, 'Bağlam + nedensellik.', 'Zor'],
+        [`Harita / coğrafya bilgisinde ölçek ne sağlar?`, ['İklimi değiştirir', 'Gerçek uzunluk hesabı', 'Nüfusu sayar', 'Saati gösterir', 'Dili belirler'], 1, 'Küçültme oranı.', 'Kolay'],
+      ] as Item[], i);
+    } else if (s.includes('ingiliz') || t.includes('english') || t.includes('greeting')) {
+      item = pick([
+        ['“How are you?” sorusuna uygun yanıt hangisidir?', ['I am 10 years old.', 'I am fine, thanks.', 'It is blue.', 'I have two.', 'Yes, a book.'], 1, 'Hal sorma.', 'Kolay'],
+        ['“There are ___ apples.” boşluğuna hangisi gelir?', ['is', 'am', 'three', 'be', 'was a'], 2, 'Çoğul nesne + sayı.', 'Kolay'],
+      ] as Item[], i);
+    } else {
+      item = pick([
+        [`“${topic}” konusunda kavram haritasının asıl yararı hangisidir?`, ['Ezberi yok saymak', 'İlişkileri görünür kılmak', 'Sınavı iptal etmek', 'Notu şişirmek', 'Konuyu silmek'], 1, 'Bağ kurma.', 'Orta'],
+        [`Bu konuda çalışırken en verimli adım hangisidir?`, ['Yalnızca altını çizmek', 'Örnek çözüp hatayı analiz etmek', 'Hiç tekrar etmemek', 'Konuyu atlamak', 'Sadece video izleyip bırakmak'], 1, 'Aktif alıştırma.', 'Kolay'],
+        [`Hangisi kalıcı öğrenmeye daha yakındır?`, ['Tek oturumda 4 saat', 'Aralıklı tekrar + soru çözümü', 'Hiç not almamak', 'Yalnızca dinlemek', 'Ezberi bir kez okumak'], 1, 'Aralıklı tekrar.', 'Orta'],
+      ] as Item[], i);
+    }
+
+    if (item) {
+      if (new Set(item[1]).size !== 5) continue;
+      if (!Number.isInteger(item[2]) || item[2] < 0 || item[2] > 4) continue;
+      const stem = `${item[0]} — ${topic} (${i + 1})`;
+      const uniq: Item = [stem, item[1], item[2], item[3], item[4]];
+      if (!out.some((x) => x[0] === uniq[0])) out.push(uniq);
+    }
   }
-  return out;
+  return out.slice(0, need);
+}
+
+const COVER_PER_TOPIC = 12;
+
+function keptCount(list: BankQuestion[] | undefined) {
+  const ids = new Set<string>();
+  const fps = new Set<string>();
+  for (const row of list || []) {
+    if (!isValidQuestion(row) || ids.has(row.id)) continue;
+    ids.add(row.id);
+    fps.add(questionFingerprint(row));
+  }
+  return fps.size;
 }
 
 export function coverCurriculum(
@@ -265,12 +344,52 @@ export function coverCurriculum(
     for (const [subject, topics] of Object.entries(subjects)) {
       for (const topic of topics) {
         const key = `${level}|${subject}|${topic}`;
-        const have = out[key]?.length || 0;
-        if (have >= 2) continue;
-        const extra = makeTopicQuestions(level, subject, topic, 2 - have);
-        out[key] = [...(out[key] || []), ...extra];
+        const have = keptCount(out[key]);
+        if (have >= COVER_PER_TOPIC) continue;
+        const need = COVER_PER_TOPIC - have;
+        const extra = [
+          ...generatedFillers(level, subject, topic, need + 8).map((it, i) =>
+            q(idOf(level, subject, topic, 800 + i), it[0], it[1], it[2], it[3], it[4], 'osym')),
+          ...catalogQuestions(level, subject, topic, Math.max(need, 12)),
+          ...makeTopicQuestions(level, subject, topic, Math.max(need, 12)),
+        ];
+        const seen = new Set((out[key] || []).filter(isValidQuestion).map(questionFingerprint));
+        const seenId = new Set((out[key] || []).map((x) => x.id));
+        const add = [];
+        for (const row of extra) {
+          if (!isValidQuestion(row) || seenId.has(row.id)) continue;
+          const fp = questionFingerprint(row);
+          if (seen.has(fp)) continue;
+          seen.add(fp);
+          seenId.add(row.id);
+          add.push(row);
+          if (add.length >= need) break;
+        }
+        if (add.length) out[key] = [...(out[key] || []), ...add];
       }
     }
+  }
+  for (const key of Object.keys(out)) {
+    const have = keptCount(out[key]);
+    if (have >= COVER_PER_TOPIC) continue;
+    const [level, subject, topic] = key.split('|');
+    if (!level || !subject || !topic) continue;
+    const need = COVER_PER_TOPIC - have;
+    const extra = generatedFillers(level, subject, topic, need + 8).map((it, i) =>
+      q(idOf(level, subject, topic, 900 + i), it[0], it[1], it[2], it[3], it[4], 'osym'));
+    const seen = new Set((out[key] || []).filter(isValidQuestion).map(questionFingerprint));
+    const seenId = new Set((out[key] || []).map((x) => x.id));
+    const add = [];
+    for (const row of extra) {
+      if (!isValidQuestion(row) || seenId.has(row.id)) continue;
+      const fp = questionFingerprint(row);
+      if (seen.has(fp)) continue;
+      seen.add(fp);
+      seenId.add(row.id);
+      add.push(row);
+      if (add.length >= need) break;
+    }
+    if (add.length) out[key] = [...(out[key] || []), ...add];
   }
   return out;
 }

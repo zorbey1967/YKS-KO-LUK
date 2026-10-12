@@ -2,7 +2,7 @@ import type { AppData, TopicProgress } from './types';
 
 const JUMP_KEY = 'yks_qb_jump';
 
-export type BankJump = { level: string; subject?: string | null; topic?: string | null };
+export type BankJump = { level: string; subject?: string | null; topic?: string | null; mode?: 'normal' | 'wrong' };
 
 export function setBankJump(jump: BankJump) {
   try {

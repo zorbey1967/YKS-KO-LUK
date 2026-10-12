@@ -16,14 +16,14 @@ export function ExamInsight() {
   if (showsYks(data)) {
     return (
       <div className="card">
-        <div className="section-title"><h3>📈 YKS analizi</h3><span>{elite.phase}</span></div>
-        <p style={{ color: 'var(--muted)', fontSize: 13, lineHeight: 1.55 }}>
+        <div className="section-title"><h3>YKS analizi</h3><span>{elite.phase}</span></div>
+        <p className="muted">
           {elite.headline}. Sıralama tahmini yok; tempo ve net trendi.
         </p>
         <div className="status-grid">
-          <div className="status"><b>YKS’ye</b><span>{count.label}</span></div>
-          <div className="status"><b>Ort. TYT</b><span>{avgT.toFixed(1)}</span></div>
-          <div className="status"><b>Ort. AYT</b><span>{avgA.toFixed(1)}</span></div>
+          <div className="status"><b>YKS’ye</b><span>{data.examDate ? count.label : 'belirtilmedi'}</span></div>
+          {data.exams.length ? <div className="status"><b>Ort. TYT</b><span>{avgT.toFixed(1)}</span></div> : null}
+          {data.exams.length ? <div className="status"><b>Ort. AYT</b><span>{avgA.toFixed(1)}</span></div> : null}
         </div>
         {elite.lines.slice(0, 2).map((ln) => (
           <div className="plan-item" key={ln.slice(0, 24)}><span>{ln}</span></div>
@@ -41,14 +41,14 @@ export function ExamInsight() {
   if (showsKpss(data)) {
     return (
       <div className="card">
-        <div className="section-title"><h3>🏛️ KPSS analizi</h3><span>GY • GK • EB</span></div>
-        <p style={{ color: 'var(--muted)', fontSize: 13, lineHeight: 1.55 }}>
+        <div className="section-title"><h3>KPSS analizi</h3><span>GY • GK • EB</span></div>
+        <p className="muted">
           Genel yetenek ve genel kültür netlerin ÖSYM 4’te 1 kuralıyla hesaplanır. Eğitim bilimleri öğretmen adayları içindir.
         </p>
         <div className="status-grid">
-          <div className="status"><b>KPSS’ye</b><span>{count.label}</span></div>
-          <div className="status"><b>Ort. GY</b><span>{avgT.toFixed(1)}</span></div>
-          <div className="status"><b>Ort. GK</b><span>{avgA.toFixed(1)}</span></div>
+          <div className="status"><b>KPSS’ye</b><span>{data.examDate ? count.label : 'belirtilmedi'}</span></div>
+          {data.exams.length ? <div className="status"><b>Ort. GY</b><span>{avgT.toFixed(1)}</span></div> : null}
+          {data.exams.length ? <div className="status"><b>Ort. GK</b><span>{avgA.toFixed(1)}</span></div> : null}
         </div>
         <div className="actions">
           <button className="btn secondary" type="button" onClick={() => go('calculator')}>GY / GK net</button>
@@ -59,8 +59,8 @@ export function ExamInsight() {
   }
   return (
     <div className="card">
-      <div className="section-title"><h3>📘 Okul takibi</h3><span>{examTitle(data)}</span></div>
-      <p style={{ color: 'var(--muted)', fontSize: 13 }}>
+      <div className="section-title"><h3>Okul takibi</h3><span>{examTitle(data)}</span></div>
+      <p className="muted">
         {displayAge(data.age)} • {displayText(data.grade)}. Program kısa bloklar ve okul derslerine göre üretilir. YKS analizi 11 ve 12. sınıfta açılır.
       </p>
       <div className="actions">

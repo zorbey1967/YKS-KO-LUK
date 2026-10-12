@@ -23,7 +23,18 @@ export function ExamsPage() {
     <>
       <div className="grid two">
         <div className="card">
-          <div className="section-title"><h3>📝 Deneme ekle</h3></div>
+          <div className="section-title"><h3>Deneme ekle</h3></div>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              setData({
+                ...data,
+                exams: [...data.exams, { id: uid('e_'), name: name.trim() || 'Deneme', date: date || today(), tyt: Math.max(0, Number(tyt) || 0), ayt: Math.max(0, Number(ayt) || 0), note: note.trim() }],
+              });
+              setName(''); setTyt(''); setAyt(''); setNote('');
+              toast('Deneme kaydedildi');
+            }}
+          >
           <div className="form-grid">
             <div className="field"><label>Deneme</label><input value={name} onChange={(e) => setName(e.target.value)} placeholder="TYT Genel Deneme" /></div>
             <div className="field"><label>Tarih</label><input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></div>
@@ -32,14 +43,7 @@ export function ExamsPage() {
             <div className="field" style={{ gridColumn: '1 / -1' }}><label>Not</label><input value={note} onChange={(e) => setNote(e.target.value)} /></div>
           </div>
           <div className="actions">
-            <button className="btn primary" type="button" onClick={() => {
-              setData({
-                ...data,
-                exams: [...data.exams, { id: uid('e_'), name: name.trim() || 'Deneme', date: date || today(), tyt: Math.max(0, Number(tyt) || 0), ayt: Math.max(0, Number(ayt) || 0), note: note.trim() }],
-              });
-              setName(''); setTyt(''); setAyt(''); setNote('');
-              toast('Deneme kaydedildi');
-            }}>＋ Denemeyi kaydet</button>
+            <button className="btn primary" type="submit">Denemeyi kaydet</button>
             {data.calcs[0] ? (
               <button className="btn secondary" type="button" onClick={() => {
                 const c = data.calcs[0];
@@ -51,13 +55,14 @@ export function ExamsPage() {
               }}>Son neti doldur</button>
             ) : null}
           </div>
+          </form>
         </div>
         <div className="card">
-          <div className="section-title"><h3>📈 Özet</h3></div>
-          <div className="kpi"><div><span style={{ color: 'var(--muted)', fontSize: 12 }}>Ortalama {kpss ? 'GY' : 'TYT'}</span><br /><b>{avg.toFixed(2)}</b></div><span className="chip">{ex.length} deneme</span></div>
-          <div className="kpi"><div><span style={{ color: 'var(--muted)', fontSize: 12 }}>Son {kpss ? 'GK' : 'AYT'}</span><br /><b>{ex[0]?.ayt || 0}</b></div></div>
-          <div className="actions"><span className="chip">🏆 En yüksek {kpss ? 'GY' : 'TYT'}: {best}</span><span className="chip">İlk→son: {delta > 0 ? '+' : ''}{delta.toFixed(2)}</span></div>
-          <p style={{ color: 'var(--muted)', fontSize: 13 }}>Zayıf net gördüğün dersi Soru Bankası’nda Zor filtresiyle tarat.</p>
+          <div className="section-title"><h3>Özet</h3></div>
+          <div className="kpi"><div><span className="muted">Ortalama {kpss ? 'GY' : 'TYT'}</span><br /><b>{avg.toFixed(2)}</b></div><span className="chip">{ex.length} deneme</span></div>
+          <div className="kpi"><div><span className="muted">Son {kpss ? 'GK' : 'AYT'}</span><br /><b>{ex[0]?.ayt || 0}</b></div></div>
+          <div className="actions"><span className="chip">En yüksek {kpss ? 'GY' : 'TYT'}: {best}</span><span className="chip">İlk→son: {delta > 0 ? '+' : ''}{delta.toFixed(2)}</span></div>
+          <p className="muted">Zayıf net gördüğün dersi Soru Bankası’nda Zor filtresiyle tarat.</p>
         </div>
       </div>
       <div className="card" style={{ marginTop: 16 }}>
@@ -78,7 +83,10 @@ export function ExamsPage() {
                   <td><b>{x.tyt}</b></td>
                   <td>{x.ayt}</td>
                   <td>{x.note || '-'}</td>
-                  <td><button className="icon-btn" type="button" onClick={() => setData({ ...data, exams: data.exams.filter((e) => e.id !== x.id) })}>×</button></td>
+                  <td><button className="btn secondary" type="button" aria-label={`${x.name} kaydını sil`} onClick={() => {
+                    if (!confirm('Bu deneme silinsin mi?')) return;
+                    setData({ ...data, exams: data.exams.filter((e) => e.id !== x.id) });
+                  }}>Sil</button></td>
                 </tr>
               ))}
             </tbody>

@@ -1,6 +1,11 @@
-import type { AppointmentStatus, CoachAccount, CoachAppointment, CoachDesk, CoachStatus, CoachStudent, CoachTrack, HumanCoach } from './coaches';
+import type { AppData } from './types';
+import { normalizeData } from './storage';
+import { parsePushResult } from './syncMerge';
+import { coachStudyBrief, type CoachStudyBrief } from './coachBrief';
+import type { AppointmentStatus, CoachAccount, CoachAppointment, CoachDesk, CoachHomework, CoachStatus, CoachStudent, CoachTrack, HumanCoach } from './coaches';
 import { asCancelReason, COACH_TRACKS, emptyDesk } from './coaches';
-import { SUPABASE_UNAVAILABLE, publicCloudError, supabase, withTimeout } from './supabase';
+import { getCoachDisplayName, getPersonDisplayName } from './displayName';
+import { SESSION_REQUIRED, SUPABASE_UNAVAILABLE, publicCloudError, requireUserSession, supabase, withTimeout } from './supabase';
 
 type LedgerKind = 'odeme' | 'iade';
 type LedgerStatus = 'bekliyor' | 'odendi' | 'iade';
@@ -18,7 +23,7 @@ export type LedgerEntry = {
 };
 
 export type ProfileRole = 'student' | 'coach' | 'admin';
-export type AccountStatus = 'active' | 'pasif';
+export type AccountStatus = 'active' | 'pasif' | 'pending' | 'rejected';
 
 export type CloudProfile = {
   id: string;
@@ -27,9 +32,33 @@ export type CloudProfile = {
   plan: string;
   role: ProfileRole;
   account_status: AccountStatus;
+  signup_intent?: 'student' | 'coach';
+  signup_grade?: string;
+  signup_track?: string;
+  signup_exam?: string;
+  approval_note?: string;
   target_department?: string;
   target_rank?: number;
 };
+
+export type StudentApplication = {
+  id: string;
+  name: string;
+  email: string;
+  registered_at: string;
+  account_status: AccountStatus;
+  email_confirmed: boolean;
+  signup_grade: string;
+  signup_track: string;
+  signup_exam: string;
+  approval_note: string;
+};
+
+export function parseAccountStatus(raw: unknown): AccountStatus {
+  const s = String(raw || '');
+  if (s === 'pasif' || s === 'pending' || s === 'rejected' || s === 'active') return s;
+  return 'active';
+}
 
 export type CloudCoach = Omit<CoachAccount, 'passHash'> & { userId: string | null };
 
@@ -55,7 +84,7 @@ export type CloudAdminBundle = {
 
 function isMissingRelation(e: unknown) {
   const msg = e instanceof Error ? e.message : String(e);
-  return /schema cache|does not exist|Could not find the table/i.test(msg);
+  return /schema cache|does not exist|Could not find the table|Could not find the function/i.test(msg);
 }
 
 function asTrack(s: unknown): CoachTrack {
@@ -75,7 +104,16 @@ export function isUuid(id: string) {
 }
 
 function rpcUserMessage(e: unknown): string {
-  const msg = e && typeof e === 'object' && 'message' in e ? String((e as { message: unknown }).message || '') : e instanceof Error ? e.message : '';
+  const obj = e && typeof e === 'object' ? e as { message?: unknown; code?: unknown } : null;
+  const msg = obj && 'message' in obj ? String(obj.message || '') : e instanceof Error ? e.message : '';
+  const code = obj && 'code' in obj ? String(obj.code || '') : '';
+  if (
+    code === '42501'
+    || /permission denied for function/i.test(msg)
+    || /jwt expired|invalid jwt|not authenticated|session missing/i.test(msg)
+  ) {
+    return SESSION_REQUIRED;
+  }
   const known = [
     'koç hesabı yok',
     'geçmiş saat eklenemez',
@@ -94,8 +132,22 @@ function rpcUserMessage(e: unknown): string {
     'bu saat başka koçta onaylı',
     'bu koçta bu saat için talebin var',
     'yalnız açık saatten talep',
+    'hesap onay bekliyor',
+    'üyelik gerekli',
+    'e-posta doğrulanmamış',
+    'öğrenci ve ödev gerekli',
+    'bu öğrenci randevu veya eşleşme ile bağlı değil',
+    'ödev yok',
   ];
+  if (/bu ad veya soyad kullanılamaz/i.test(msg)) {
+    return 'Bu ad veya soyad kullanılamaz. Lütfen gerçek adınızı ve soyadınızı girin.';
+  }
   const hit = known.find((k) => msg.toLowerCase().includes(k));
+  if (hit === 'oturum gerekli') return SESSION_REQUIRED;
+  if (hit === 'hesap onay bekliyor') return 'Hesabınız yönetici onayı bekliyor.';
+  if (hit === 'üyelik gerekli') return 'Deneme veya ücretli üyelik gerekli.';
+  if (hit === 'e-posta doğrulanmamış') return 'E-posta adresiniz doğrulanmamış.';
+  if (hit === 'yetkisiz') return 'Bu işlem için yetkiniz yok.';
   if (hit) return hit.charAt(0).toUpperCase() + hit.slice(1) + '.';
   return publicCloudError(e);
 }
@@ -104,7 +156,7 @@ function mapCoach(row: Record<string, unknown>): CloudCoach {
   return {
     id: String(row.id),
     userId: row.user_id ? String(row.user_id) : null,
-    name: String(row.name || ''),
+    name: getCoachDisplayName(String(row.name || '')),
     email: String(row.email || ''),
     track: asTrack(row.track),
     focus: String(row.focus || ''),
@@ -121,7 +173,7 @@ function directoryToHuman(row: Record<string, unknown>): HumanCoach {
   const experience = String(row.experience || '').trim();
   return {
     id: String(row.id || ''),
-    name: String(row.name || ''),
+    name: getCoachDisplayName(String(row.name || '')),
     track: asTrack(row.track),
     focus: String(row.focus || ''),
     weeklyHours: 5,
@@ -178,7 +230,7 @@ export async function submitCoachApplication(input: {
     if (error) throw error;
     return { ok: true, id: String(data.id) };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : 'Başvuru yazılamadı.', missing: isMissingRelation(e) };
+    return { ok: false, error: rpcUserMessage(e), missing: isMissingRelation(e) };
   }
 }
 
@@ -207,12 +259,127 @@ async function rowsFrom(table: string, coachId: string): Promise<Record<string, 
 }
 
 function mapStudents(rows: Record<string, unknown>[]): CoachStudent[] {
-  return rows.map((r) => ({
-    id: String(r.id),
-    name: String(r.student_name || r.name || ''),
-    grade: String(r.grade || ''),
-    note: String(r.note || ''),
-  }));
+  return rows.map((r) => {
+    const userId = String(r.student_id || '');
+    return {
+      id: isUuid(userId) ? userId : String(r.id),
+      name: getPersonDisplayName(String(r.student_name || r.name || ''), 'Öğrenci'),
+      grade: String(r.grade || ''),
+      note: String(r.note || ''),
+    };
+  });
+}
+
+export type LinkedStudentRow = CoachStudent & {
+  dept: string;
+  examDate: string;
+  weekHours: number;
+  openTasks: number;
+};
+
+export async function fetchLinkedStudents(): Promise<{ ok: true; rows: LinkedStudentRow[] } | { ok: false; error: string; missing?: boolean }> {
+  if (!supabase) return { ok: false, error: SESSION_REQUIRED };
+  try {
+    const { data, error } = await withTimeout(supabase.rpc('coach_linked_students'));
+    if (error) throw error;
+    const rows = (Array.isArray(data) ? data : []).map((r: Record<string, unknown>) => ({
+      id: String(r.student_id || ''),
+      name: getPersonDisplayName(String(r.name || ''), 'Öğrenci'),
+      grade: String(r.grade || ''),
+      note: '',
+      dept: String(r.dept || ''),
+      examDate: String(r.exam_date || ''),
+      weekHours: Number(r.week_hours) || 0,
+      openTasks: Number(r.open_tasks) || 0,
+    })).filter((s) => isUuid(s.id));
+    return { ok: true, rows };
+  } catch (e) {
+    return { ok: false, error: rpcUserMessage(e), missing: isMissingRelation(e) };
+  }
+}
+
+export async function assignCoachHomework(studentId: string, title: string, due: string): Promise<{ ok: true; id: string } | { ok: false; error: string; missing?: boolean }> {
+  if (!supabase || !isUuid(studentId)) return { ok: false, error: 'Öğrenci hesabı gerekli.' };
+  try {
+    const { data, error } = await withTimeout(
+      supabase.rpc('assign_coach_homework', { p_student_id: studentId, p_title: title, p_due: due || null }),
+    );
+    if (error) throw error;
+    return { ok: true, id: String(data) };
+  } catch (e) {
+    return { ok: false, error: rpcUserMessage(e), missing: isMissingRelation(e) };
+  }
+}
+
+export async function setCoachHomeworkDone(id: string, done: boolean): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!supabase || !isUuid(id)) return { ok: false, error: 'Ödev yok.' };
+  try {
+    const { error } = await withTimeout(supabase.rpc('set_coach_homework_done', { p_id: id, p_done: done }));
+    if (error) throw error;
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: rpcUserMessage(e) };
+  }
+}
+
+export async function fetchMyCoachHomework(): Promise<{ ok: true; rows: CoachHomework[] } | { ok: false; error: string; missing?: boolean }> {
+  if (!supabase) return { ok: false, error: SESSION_REQUIRED };
+  try {
+    const { data, error } = await withTimeout(
+      supabase.from('coach_homeworks').select('id, student_id, title, due, done, created_at, updated_at').order('created_at', { ascending: false }).limit(80),
+    );
+    if (error) throw error;
+    return {
+      ok: true,
+      rows: (data || []).map((r: Record<string, unknown>) => ({
+        id: String(r.id),
+        studentId: String(r.student_id || ''),
+        title: String(r.title || ''),
+        due: String(r.due || ''),
+        done: Boolean(r.done),
+        createdAt: r.created_at ? String(r.created_at) : undefined,
+        updatedAt: r.updated_at ? String(r.updated_at) : undefined,
+      })),
+    };
+  } catch (e) {
+    return { ok: false, error: rpcUserMessage(e), missing: isMissingRelation(e) };
+  }
+}
+
+export async function pushStudentData(payload: AppData): Promise<
+  { ok: true; rev: number } | { ok: false; rev: number; data: AppData | null; missing?: boolean; error?: string }
+> {
+  if (!supabase) return { ok: false, rev: payload.syncRev || 0, data: null, missing: true, error: SUPABASE_UNAVAILABLE };
+  try {
+    const { data, error } = await withTimeout(
+      supabase.rpc('push_student_data', { p_expected_rev: payload.syncRev || 0, p_data: payload }),
+    );
+    if (error) throw error;
+    const parsed = parsePushResult(data);
+    if (parsed.ok) return { ok: true, rev: parsed.rev };
+    return { ok: false, rev: parsed.rev, data: parsed.data };
+  } catch (e) {
+    return { ok: false, rev: payload.syncRev || 0, data: null, missing: isMissingRelation(e), error: rpcUserMessage(e) };
+  }
+}
+
+export async function fetchCoachStudentBrief(studentId: string, today: string): Promise<
+  { ok: true; brief: CoachStudyBrief } | { ok: false; error: string; missing?: boolean }
+> {
+  if (!supabase || !isUuid(studentId)) return { ok: false, error: 'Öğrenci hesabı gerekli.' };
+  try {
+    const { data, error } = await withTimeout(supabase.rpc('coach_student_brief', { p_student: studentId }));
+    if (error) throw error;
+    const payload = data && typeof data === 'object' && 'payload' in (data as object)
+      ? (data as { payload: unknown }).payload
+      : data;
+    if (!payload || typeof payload !== 'object') {
+      return { ok: true, brief: coachStudyBrief(normalizeData({}), today) };
+    }
+    return { ok: true, brief: coachStudyBrief(normalizeData(payload), today) };
+  } catch (e) {
+    return { ok: false, error: rpcUserMessage(e), missing: isMissingRelation(e) };
+  }
 }
 
 export async function fetchCoachDesk(coachId: string): Promise<CoachDesk | null> {
@@ -233,6 +400,8 @@ export async function fetchCoachDesk(coachId: string): Promise<CoachDesk | null>
       title: String(r.title || ''),
       due: String(r.due || ''),
       done: Boolean(r.done),
+      createdAt: r.created_at ? String(r.created_at) : undefined,
+      updatedAt: r.updated_at ? String(r.updated_at) : undefined,
     })),
     payments: pay.map((r) => ({
       id: String(r.id),
@@ -245,12 +414,13 @@ export async function fetchCoachDesk(coachId: string): Promise<CoachDesk | null>
       id: String(r.id),
       coachId: String(r.coach_id),
       studentId: String(r.student_id || ''),
-      studentName: String(r.student_name || ''),
+      studentName: getPersonDisplayName(String(r.student_name || ''), 'Öğrenci'),
       date: String(r.date || ''),
       time: String(r.time || ''),
       minutes: Number(r.minutes) || 40,
       status: asAppt(r.status),
       cancelReason: asCancelReason(r.cancel_reason),
+      startsAt: r.starts_at ? String(r.starts_at) : null,
     })),
   };
 }
@@ -341,6 +511,8 @@ export async function listOpenSlots(coachId: string): Promise<{ ok: true; rows: 
 
 export async function listMySlots(): Promise<{ ok: true; rows: { id: string; startsAt: string; date: string; time: string; status: string }[] } | { ok: false; error: string }> {
   if (!supabase) return { ok: false, error: 'Bulut ayarı yok.' };
+  const auth = await requireUserSession();
+  if (!auth.ok) return auth;
   try {
     const { data, error } = await withTimeout(supabase.rpc('list_my_slots'));
     if (error) throw error;
@@ -359,6 +531,8 @@ export async function listMySlots(): Promise<{ ok: true; rows: { id: string; sta
 
 export async function addCoachSlot(startsAtIso: string): Promise<{ ok: true } | { ok: false; error: string }> {
   if (!supabase || !startsAtIso) return { ok: false, error: 'Saat yok.' };
+  const auth = await requireUserSession();
+  if (!auth.ok) return auth;
   try {
     const { error } = await withTimeout(supabase.rpc('add_coach_slot', { p_starts_at: startsAtIso }));
     if (error) throw error;
@@ -370,6 +544,8 @@ export async function addCoachSlot(startsAtIso: string): Promise<{ ok: true } | 
 
 export async function closeCoachSlot(id: string): Promise<{ ok: true } | { ok: false; error: string }> {
   if (!supabase || !id) return { ok: false, error: 'Slot yok.' };
+  const auth = await requireUserSession();
+  if (!auth.ok) return auth;
   try {
     const { error } = await withTimeout(supabase.rpc('close_coach_slot', { p_id: id }));
     if (error) throw error;
@@ -439,6 +615,135 @@ export async function adminSetAccountStatus(id: string, status: AccountStatus): 
     return true;
   } catch {
     return false;
+  }
+}
+
+export type BillingRow = {
+  id: string;
+  name: string;
+  email: string;
+  plan: string;
+  subscription_status: string;
+  trial_started_at: string;
+  trial_ends_at: string;
+  subscription_ends_at: string;
+  account_status: AccountStatus;
+};
+
+export type BillingOverview = {
+  active: number;
+  trialing: number;
+  failed_payments: number;
+  canceled: number;
+  verified_total_try: number;
+};
+
+export async function adminBillingOverview(): Promise<BillingOverview | null> {
+  if (!supabase) return null;
+  try {
+    const { data, error } = await withTimeout(supabase.rpc('admin_billing_overview'));
+    if (error) throw error;
+    const rec = (data && typeof data === 'object') ? data as Record<string, unknown> : {};
+    return {
+      active: Number(rec.active) || 0,
+      trialing: Number(rec.trialing) || 0,
+      failed_payments: Number(rec.failed_payments) || 0,
+      canceled: Number(rec.canceled) || 0,
+      verified_total_try: Number(rec.verified_total_try) || 0,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export type AdminPaymentRow = {
+  id: string;
+  email: string;
+  amountTry: number;
+  currency: string;
+  status: string;
+  provider: string;
+  providerPaymentId: string;
+  createdAt: string;
+};
+
+export async function adminListPayments(): Promise<AdminPaymentRow[] | null> {
+  if (!supabase) return null;
+  try {
+    const { data, error } = await withTimeout(supabase.rpc('admin_list_payments'));
+    if (error) throw error;
+    return (Array.isArray(data) ? data : []).map((r: Record<string, unknown>) => ({
+      id: String(r.id),
+      email: String(r.email || ''),
+      amountTry: Number(r.amount_try) || 0,
+      currency: String(r.currency || 'TRY'),
+      status: String(r.status || ''),
+      provider: String(r.provider || ''),
+      providerPaymentId: String(r.provider_payment_id || ''),
+      createdAt: String(r.created_at || ''),
+    }));
+  } catch {
+    return null;
+  }
+}
+
+export async function adminListBilling(): Promise<BillingRow[] | null> {
+  if (!supabase) return null;
+  try {
+    const { data, error } = await withTimeout(supabase.rpc('admin_list_billing'));
+    if (error) throw error;
+    return (Array.isArray(data) ? data : []).map((r: Record<string, unknown>) => ({
+      id: String(r.id),
+      name: getPersonDisplayName(String(r.name || ''), 'Öğrenci'),
+      email: String(r.email || ''),
+      plan: String(r.plan || ''),
+      subscription_status: String(r.subscription_status || ''),
+      trial_started_at: String(r.trial_started_at || ''),
+      trial_ends_at: String(r.trial_ends_at || ''),
+      subscription_ends_at: String(r.subscription_ends_at || ''),
+      account_status: parseAccountStatus(r.account_status),
+    }));
+  } catch {
+    return null;
+  }
+}
+
+export async function adminListStudentApplications(): Promise<StudentApplication[] | null> {
+  if (!supabase) return null;
+  try {
+    const { data, error } = await withTimeout(supabase.rpc('admin_list_student_applications'));
+    if (error) throw error;
+    return (Array.isArray(data) ? data : []).map((r: Record<string, unknown>) => ({
+      id: String(r.id),
+      name: getPersonDisplayName(String(r.name || ''), 'Öğrenci'),
+      email: String(r.email || ''),
+      registered_at: String(r.registered_at || ''),
+      account_status: parseAccountStatus(r.account_status),
+      email_confirmed: Boolean(r.email_confirmed),
+      signup_grade: String(r.signup_grade || ''),
+      signup_track: String(r.signup_track || ''),
+      signup_exam: String(r.signup_exam || ''),
+      approval_note: String(r.approval_note || ''),
+    }));
+  } catch {
+    return null;
+  }
+}
+
+export async function adminReviewStudent(
+  id: string,
+  status: 'active' | 'rejected' | 'pending',
+  note = '',
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!supabase || !isUuid(id)) return { ok: false, error: 'Kayıt bulunamadı.' };
+  try {
+    const { error } = await withTimeout(
+      supabase.rpc('admin_review_student', { p_id: id, p_status: status, p_note: note }),
+    );
+    if (error) throw error;
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: rpcUserMessage(e) };
   }
 }
 
@@ -515,7 +820,7 @@ export async function fetchAdminBundle(): Promise<CloudAdminBundle | null> {
       tableRows('admin_notes'),
     ]);
     const coachRows = (coachRes.data || []).map((r) => mapCoach(r as Record<string, unknown>));
-    const nameOf = (id: string) => coachRows.find((c) => c.id === id)?.name || id;
+    const nameOf = (id: string) => getCoachDisplayName(coachRows.find((c) => c.id === id)?.name || '');
     const desks: Record<string, CoachDesk> = {};
     for (const c of coachRows) desks[c.id] = emptyDesk();
     for (const r of matchRows) {
@@ -523,7 +828,7 @@ export async function fetchAdminBundle(): Promise<CloudAdminBundle | null> {
       if (!desks[cid]) desks[cid] = emptyDesk();
       desks[cid].students.push({
         id: String(r.id),
-        name: String(r.student_name || r.name || ''),
+        name: getPersonDisplayName(String(r.student_name || r.name || ''), 'Öğrenci'),
         grade: String(r.grade || ''),
         note: String(r.note || ''),
       });
@@ -532,13 +837,14 @@ export async function fetchAdminBundle(): Promise<CloudAdminBundle | null> {
       id: String(r.id),
       coachId: String(r.coach_id),
       studentId: String(r.student_id || ''),
-      studentName: String(r.student_name || ''),
+      studentName: getPersonDisplayName(String(r.student_name || ''), 'Öğrenci'),
       date: String(r.date || ''),
       time: String(r.time || ''),
       minutes: Number(r.minutes) || 40,
       status: asAppt(r.status),
       coachName: nameOf(String(r.coach_id)),
       cancelReason: asCancelReason(r.cancel_reason),
+      startsAt: r.starts_at ? String(r.starts_at) : null,
     }));
     for (const a of cloudAppts) {
       if (!desks[a.coachId]) desks[a.coachId] = emptyDesk();
@@ -554,7 +860,7 @@ export async function fetchAdminBundle(): Promise<CloudAdminBundle | null> {
       id: String(r.id),
       date: String(r.date || ''),
       coachId: String(r.coach_id || ''),
-      coachName: String(r.coach_name || ''),
+      coachName: getCoachDisplayName(String(r.coach_name || '')),
       amount: Number(r.amount) || 0,
       commission: Number(r.commission) || 0,
       kind: r.kind === 'iade' ? 'iade' : 'odeme',
@@ -567,16 +873,24 @@ export async function fetchAdminBundle(): Promise<CloudAdminBundle | null> {
       text: String(r.text || ''),
       at: String(r.created_at || ''),
     }));
-    const profileRows: CloudProfile[] = (profileRes.data || []).map((r) => ({
-      id: String(r.id),
-      name: String(r.name || ''),
-      email: String(r.email || ''),
-      plan: String(r.plan || 'Ücretsiz'),
-      role: r.role === 'admin' || r.role === 'coach' ? r.role : 'student',
-      account_status: r.account_status === 'pasif' ? 'pasif' : 'active',
-      target_department: r.target_department || undefined,
-      target_rank: r.target_rank == null ? undefined : Number(r.target_rank),
-    }));
+    const profileRows: CloudProfile[] = (profileRes.data || []).map((raw) => {
+      const r = raw as Record<string, unknown>;
+      return {
+        id: String(r.id),
+        name: getPersonDisplayName(String(r.name || ''), ''),
+        email: String(r.email || ''),
+        plan: String(r.plan || 'Ücretsiz'),
+        role: r.role === 'admin' || r.role === 'coach' ? r.role : 'student',
+        account_status: parseAccountStatus(r.account_status),
+        signup_intent: r.signup_intent === 'coach' ? 'coach' : 'student',
+        signup_grade: String(r.signup_grade || ''),
+        signup_track: String(r.signup_track || ''),
+        signup_exam: String(r.signup_exam || ''),
+        approval_note: String(r.approval_note || ''),
+        target_department: r.target_department ? String(r.target_department) : undefined,
+        target_rank: r.target_rank == null ? undefined : Number(r.target_rank),
+      };
+    });
     return {
       source: 'supabase',
       profiles: profileRows,

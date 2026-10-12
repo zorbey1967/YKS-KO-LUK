@@ -1,17 +1,27 @@
 import { useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { ADMIN_NAV, MEETING_NAV, NAV, displayAge, displayText } from '../lib/types';
+import { ADMIN_NAV, MEETING_NAV, NAV, sidebarNav, displayAge, displayText } from '../lib/types';
+import { pagesAllowedForGate } from '../lib/accessGate';
 import { examCountdown } from '../lib/insights';
 import { examTitle } from '../lib/stage';
-import { SITE_NAME, SITE_ORIGIN, copySiteUrl } from '../lib/site';
+import { primaryExam } from '../lib/examTargets';
+import { SITE_NAME } from '../lib/site';
 import { isSupabaseConfigured } from '../lib/supabase';
+import { getCoachDisplayName, getPersonDisplayName } from '../lib/displayName';
 import type { ReactNode } from 'react';
 
 export function Layout({ children }: { children: ReactNode }) {
-  const { page, go, menuOpen, setMenuOpen, profile, user, toggleTheme, theme, toastMsg, toast, data, isAdmin, cloudStatus } = useApp();
-  const nav = isAdmin ? [NAV[0], ADMIN_NAV, ...NAV.slice(1)] : NAV;
-  const item = nav.find((n) => n.id === page) || (page === 'admin' ? ADMIN_NAV : page === 'meeting' ? MEETING_NAV : NAV[0]);
-  const count = examCountdown(data.examDate);
+  const { page, go, menuOpen, setMenuOpen, profile, user, toggleTheme, theme, toastMsg, data, isAdmin, cloudStatus, accessGate } = useApp();
+  const isCoach = profile?.role === 'coach';
+  const displayName = isCoach
+    ? getCoachDisplayName(profile?.name)
+    : getPersonDisplayName(profile?.name, user ? 'Öğrenci' : 'Misafir');
+  const nav = sidebarNav(profile?.role, isAdmin, pagesAllowedForGate(accessGate));
+  const item = nav.find((n) => n.id === page)
+    || NAV.find((n) => n.id === page)
+    || (page === 'admin' ? ADMIN_NAV : page === 'meeting' ? MEETING_NAV : NAV[0]);
+  const primary = primaryExam(data.examTargets || []);
+  const count = examCountdown(primary?.date || data.examDate);
 
   useEffect(() => {
     document.title = `${page === 'account' && !user ? 'Giriş' : item.label} | ${SITE_NAME}`;
@@ -52,7 +62,7 @@ export function Layout({ children }: { children: ReactNode }) {
           <div className="brand-icon" aria-hidden="true">🎓</div>
           <div className="brand-copy">
             <strong>{SITE_NAME}</strong>
-            <small>{examTitle(data)} çalışma paneli</small>
+            <small>{isCoach ? 'Koçluk paneli' : `${examTitle(data)} çalışma paneli`}</small>
           </div>
         </div>
         <nav className="nav">
@@ -61,15 +71,23 @@ export function Layout({ children }: { children: ReactNode }) {
               {n.icon} <span>{n.id === 'account' && !user ? 'Giriş' : n.label}</span>
             </button>
           ))}
+          {!isCoach ? (
+            <button type="button" onClick={() => window.dispatchEvent(new Event('yks-open-zorro'))}>
+              🦁 <span>ZORRO</span>
+            </button>
+          ) : null}
         </nav>
         <div className="sidebar-bottom">
           <div className="mini-user">
             <div className="userline">
-              <div className="avatar">{(profile?.name || SITE_NAME).trim().charAt(0).toUpperCase()}</div>
+              <div className="avatar">{displayName.trim().charAt(0).toUpperCase()}</div>
               <div className="userline-text">
-                <strong>{profile?.name || (user ? 'Öğrenci' : 'Misafir')}</strong>
-                <span>{displayText(data.grade)} • {displayAge(data.age)} • {data.examDate ? (count.past ? 'sınav tarihi geçti' : count.label) : 'sınav tarihi belirtilmedi'}</span>
-                <span>{user?.email || 'Oturum yok'}</span>
+                <strong>{displayName}</strong>
+                {isCoach ? (
+                  <span>Koç</span>
+                ) : (
+                  <span>{displayText(data.grade)} • {displayAge(data.age)} • {data.examDate ? (count.past ? 'sınav tarihi geçti' : count.label) : 'sınav tarihi belirtilmedi'}</span>
+                )}
               </div>
             </div>
           </div>
@@ -86,23 +104,9 @@ export function Layout({ children }: { children: ReactNode }) {
               <div className="eyebrow">{SITE_NAME}</div>
               <h1>{page === 'account' && !user ? 'Giriş' : item.label}</h1>
             </div>
-            {page === 'home' ? (
-              <button
-                className="btn secondary"
-                type="button"
-                onClick={() => {
-                  void copySiteUrl().then((ok) => toast(ok ? 'Adres kopyalandı' : SITE_ORIGIN));
-                }}
-              >
-                Paylaş
-              </button>
-            ) : null}
           </div>
           <div className="top-actions">
             {!isSupabaseConfigured() ? <span className="chip">{cloudStatus === 'Yapılandırılmadı' ? 'Bulut ayarı yok' : cloudStatus}</span> : null}
-            {user ? (
-              <button className="btn secondary" type="button" onClick={() => go('goal')}>Hedefim</button>
-            ) : null}
             <button className={user ? 'btn secondary' : 'btn primary'} type="button" onClick={() => go('account')}>{user ? 'Hesabım' : 'Giriş'}</button>
             <button className="btn secondary" type="button" onClick={toggleTheme} aria-label={theme === 'dark' ? 'Açık tema' : 'Koyu tema'} aria-pressed={theme === 'dark'}>{theme === 'dark' ? 'Açık tema' : 'Koyu tema'}</button>
           </div>

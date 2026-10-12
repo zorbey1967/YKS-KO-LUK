@@ -7,6 +7,9 @@
     "dev": "vite",
     "build": "vite build",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:pg": "vitest run src/lib/studentEntitled.pg.test.ts",
+    "test:pg:docker": "node scripts/run-pg-entitlement-test.mjs",
     "preview": "vite preview",
     "extract-bank": "node scripts/extract-bank.mjs",
     "deploy:ai": "npx supabase functions deploy student-ai --no-verify-jwt",
@@ -24,6 +27,7 @@
     "@types/react-dom": "^19.1.9",
     "@vitejs/plugin-react": "^5.0.2",
     "typescript": "~5.9.2",
-    "vite": "^7.1.5"
+    "vite": "^7.1.5",
+    "vitest": "^3.2.7"
   }
 }

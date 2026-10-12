@@ -1,9 +1,9 @@
 import { fetchMyCoach } from './cloudPlatform';
+import { getCoachDisplayName, getPersonDisplayName } from './displayName';
 import type { AppointmentStatus, CoachAppointment } from './coaches';
 import { asCancelReason } from './coaches';
 import { publicCloudError, supabase, supabaseAnonKey, supabaseUrl, withTimeout } from './supabase';
 
-export const LESSON_MIN = 40;
 export const BOOKING_LEAD_MIN = 30;
 
 export function tokenErrorMessage(error: string, status?: number) {
@@ -62,6 +62,76 @@ export function istanbulToday() {
   return istanbulParts().date;
 }
 
+type AppointmentClock = { date?: string; time?: string; minutes?: number; status?: string; startsAt?: string | null };
+
+function wallTime(raw: string) {
+  const m = String(raw || '').match(/(\d{1,2}):(\d{2})/);
+  if (!m) return '';
+  return `${m[1].padStart(2, '0')}:${m[2]}`;
+}
+
+function wallDate(raw: string) {
+  const m = String(raw || '').match(/(\d{4}-\d{2}-\d{2})/);
+  return m ? m[1] : '';
+}
+
+export function appointmentStartMs(a: AppointmentClock) {
+  if (a.startsAt) {
+    const fromIso = Date.parse(a.startsAt);
+    if (Number.isFinite(fromIso) && fromIso > 0) return fromIso;
+  }
+  const date = wallDate(String(a.date || ''));
+  const time = wallTime(String(a.time || ''));
+  if (!date || !time) return 0;
+  const ms = new Date(istanbulWallIso(date, time)).getTime();
+  return Number.isFinite(ms) ? ms : 0;
+}
+
+function clockEndMs(a: AppointmentClock) {
+  const start = appointmentStartMs(a);
+  if (!start) return 0;
+  return start + Math.max(1, a.minutes || 40) * 60_000;
+}
+
+function clockDay(a: AppointmentClock) {
+  const start = appointmentStartMs(a);
+  if (start) return istanbulParts(new Date(start)).date;
+  return wallDate(String(a.date || ''));
+}
+
+/** Şu anki 40 dk; yoksa bugünün bir sonraki saati. Gerisi arşiv. */
+export function isCurrentAppointment(a: AppointmentClock) {
+  return splitAppointmentsBySlot([a]).current.length === 1;
+}
+
+export function splitAppointmentsBySlot<T extends AppointmentClock>(rows: T[], now = Date.now()) {
+  const live: T[] = [];
+  const laterToday: T[] = [];
+  const past: T[] = [];
+  const today = istanbulParts(new Date(now)).date;
+  for (const a of rows) {
+    if (a.status === 'iptal' || a.status === 'tamamlandi') {
+      past.push(a);
+      continue;
+    }
+    const start = appointmentStartMs(a);
+    const end = clockEndMs(a);
+    if (!start || now >= end) {
+      past.push(a);
+      continue;
+    }
+    if (now >= start) live.push(a);
+    else if (clockDay(a) === today) laterToday.push(a);
+    else past.push(a);
+  }
+  live.sort((x, y) => appointmentStartMs(x) - appointmentStartMs(y));
+  laterToday.sort((x, y) => appointmentStartMs(x) - appointmentStartMs(y));
+  past.sort((x, y) => appointmentStartMs(y) - appointmentStartMs(x));
+  const current = live.length ? live : laterToday.slice(0, 1);
+  const restToday = live.length ? laterToday : laterToday.slice(1);
+  return { current, past: [...restToday, ...past] };
+}
+
 export type MeetingRoomStatus = 'idle' | 'waiting' | 'live' | 'ended' | 'blocked';
 
 export type MyAppointment = CoachAppointment & {
@@ -89,34 +159,20 @@ export type MeetingRoomRow = {
   recordingEnabled: false;
 };
 
-/** A2: tarayıcıda secret yok; jeton yalnızca Edge Function’da üretilir. */
-export type LivekitPlaceholder = {
-  connected: false;
-  token: null;
-  url: null;
-  reason: string;
-};
-
-export function livekitPlaceholder(): LivekitPlaceholder {
-  return {
-    connected: false,
-    token: null,
-    url: null,
-    reason: 'Bağlan, sunucudan kısa ömürlü oda jetonu ister. Kayıt yok. Anahtar tarayıcıda değil.',
-  };
-}
-
 export function appointmentIdFromHash(hash = location.hash) {
-  const q = hash.split('?')[1] || '';
-  return new URLSearchParams(q).get('id') || '';
+  const fromHashQuery = new URLSearchParams(hash.split('?')[1] || '').get('id') || '';
+  if (fromHashQuery) return fromHashQuery;
+  const hashPath = hash.replace(/^#\/?/, '').split('?')[0];
+  const hashParts = hashPath.split('/').filter(Boolean);
+  if (hashParts[0] === 'meeting' && hashParts[1]) return decodeURIComponent(hashParts[1]);
+  const fromSearch = new URLSearchParams(location.search).get('id') || '';
+  if (fromSearch) return fromSearch;
+  const pathParts = location.pathname.replace(/^\//, '').split('/').filter(Boolean);
+  if (pathParts[0] === 'meeting' && pathParts[1]) return decodeURIComponent(pathParts[1]);
+  return '';
 }
 
-export function meetingHref(appointmentId: string) {
-  return `#/meeting?id=${encodeURIComponent(appointmentId)}`;
-}
-
-type AppointmentClock = { date?: string; time?: string; minutes?: number; status?: string; startsAt?: string | null };
-
+/** Onaylı randevu başlangıcından 1 tam gün sonra katılma aksiyonu gizlenir (yalnız UI). */
 const JOIN_VISIBLE_MS = 24 * 60 * 60 * 1000;
 
 function joinWallDate(raw: string) {
@@ -142,6 +198,7 @@ function hasExplicitTz(raw: string) {
   return /(?:[zZ]|[+-]\d{2}:?\d{2})$/.test(String(raw).trim().replace(/\.\d+/, ''));
 }
 
+/** Listede görünen Türkiye tarih/saati; naive startsAt UTC sayılmaz. */
 function plannedJoinStartMs(a: AppointmentClock) {
   const date = joinWallDate(String(a.date || ''));
   const time = joinWallTime(String(a.time || ''));
@@ -161,7 +218,6 @@ function plannedJoinStartMs(a: AppointmentClock) {
   return Number.isFinite(ms) && ms > 0 ? ms : 0;
 }
 
-/** Onaylı randevu başlangıcından 1 tam gün sonra katılma aksiyonu gizlenir (yalnız UI). */
 export function isMeetingJoinVisible(a: AppointmentClock, now = Date.now()) {
   const start = plannedJoinStartMs(a);
   if (!start) return false;
@@ -169,7 +225,9 @@ export function isMeetingJoinVisible(a: AppointmentClock, now = Date.now()) {
 }
 
 export function openMeeting(appointmentId: string) {
-  location.hash = `/meeting?id=${encodeURIComponent(appointmentId)}`;
+  const id = String(appointmentId || '').trim();
+  if (!id || !/^[A-Za-z0-9_-]{1,80}$/.test(id)) return;
+  window.open(`${location.origin}/#/meeting?id=${encodeURIComponent(id)}`, '_blank', 'noopener,noreferrer');
 }
 
 function asStatus(s: unknown): AppointmentStatus {
@@ -190,54 +248,15 @@ function mapAppointment(r: Record<string, unknown>, coachName: string): MyAppoin
     id: String(r.id),
     coachId: String(r.coach_id),
     studentId: String(r.student_id || ''),
-    studentName: String(r.student_name || ''),
+    studentName: getPersonDisplayName(String(r.student_name || ''), 'Öğrenci'),
     date: String(r.date || ''),
     time: String(r.time || ''),
     minutes: Number(r.minutes) || 40,
     status: asStatus(r.status),
     cancelReason: asCancelReason(r.cancel_reason),
-    coachName,
-    startsAt: null,
+    coachName: getCoachDisplayName(coachName),
+    startsAt: r.starts_at ? String(r.starts_at) : null,
   };
-}
-
-export function appointmentStartMs(date: string, time: string, startsAt?: string | null) {
-  if (startsAt) {
-    const n = Date.parse(startsAt);
-    if (!Number.isNaN(n)) return n;
-  }
-  const t = (time || '00:00').trim();
-  const hm = /^\d{2}:\d{2}/.test(t) ? t.slice(0, 5) : '00:00';
-  return Date.parse(`${date}T${hm}:00+03:00`);
-}
-
-export function splitAppointmentsBySlot<T extends AppointmentClock>(rows: T[], now = Date.now()) {
-  const live: T[] = [];
-  const laterToday: T[] = [];
-  const past: T[] = [];
-  const today = istanbulParts(new Date(now)).date;
-  for (const a of rows) {
-    if (a.status === 'iptal' || a.status === 'tamamlandi') {
-      past.push(a);
-      continue;
-    }
-    const start = appointmentStartMs(String(a.date || ''), String(a.time || ''), a.startsAt);
-    const end = start ? start + Math.max(1, a.minutes || 40) * 60_000 : 0;
-    if (!start || now >= end) {
-      past.push(a);
-      continue;
-    }
-    const day = istanbulParts(new Date(start)).date;
-    if (now >= start) live.push(a);
-    else if (day === today) laterToday.push(a);
-    else past.push(a);
-  }
-  live.sort((x, y) => appointmentStartMs(String(x.date || ''), String(x.time || ''), x.startsAt) - appointmentStartMs(String(y.date || ''), String(y.time || ''), y.startsAt));
-  laterToday.sort((x, y) => appointmentStartMs(String(x.date || ''), String(x.time || ''), x.startsAt) - appointmentStartMs(String(y.date || ''), String(y.time || ''), y.startsAt));
-  past.sort((x, y) => appointmentStartMs(String(y.date || ''), String(y.time || ''), y.startsAt) - appointmentStartMs(String(x.date || ''), String(x.time || ''), x.startsAt));
-  const current = live.length ? live : laterToday.slice(0, 1);
-  const restToday = live.length ? laterToday : laterToday.slice(1);
-  return { current, past: [...restToday, ...past] };
 }
 
 export function joinReasonLabel(reason: JoinBlockReason) {
@@ -262,7 +281,7 @@ export async function listMyAppointments(userId: string, coachId: string | null)
   if (!userId) return { ok: true, rows: [] };
   try {
     const { data, error } = await withTimeout(
-      supabase.from('appointments').select('id, coach_id, student_id, student_name, date, time, minutes, status, cancel_reason').order('date', { ascending: false }),
+      supabase.from('appointments').select('id, coach_id, student_id, student_name, date, time, minutes, status, cancel_reason, starts_at').order('date', { ascending: false }),
     );
     if (error) throw error;
     const rows = (data || []) as Record<string, unknown>[];
@@ -289,7 +308,7 @@ export async function fetchAppointmentForMeeting(id: string, userId: string): Pr
   if (!id || !userId) return { ok: false, reason: 'not-found' };
   try {
     const { data, error } = await withTimeout(
-      supabase.from('appointments').select('id, coach_id, student_id, student_name, date, time, minutes, status, cancel_reason').eq('id', id).maybeSingle(),
+      supabase.from('appointments').select('id, coach_id, student_id, student_name, date, time, minutes, status, cancel_reason, starts_at').eq('id', id).maybeSingle(),
     );
     if (error) throw error;
     if (!data) return { ok: false, reason: 'not-found' };
@@ -301,7 +320,7 @@ export async function fetchAppointmentForMeeting(id: string, userId: string): Pr
     try {
       const dir = await withTimeout(supabase.from('coach_directory').select('name').eq('id', row.coachId).maybeSingle());
       if (!dir.error && dir.data && typeof (dir.data as { name?: string }).name === 'string') {
-        row.coachName = (dir.data as { name: string }).name;
+        row.coachName = getCoachDisplayName((dir.data as { name: string }).name);
       }
     } catch { /* ignore */ }
     return { ok: true, row };
@@ -340,17 +359,45 @@ export function newMeetingConnectionId() {
   return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
 }
 
+function sessionNeedsRefresh(expiresAt: number | undefined) {
+  if (!expiresAt) return true;
+  return expiresAt * 1000 < Date.now() + 90_000;
+}
+
+/** PC/yeni sekmede getSession süresi dolmuş JWT dönebilir; gateway 401 verir. Yenile, güvenlik kurallarını gevşetme. */
+async function meetingAccessToken(): Promise<string> {
+  const client = supabase;
+  if (!client) return '';
+  const read = async () => (await client.auth.getSession()).data.session;
+  let session = await read();
+  if (!session?.access_token || sessionNeedsRefresh(session.expires_at)) {
+    const { data } = await client.auth.refreshSession();
+    if (data.session?.access_token) session = data.session;
+    else session = await read();
+  }
+  if (!session?.access_token) {
+    await new Promise((r) => window.setTimeout(r, 300));
+    session = await read();
+    if (!session?.access_token) {
+      const { data } = await client.auth.refreshSession();
+      session = data.session;
+    }
+  }
+  return session?.access_token || '';
+}
+
 export async function requestMeetingToken(appointmentId: string, connectionId: string): Promise<{ ok: true; data: MeetingToken } | { ok: false; error: string; status?: number }> {
   if (!supabase || !supabaseUrl || !supabaseAnonKey) return { ok: false, error: 'Bulut ayarı yok.' };
-  if (!appointmentId) return { ok: false, error: 'Randevu yok.' };
+  if (!appointmentId || !/^[A-Za-z0-9_-]{1,80}$/.test(appointmentId)) return { ok: false, error: 'Randevu yok.' };
   if (!/^[a-f0-9]{32}$/.test(connectionId)) return { ok: false, error: 'Bağlantı kimliği yok.' };
-  const { data: sessionData } = await supabase.auth.getSession();
-  const access = sessionData.session?.access_token;
+  const access = await meetingAccessToken();
   if (!access) return { ok: false, error: 'Oturum gerekli.' };
   try {
     const res = await withTimeout(
       fetch(`${supabaseUrl}/functions/v1/meeting-token`, {
         method: 'POST',
+        credentials: 'omit',
+        cache: 'no-store',
         headers: {
           'Content-Type': 'application/json',
           apikey: supabaseAnonKey,

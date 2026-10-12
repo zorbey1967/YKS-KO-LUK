@@ -9,3 +9,4 @@ legacy/app-v31.html
 .vercel
 .supabase
 supabase/.temp
+.env*

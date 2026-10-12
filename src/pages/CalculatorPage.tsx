@@ -108,7 +108,7 @@ export function CalculatorPage() {
           <div className="eyebrow">Canlı net • 4 yanlış = 1 doğru</div>
           <div className="calc-big">{totals.net.toFixed(2)}</div>
           <small>{totals.correct}D • {totals.wrong}Y • {totals.blank}B</small>
-          {weakRow ? <div style={{ marginTop: 8, fontSize: 13 }}>En düşük ders <b>{weakRow.subject}</b> ({weakRow.net.toFixed(2)} net) — zamanlı 20 soru.</div> : null}
+          {weakRow ? <p className="muted" style={{ marginTop: 8 }}>En düşük ders <b>{weakRow.subject}</b> ({weakRow.net.toFixed(2)} net).</p> : null}
         </div>
         <div className="chip-row">
           {(kpss ? (['GY', 'GK'] as const) : (['TYT', 'AYT'] as const)).map((t) => (
@@ -161,8 +161,12 @@ export function CalculatorPage() {
         </div>
         <div className="card">
           <div className="section-title">
-            <h3>📌 Kayıtlar</h3>
-            <button className="btn danger" type="button" onClick={() => setData({ ...data, calcs: [] })}>Temizle</button>
+            <h3>Kayıtlar</h3>
+            <button className="btn danger" type="button" onClick={() => {
+              if (!h.length) return toast('Silinecek kayıt yok.');
+              if (!confirm(`${h.length} net kaydı silinsin mi?`)) return;
+              setData({ ...data, calcs: [] });
+            }}>Temizle</button>
           </div>
           <div className="grid two" style={{ marginBottom: 12 }}>
             <div className="status"><b>{kpss ? 'GY' : 'TYT'}</b><span>{a ? Number(a.net).toFixed(2) : '—'}</span></div>

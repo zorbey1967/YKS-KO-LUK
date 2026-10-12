@@ -19,7 +19,7 @@ function fromState(name: string, data: AppData): GoalDraft {
 }
 
 export function GoalEditor({ compact }: { compact?: boolean }) {
-  const { data, setData, profile, saveProfile, toast } = useApp();
+  const { data, setData, profile, saveGoals, toast, user, setProfile } = useApp();
   const [draft, setDraft] = useState<GoalDraft>(() => fromState(profile?.name || '', data));
   const [dirty, setDirty] = useState(false);
 
@@ -28,6 +28,16 @@ export function GoalEditor({ compact }: { compact?: boolean }) {
     setDraft(fromState(profile?.name || '', data));
   }, [data.grade, data.age, data.track, data.dept, data.rank, data.weekHours, data.examDate, profile?.name, dirty]);
 
+  useEffect(() => {
+    if (!dirty) return;
+    const onLeave = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', onLeave);
+    return () => window.removeEventListener('beforeunload', onLeave);
+  }, [dirty]);
+
   function patch(p: Partial<GoalDraft>) {
     setDirty(true);
     setDraft((d) => ({ ...d, ...p }));
@@ -35,7 +45,20 @@ export function GoalEditor({ compact }: { compact?: boolean }) {
 
   function save() {
     setData((d) => applyGoal(d, draft));
-    void saveProfile(draft.name.trim());
+    if (user) {
+      void saveGoals();
+    } else {
+      const n = draft.name.trim();
+      try { localStorage.setItem('yks_guest_name', n); } catch { /* ignore */ }
+      setProfile({
+        id: profile?.id,
+        name: n,
+        email: profile?.email || '',
+        plan: profile?.plan || '',
+        role: profile?.role,
+        account_status: profile?.account_status,
+      });
+    }
     setDirty(false);
     toast('Hedef ve yaş kaydedildi');
   }
@@ -44,15 +67,28 @@ export function GoalEditor({ compact }: { compact?: boolean }) {
 
   return (
     <div className="card">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          save();
+        }}
+      >
       <div className="section-title">
-        <h3>🎯 Hedefi ve yaşı değiştir</h3>
+        <h3>Hedef ve yaş</h3>
         {dirty ? <span className="chip">Kaydedilmedi</span> : <span>Kayıtlı</span>}
       </div>
-      <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: 0 }}>
+      <p className="muted">
         Yaş, sınıf, alan ve hedefi sen yaz. Boş bırakılan alan “belirtilmedi” kalır; otomatik doldurulmaz.
       </p>
       <div className="form-grid">
-        <div className="field"><label>Ad Soyad</label><input value={draft.name} onChange={(e) => patch({ name: e.target.value })} placeholder="Adın" /></div>
+        <div className="field">
+          <label>Ad Soyad</label>
+          {user ? (
+            <input value={profile?.name || ''} readOnly />
+          ) : (
+            <input value={draft.name} onChange={(e) => patch({ name: e.target.value })} placeholder="Adın" />
+          )}
+        </div>
         <div className="field">
           <label>Sınıf / statü</label>
           <select value={draft.grade} onChange={(e) => {
@@ -132,9 +168,10 @@ export function GoalEditor({ compact }: { compact?: boolean }) {
         <div className="field"><label>Sınav tarihi</label><input type="date" value={draft.examDate} onChange={(e) => patch({ examDate: e.target.value })} /></div>
       </div>
       <div className="actions">
-        <button className="btn primary" type="button" onClick={save}>💾 Kaydet</button>
+        <button className="btn primary" type="submit">Kaydet</button>
         <button className="btn" type="button" disabled={!dirty} onClick={() => { setDraft(fromState(profile?.name || '', data)); setDirty(false); }}>Vazgeç</button>
       </div>
+      </form>
     </div>
   );
 }

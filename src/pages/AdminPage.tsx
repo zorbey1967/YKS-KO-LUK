@@ -29,6 +29,11 @@ import {
   adminPatchCoach,
   adminSetAccountStatus,
   adminSetCoachStatus,
+  adminListStudentApplications,
+  adminBillingOverview,
+  adminListBilling,
+  adminListPayments,
+  adminReviewStudent,
   fetchAdminBundle,
   insertAdminNote,
   insertFinanceRow,
@@ -37,13 +42,24 @@ import {
   updateAppointmentStatus,
   type CloudAdminBundle,
   type CloudCoach,
+  type StudentApplication,
+  type AdminPaymentRow,
+  type BillingOverview,
+  type BillingRow,
 } from '../lib/cloudPlatform';
 import { today } from '../lib/util';
+import { activeMembershipCount, shopierRevenueFromPayments } from '../lib/shopierRevenue';
+import { istanbulToday } from '../lib/meeting';
+import { displayMembershipName, labelStoredPlan } from '../lib/subscription';
+import { normalizePlanId } from '../lib/plans';
+import { paymentStatusLabel } from '../lib/billing';
 
-type Tab = 'ozet' | 'kullanici' | 'koc' | 'eslesme' | 'finans' | 'randevu' | 'ayar';
+type Tab = 'ozet' | 'basvuru' | 'uyelik' | 'kullanici' | 'koc' | 'eslesme' | 'finans' | 'randevu' | 'ayar';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'ozet', label: 'Genel bakış' },
+  { id: 'basvuru', label: 'Öğrenci başvuruları' },
+  { id: 'uyelik', label: 'Üyelikler' },
   { id: 'kullanici', label: 'Kullanıcılar' },
   { id: 'koc', label: 'Koçlar' },
   { id: 'eslesme', label: 'Eşleştirme' },
@@ -61,7 +77,7 @@ export function AdminGate() {
   return (
     <div className="card notice" style={{ marginTop: 8 }}>
       <div className="section-title"><h3>Yetkisiz</h3></div>
-      <p style={{ color: 'var(--muted)', fontSize: 14 }}>
+      <p className="muted">
         {user
           ? 'Bu hesap yönetici paneline giremez. Öğrenci ve koç oturumları bu ekranı kullanamaz.'
           : 'Yönetici paneli için Hesabım’dan yönetici hesabınla giriş yap.'}
@@ -80,7 +96,7 @@ export function AdminPage() {
   const [q, setQ] = useState('');
   const [coachFilter, setCoachFilter] = useState<CoachStatus | 'Tümü'>('Tümü');
   const [apptFilter, setApptFilter] = useState<AppointmentStatus | 'Tümü'>('Tümü');
-  const [apptDate, setApptDate] = useState('');
+  const [apptDate, setApptDate] = useState(istanbulToday);
   const [editId, setEditId] = useState('');
   const [editName, setEditName] = useState('');
   const [editTrack, setEditTrack] = useState<CoachTrack>('YKS Sayısal');
@@ -94,12 +110,21 @@ export function AdminPage() {
   const [noteText, setNoteText] = useState('');
   const [cloud, setCloud] = useState<CloudAdminBundle | null>(null);
   const [loading, setLoading] = useState(true);
+  const [apps, setApps] = useState<StudentApplication[] | null>(null);
+  const [billingRows, setBillingRows] = useState<BillingRow[] | null>(null);
+  const [billingOverview, setBillingOverview] = useState<BillingOverview | null>(null);
+  const [payRows, setPayRows] = useState<AdminPaymentRow[] | null>(null);
+  const [appFilter, setAppFilter] = useState<'pending' | 'active' | 'rejected'>('pending');
+  const [rejectId, setRejectId] = useState('');
+  const [rejectNote, setRejectNote] = useState('');
 
   const owner = isAdmin;
   const localSnap = useMemo(
-    () => adminSnapshot(user?.email ? { name: profile?.name || '', email: user.email, plan: profile?.plan || 'Ücretsiz', grade: data.grade } : undefined),
+    () => adminSnapshot(user?.email ? { name: profile?.name || '', email: user.email, plan: displayMembershipName(profile), grade: data.grade } : undefined),
     [user?.email, profile?.name, profile?.plan, data.grade, tick],
   );
+  const shopierRev = useMemo(() => shopierRevenueFromPayments(payRows), [payRows]);
+  const shopierActive = useMemo(() => activeMembershipCount(billingRows), [billingRows]);
 
   useEffect(() => {
     let alive = true;
@@ -108,6 +133,22 @@ export function AdminPage() {
       if (!alive) return;
       setCloud(b);
       setLoading(false);
+    });
+    void adminListStudentApplications().then((rows) => {
+      if (!alive) return;
+      setApps(rows);
+    });
+    void adminListBilling().then((rows) => {
+      if (!alive) return;
+      setBillingRows(rows);
+    });
+    void adminBillingOverview().then((o) => {
+      if (!alive) return;
+      setBillingOverview(o);
+    });
+    void adminListPayments().then((rows) => {
+      if (!alive) return;
+      setPayRows(rows);
     });
     return () => { alive = false; };
   }, [tick]);
@@ -129,9 +170,40 @@ export function AdminPage() {
   const activeCoaches = coaches.filter((a) => a.status === 'active').length;
   const pendingCoaches = coaches.filter((a) => a.status === 'pending').length;
   const pendingAppts = apptsAll.filter((a) => a.status === 'bekliyor').length;
-  const paid = finance.filter((f) => f.status === 'odendi' && f.kind === 'odeme');
-  const gross = paid.reduce((a, f) => a + f.amount, 0);
-  const commission = paid.reduce((a, f) => a + f.commission, 0);
+
+  const fallbackApps: StudentApplication[] = (cloud?.profiles || [])
+    .filter((p) => p.role === 'student' && p.signup_intent !== 'coach')
+    .map((p) => ({
+      id: p.id,
+      name: p.name || 'Öğrenci',
+      email: p.email,
+      registered_at: '',
+      account_status: p.account_status,
+      email_confirmed: true,
+      signup_grade: p.signup_grade || p.target_department || '',
+      signup_track: p.signup_track || '',
+      signup_exam: p.signup_exam || '',
+      approval_note: p.approval_note || '',
+    }));
+  const studentApps = apps ?? fallbackApps;
+  const appsView = studentApps.filter((a) => a.account_status === appFilter);
+
+  async function reviewStudent(id: string, status: 'active' | 'rejected', note = '') {
+    const msg = status === 'active'
+      ? 'Bu öğrencinin sisteme erişmesine izin vermek istediğinize emin misiniz?'
+      : 'Bu başvuruyu reddetmek istediğinize emin misiniz?';
+    if (!confirm(msg)) return;
+    const res = await adminReviewStudent(id, status, note);
+    if (!res.ok) {
+      const ok = await adminSetAccountStatus(id, status);
+      toast(ok ? (status === 'active' ? 'Öğrenci onaylandı.' : 'Başvuru reddedildi.') : res.error);
+    } else {
+      toast(status === 'active' ? 'Öğrenci onaylandı.' : 'Başvuru reddedildi.');
+    }
+    setRejectId('');
+    setRejectNote('');
+    refresh();
+  }
 
   async function setStatus(id: string, status: CoachStatus) {
     const cloudOk = await adminSetCoachStatus(id, status);
@@ -155,8 +227,8 @@ export function AdminPage() {
       name: p.name || '—',
       email: p.email,
       kind: p.role === 'admin' ? 'Yönetici' : p.role === 'coach' ? 'Koç hesabı' : 'Öğrenci',
-      status: p.account_status === 'pasif' ? 'Pasif' : 'Aktif',
-      extra: `${p.plan} • ${p.target_department || '—'}`,
+      status: p.account_status === 'pasif' ? 'Pasif' : p.account_status === 'pending' ? 'Onay bekliyor' : p.account_status === 'rejected' ? 'Red' : 'Aktif',
+      extra: `${labelStoredPlan(p.plan)} • ${p.target_department || '—'}`,
       pasif: p.account_status === 'pasif',
     }))
     : [
@@ -189,11 +261,120 @@ export function AdminPage() {
         <div className="grid stats" style={{ marginTop: 16 }}>
           <div className="card stat"><div className="label">Öğrenci</div><div className="value">{studentCount}</div></div>
           <div className="card stat"><div className="label">Koç</div><div className="value">{coaches.length}</div></div>
-          <div className="card stat"><div className="label">Aktif koç</div><div className="value">{activeCoaches}</div></div>
-          <div className="card stat"><div className="label">Bekleyen başvuru</div><div className="value">{pendingCoaches}</div></div>
-          <div className="card stat"><div className="label">Gelir (defter)</div><div className="value" style={{ fontSize: 20 }}>{formatTry(gross)}</div></div>
-          <div className="card stat"><div className="label">Komisyon</div><div className="value" style={{ fontSize: 20 }}>{formatTry(commission)}</div></div>
-          <div className="card stat"><div className="label">Bekleyen randevu</div><div className="value">{pendingAppts}</div></div>
+          {activeCoaches ? <div className="card stat"><div className="label">Aktif koç</div><div className="value">{activeCoaches}</div></div> : null}
+          {pendingCoaches ? <div className="card stat"><div className="label">Bekleyen koç</div><div className="value">{pendingCoaches}</div></div> : null}
+          {pendingAppts ? <div className="card stat"><div className="label">Bekleyen randevu</div><div className="value">{pendingAppts}</div></div> : null}
+        </div>
+      ) : null}
+
+      {tab === 'basvuru' ? (
+        <div className="card" style={{ marginTop: 16 }}>
+          <div className="section-title"><h3>Öğrenci başvuruları</h3><span>{apps == null ? 'profiles yedeği' : 'sunucu'}</span></div>
+          <div className="chip-row" style={{ marginBottom: 12 }}>
+            {(['pending', 'active', 'rejected'] as const).map((s) => (
+              <button key={s} className={`chip ${appFilter === s ? 'on' : ''}`} type="button" onClick={() => setAppFilter(s)}>
+                {s === 'pending' ? 'Bekleyen' : s === 'active' ? 'Onaylanan' : 'Reddedilen'}
+              </button>
+            ))}
+          </div>
+          {appsView.length ? appsView.map((a) => (
+            <div className="card" key={a.id} style={{ boxShadow: 'none', marginBottom: 12 }}>
+              <div className="plan-item">
+                <span>
+                  <b>{a.name}</b>
+                  <br />
+                  <small className="muted">
+                    {a.email}
+                    {a.signup_grade ? ` • ${a.signup_grade}` : ''}
+                    {a.signup_track ? ` • ${a.signup_track}` : ''}
+                    {a.signup_exam ? ` • ${a.signup_exam}` : ''}
+                    {a.registered_at ? ` • ${a.registered_at.slice(0, 10)}` : ''}
+                  </small>
+                  <br />
+                  <small className="muted">
+                    E-posta: {a.email_confirmed ? 'Doğrulandı' : 'Doğrulanmadı'} • Durum: {a.account_status === 'pending' ? 'Onay bekliyor' : a.account_status === 'active' ? 'Onaylandı' : 'Reddedildi'}
+                  </small>
+                </span>
+              </div>
+              {a.account_status === 'pending' ? (
+                <div className="actions">
+                  <button className="btn primary" type="button" onClick={() => void reviewStudent(a.id, 'active')}>Öğrenciyi onayla</button>
+                  <button className="btn secondary" type="button" onClick={() => { setRejectId(a.id); setRejectNote(''); }}>Reddet</button>
+                </div>
+              ) : null}
+              {rejectId === a.id ? (
+                <div className="field" style={{ marginTop: 8 }}>
+                  <label>Red nedeni (isteğe bağlı)</label>
+                  <input value={rejectNote} onChange={(e) => setRejectNote(e.target.value)} />
+                  <div className="actions">
+                    <button className="btn" type="button" onClick={() => void reviewStudent(a.id, 'rejected', rejectNote)}>Reddi onayla</button>
+                    <button className="btn secondary" type="button" onClick={() => setRejectId('')}>Vazgeç</button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          )) : <div className="empty">{appFilter === 'pending' ? 'Bekleyen öğrenci başvurusu yok.' : 'Kayıt yok.'}</div>}
+        </div>
+      ) : null}
+
+      {tab === 'uyelik' ? (
+        <div className="card" style={{ marginTop: 16 }}>
+          <div className="section-title"><h3>Üyelikler</h3><span>{billingRows ? 'sunucu' : 'RPC yok / 0'}</span></div>
+          {(() => {
+            const rows = billingRows || [];
+            const n = (pred: (r: BillingRow) => boolean) => rows.filter(pred).length;
+            const soon = Date.now() + 7 * 86400000;
+            return (
+              <div className="grid stats" style={{ marginBottom: 16 }}>
+                <div className="card stat"><div className="label">Aktif öğrenci</div><div className="value">{n((r) => r.account_status === 'active')}</div></div>
+                <div className="card stat"><div className="label">Deneme</div><div className="value">{n((r) => r.subscription_status === 'trialing')}</div></div>
+                <div className="card stat"><div className="label">Pro</div><div className="value">{n((r) => r.subscription_status === 'active' && normalizePlanId(r.plan) === 'pro')}</div></div>
+                <div className="card stat"><div className="label">Premium</div><div className="value">{n((r) => r.subscription_status === 'active' && normalizePlanId(r.plan) === 'premium')}</div></div>
+                <div className="card stat"><div className="label">7 gün içinde biten</div><div className="value">{n((r) => {
+                  const t = r.subscription_ends_at || r.trial_ends_at;
+                  const ms = t ? new Date(t).getTime() : 0;
+                  return ms > Date.now() && ms <= soon;
+                })}</div></div>
+                <div className="card stat"><div className="label">İptal</div><div className="value">{billingOverview ? billingOverview.canceled : n((r) => r.subscription_status === 'canceled')}</div></div>
+                <div className="card stat"><div className="label">Başarısız ödeme</div><div className="value">{billingOverview ? billingOverview.failed_payments : '—'}</div></div>
+                <div className="card stat"><div className="label">Doğrulanmış tahsilat</div><div className="value">{billingOverview ? `${billingOverview.verified_total_try} TL` : '—'}</div></div>
+              </div>
+            );
+          })()}
+          <p className="muted">Doğrulanmış toplam tüm succeeded satırlarıdır. Shopier ayrımı aşağıdaki kartlarda; 016 yoksa tire. Sahte ciro yok.</p>
+          <div className="grid stats" style={{ marginBottom: 16 }}>
+            <div className="card stat"><div className="label">Shopier sipariş</div><div className="value">{payRows ? shopierRev.orderCount : '—'}</div></div>
+            <div className="card stat"><div className="label">Shopier brüt</div><div className="value">{payRows ? `${shopierRev.grossTry} TL` : '—'}</div></div>
+            <div className="card stat"><div className="label">Shopier iade</div><div className="value">{payRows ? `${shopierRev.refundedTry} TL` : '—'}</div></div>
+            <div className="card stat"><div className="label">Abonelik net</div><div className="value">{payRows ? `${shopierRev.netTry} TL` : '—'}</div></div>
+            <div className="card stat"><div className="label">Aktif üyelik</div><div className="value">{billingRows ? shopierActive : '—'}</div></div>
+            <div className="card stat"><div className="label">Koç defteri (ayrı)</div><div className="value">{formatTry(localSnap.gross)}</div></div>
+          </div>
+          <p className="muted">Koç kazancı Shopier brütünden düşülmez; ayrı defterdir. İade, üyelik süresini otomatik kesmez.</p>
+          {(billingRows || []).length ? (billingRows || []).map((r) => (
+            <div className="plan-item" key={r.id}>
+              <span>
+                <b>{r.name}</b>
+                <br />
+                <small className="muted">{r.email} • {labelStoredPlan(r.plan)} • {r.subscription_status || 'legacy'} • {r.account_status}</small>
+              </span>
+            </div>
+          )          ) : <div className="empty">Kayıt yok veya 013 henüz uygulanmadı.</div>}
+          <div className="section-title" style={{ marginTop: 20 }}><h3>Ödemeler</h3><span>{payRows ? 'sunucu' : '017 yok'}</span></div>
+          {payRows === null ? (
+            <p className="muted">admin_list_payments yok. Kart veya secret gösterilmez.</p>
+          ) : payRows.length === 0 ? (
+            <p className="muted">Doğrulanmış ödeme satırı yok.</p>
+          ) : payRows.map((p) => (
+            <div className="plan-item" key={p.id}>
+              <span>
+                <b>{paymentStatusLabel(p.status)}</b>
+                <br />
+                <small className="muted">{p.email} • {p.provider} • {p.providerPaymentId || '—'}</small>
+              </span>
+              <b>{p.amountTry} {p.currency}</b>
+            </div>
+          ))}
         </div>
       ) : null}
 
@@ -311,8 +492,8 @@ export function AdminPage() {
 
       {tab === 'finans' ? (
         <div className="card" style={{ marginTop: 16 }}>
-          <div className="section-title"><h3>Finans hazırlığı</h3><span>Kart / ödeme yok</span></div>
-          <p style={{ color: 'var(--muted)', fontSize: 13 }}>Gerçek tahsilat yok. Komisyon %{localSnap.settings.commissionPct}. Kayıtlar deftere ve varsa Supabase’e yazılır.</p>
+          <div className="section-title"><h3>Koç defteri</h3><span>Shopier cirosu değil</span></div>
+          <p className="muted">Bu sekme koç ödemeleridir; Shopier üyelik tahsilatı Üyelik sekmesindedir. Komisyon %{localSnap.settings.commissionPct}.</p>
           <div className="form-grid">
             <div className="field">
               <label>Koç</label>
@@ -375,7 +556,7 @@ export function AdminPage() {
       {tab === 'randevu' ? (
         <div className="card" style={{ marginTop: 16 }}>
           <div className="section-title"><h3>Randevular</h3></div>
-          <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: 0 }}>Yönetici görüşme odasına katılmaz. Katılma öğrenci veya koç hesabı ile Koçlar sayfasındadır.</p>
+          <p className="muted">Yönetici görüşmeye katılmaz. Liste varsayılan olarak bugün. Katılma öğrenci veya koç hesabıyla Koçlar sayfasındadır.</p>
           <div className="form-grid">
             <div className="field"><label>Tarih</label><input type="date" value={apptDate} onChange={(e) => setApptDate(e.target.value)} /></div>
             <div className="field">
@@ -388,6 +569,10 @@ export function AdminPage() {
                 <option value="iptal">İptal</option>
               </select>
             </div>
+          </div>
+          <div className="actions" style={{ marginTop: 8 }}>
+            <button className="btn" type="button" onClick={() => setApptDate(istanbulToday())}>Bugün</button>
+            <button className="btn" type="button" onClick={() => setApptDate('')}>Tüm günler</button>
           </div>
           {appts.length ? appts.map((a) => (
             <div className="plan-item" key={a.id}>
@@ -421,7 +606,7 @@ export function AdminPage() {
                 ) : null}
               </span>
             </div>
-          )) : <div className="empty">Randevu yok.</div>}
+          )) : <div className="empty">{apptDate ? `${apptDate} için randevu yok.` : 'Randevu yok.'}</div>}
         </div>
       ) : null}
 

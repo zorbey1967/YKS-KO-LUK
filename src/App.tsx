@@ -23,8 +23,17 @@ import { AccountPage } from './pages/AccountPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { AdminGate, AdminPage } from './pages/AdminPage';
 import { MeetingPage } from './pages/MeetingPage';
+import { ExamNotifyWatcher } from './components/ExamNotifyWatcher';
+import { FeatureLock } from './components/FeatureLock';
 import { today, uid } from './lib/util';
 import { STUDY_SUBJECTS } from './lib/insights';
+import { studyPagesLocked } from './lib/subscription';
+import type { PageId } from './lib/types';
+
+const BILLING_LOCKED_PAGES: PageId[] = [
+  'questionbank', 'goal', 'schedule', 'tasks', 'plan', 'exams', 'calculator',
+  'topics', 'questions', 'timer', 'analytics',
+];
 
 export default function App() {
   return (
@@ -37,9 +46,11 @@ export default function App() {
 }
 
 function Shell() {
-  const { page, setMenuOpen, menuOpen, isAdmin } = useApp();
+  const { page, setMenuOpen, menuOpen, isAdmin, profile, accessGate } = useApp();
   const [taskOpen, setTaskOpen] = useState(false);
   const [cmd, setCmd] = useState(false);
+  const studyPage = BILLING_LOCKED_PAGES.includes(page);
+  const billingLock = studyPage && studyPagesLocked({ isAdmin, accessGate, profile });
 
   useEffect(() => {
     document.body.classList.toggle('menu-open', menuOpen);
@@ -67,20 +78,21 @@ function Shell() {
   return (
     <Layout>
       <ErrorBoundary key={page}>
-      {page === 'home' && <HomePage onNewTask={() => setTaskOpen(true)} />}
-      {page === 'questionbank' && <QuestionBankPage />}
+      {billingLock ? <FeatureLock title="Deneme veya üyelik gerekli" /> : null}
+      {!billingLock && page === 'home' && <HomePage onNewTask={() => setTaskOpen(true)} />}
+      {!billingLock && page === 'questionbank' && <QuestionBankPage />}
       {page === 'coaches' && <CoachesPage />}
-      {page === 'goal' && <GoalPage />}
-      {page === 'schedule' && <SchedulePage />}
-      {page === 'tasks' && <TasksPage onNewTask={() => setTaskOpen(true)} />}
-      {page === 'plan' && <PlanPage />}
-      {page === 'exams' && <ExamsPage />}
-      {page === 'calculator' && <CalculatorPage />}
-      {page === 'topics' && <TopicsPage />}
-      {page === 'questions' && <QuestionsPage />}
+      {!billingLock && page === 'goal' && <GoalPage />}
+      {!billingLock && page === 'schedule' && <SchedulePage />}
+      {!billingLock && page === 'tasks' && <TasksPage onNewTask={() => setTaskOpen(true)} />}
+      {!billingLock && page === 'plan' && <PlanPage />}
+      {!billingLock && page === 'exams' && <ExamsPage />}
+      {!billingLock && page === 'calculator' && <CalculatorPage />}
+      {!billingLock && page === 'topics' && <TopicsPage />}
+      {!billingLock && page === 'questions' && <QuestionsPage />}
       {page === 'calendar' && <CalendarPage />}
-      {page === 'timer' && <TimerPage />}
-      {page === 'analytics' && <AnalyticsPage />}
+      {!billingLock && page === 'timer' && <TimerPage />}
+      {!billingLock && page === 'analytics' && <AnalyticsPage />}
       {page === 'membership' && <MembershipPage />}
       {page === 'account' && <AccountPage />}
       {page === 'settings' && <SettingsPage />}
@@ -89,7 +101,8 @@ function Shell() {
       </ErrorBoundary>
       {taskOpen && <TaskModal onClose={() => setTaskOpen(false)} />}
       <CommandPalette open={cmd} onClose={() => setCmd(false)} />
-      <CoachChat />
+      {page === 'meeting' ? null : <CoachChat />}
+      {profile?.role === 'coach' || accessGate !== 'ok' ? null : <ExamNotifyWatcher />}
     </Layout>
   );
 }
@@ -102,12 +115,25 @@ function TaskModal({ onClose }: { onClose: () => void }) {
   const [priority, setPriority] = useState('Normal');
 
   return (
-    <div className="modal" onClick={onClose}>
+    <div className="modal" role="dialog" aria-modal="true" aria-label="Yeni görev" onClick={onClose}>
       <div className="modal-box" onClick={(e) => e.stopPropagation()}>
         <div className="section-title">
           <h3>Yeni görev</h3>
-          <button className="icon-btn" type="button" onClick={onClose}>×</button>
+          <button className="btn secondary" type="button" onClick={onClose} aria-label="Kapat">Kapat</button>
         </div>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!title.trim()) return toast('Görev adı gerekli.');
+            const mins = Math.max(5, minutes || 40);
+            setData((d) => ({
+              ...d,
+              tasks: [{ id: uid('t_'), title: title.trim(), subject, minutes: mins, priority, done: false, date: today(), origin: 'student' }, ...d.tasks],
+            }));
+            toast('Görev eklendi');
+            onClose();
+          }}
+        >
         <div className="form-grid" style={{ marginTop: 15 }}>
           <div className="field"><label>Görev</label><input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} placeholder="AYT matematik 40 soru" /></div>
           <div className="field">
@@ -116,7 +142,7 @@ function TaskModal({ onClose }: { onClose: () => void }) {
               {STUDY_SUBJECTS.filter((s) => s !== 'Odak').map((s) => <option key={s}>{s}</option>)}
             </select>
           </div>
-          <div className="field"><label>Süre (dk)</label><input type="number" value={minutes} onChange={(e) => setMinutes(Number(e.target.value) || 0)} /></div>
+          <div className="field"><label>Süre (dk)</label><input type="number" min={5} value={minutes} onChange={(e) => setMinutes(Number(e.target.value) || 0)} /></div>
           <div className="field">
             <label>Öncelik</label>
             <select value={priority} onChange={(e) => setPriority(e.target.value)}>
@@ -125,16 +151,9 @@ function TaskModal({ onClose }: { onClose: () => void }) {
           </div>
         </div>
         <div className="actions">
-          <button className="btn primary" type="button" onClick={() => {
-            if (!title.trim()) return toast('Görev adı gerekli.');
-            setData((d) => ({
-              ...d,
-              tasks: [{ id: uid('t_'), title: title.trim(), subject, minutes, priority, done: false, date: today() }, ...d.tasks],
-            }));
-            toast('Görev eklendi');
-            onClose();
-          }}>Görevi ekle</button>
+          <button className="btn primary" type="submit">Görevi ekle</button>
         </div>
+        </form>
       </div>
     </div>
   );

@@ -8,6 +8,7 @@ import {
   type CoachAppointment,
   type CoachDesk,
 } from './coaches';
+import { normalizeEmailInput } from './authUi';
 import { supabase, withTimeout } from './supabase';
 import { uid } from './util';
 
@@ -41,7 +42,7 @@ export type AdminLink = {
 };
 
 export function normalizeEmail(email: string) {
-  return email.trim().toLocaleLowerCase('en-US');
+  return normalizeEmailInput(email);
 }
 
 const PLATFORM_OWNER_EMAIL = 'yusufbesiroglu357@gmail.com';
@@ -72,14 +73,21 @@ export async function fetchServerAdmin(): Promise<boolean | null> {
   }
 }
 
-/** Platform sahibi e-postası panel görür. Koç onayı için sunucuda da is_admin gerekir. */
+/**
+ * Panel yalnızca sunucu `is_admin()` RPC true ise.
+ * E-posta, VITE_ADMIN_EMAIL, localStorage ve istemci `role` yetki vermez.
+ *
+ * Yönetici atama (canlı SQL Editor, service_role; otomatik e-posta yükseltme yok):
+ * 1. Hedef kullanıcı e-postasını doğrula; UUID’yi auth.users’dan al.
+ * 2. `update public.profiles set role = 'admin', account_status = 'active' where id = '<uuid>';`
+ *    `protect_role` authenticated ile admin yükseltmeyi reddeder; bu adım postgres/service_role ister.
+ * 3. Hedef oturumu yeniler; `is_admin()` true olmadan panel açılmaz.
+ */
 export function canAccessAdminPanel(
-  user: User | { email?: string | null } | null | undefined,
+  _user: User | { email?: string | null } | null | undefined,
   serverAdmin: boolean | null,
 ) {
-  if (isPlatformOwner(user)) return true;
-  if (serverAdmin === true) return true;
-  return false;
+  return serverAdmin === true;
 }
 
 export function maskEmail(email: string) {

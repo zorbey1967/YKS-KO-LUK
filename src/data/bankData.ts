@@ -9,6 +9,12 @@ import { YKS_BANK_MORE } from './bankYksMore';
 import { YKS_BANK_ELITE } from './bankYksElite';
 import { YKS_BANK_GAP } from './bankYksGap';
 import { coverCurriculum } from './bankMake';
+import { VERIFIED_BANK } from './bankVerified';
+import { LGS_FEN_BANK } from './bankLgsFen';
+import { KPSS_OSMANLI_BANK } from './bankKpssOsmanli';
+import { AYT_CORE_BANK } from './bankAytCore';
+import { OSYM_BANK } from './bankOsym';
+import { dedupeBank } from './bankDedupe';
 
 type Q = BankQuestion;
 
@@ -28,7 +34,7 @@ export const CURRICULUM: Record<string, Record<string, string[]>> = {
   ...KPSS_CURRICULUM,
 };
 
-export const BANK: Record<string, Q[]> = coverCurriculum(
+export const BANK: Record<string, Q[]> = dedupeBank(coverCurriculum(
   CURRICULUM,
   mergeBanks(
     SCHOOL_BANK,
@@ -39,8 +45,13 @@ export const BANK: Record<string, Q[]> = coverCurriculum(
     YKS_BANK_MORE,
     YKS_BANK_ELITE,
     YKS_BANK_GAP,
+    VERIFIED_BANK,
+    LGS_FEN_BANK,
+    KPSS_OSMANLI_BANK,
+    AYT_CORE_BANK,
+    OSYM_BANK,
   ),
-);
+));
 
 export function bundledManifest(): BankManifest {
   const slugify = (name: string) => name
@@ -58,11 +69,12 @@ export function bundledManifest(): BankManifest {
     };
   });
   return {
-    version: 4,
+    version: 7,
     generatedAt: new Date().toISOString(),
     questionCount: Object.values(BANK).reduce((n, list) => n + list.length, 0),
     levels,
     curriculum: CURRICULUM,
+    topicCounts: Object.fromEntries(Object.entries(BANK).map(([k, list]) => [k, list.length])),
   };
 }
 

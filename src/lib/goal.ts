@@ -1,4 +1,5 @@
 import type { AppData } from './types';
+import { examDateForLegacy, primaryExam, seedTargetsFromLegacy, upsertExam } from './examTargets';
 
 export type GoalDraft = {
   name: string;
@@ -28,7 +29,7 @@ export function applyGoal(data: AppData, draft: GoalDraft): AppData {
   const grade = draft.grade;
   let track = draft.track;
   if (grade === 'KPSS Adayı') track = 'KPSS';
-  return {
+  const next: AppData = {
     ...data,
     grade,
     age: clampAge(draft.age),
@@ -38,6 +39,16 @@ export function applyGoal(data: AppData, draft: GoalDraft): AppData {
     weekHours: Number.isFinite(draft.weekHours) && draft.weekHours > 0 ? Math.max(1, draft.weekHours) : 0,
     examDate: draft.examDate || '',
   };
+  const targets = next.examTargets?.length ? next.examTargets : seedTargetsFromLegacy(next);
+  if (next.examDate && /^\d{4}-\d{2}-\d{2}$/.test(next.examDate)) {
+    const p = primaryExam(targets);
+    if (p) next.examTargets = upsertExam(targets, { ...p, date: next.examDate, isPrimary: true });
+    else next.examTargets = seedTargetsFromLegacy(next);
+  } else {
+    next.examTargets = targets;
+  }
+  next.examDate = examDateForLegacy(next.examTargets) || next.examDate;
+  return next;
 }
 
 export function applyGradeKeepAge(data: AppData, grade: string): AppData {

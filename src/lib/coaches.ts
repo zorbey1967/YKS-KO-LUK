@@ -1,4 +1,4 @@
-import { hash32, uid } from './util';
+import { imageUploadError } from './imageUpload';
 
 export type CoachTrack = 'YKS Sayısal' | 'YKS Eşit Ağırlık' | 'YKS Sözel' | 'KPSS' | 'Okul';
 
@@ -49,6 +49,8 @@ export type CoachHomework = {
   title: string;
   due: string;
   done: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 export type CoachPayment = {
@@ -71,6 +73,7 @@ export type CoachAppointment = {
   minutes: number;
   status: AppointmentStatus;
   cancelReason?: AppointmentCancelReason | null;
+  startsAt?: string | null;
 };
 
 export function asCancelReason(v: unknown): AppointmentCancelReason | null {
@@ -117,10 +120,6 @@ const ACC_KEY = 'yks_coach_accounts_v1';
 const SES_KEY = 'yks_coach_session_v1';
 const DESK_KEY = 'yks_coach_desk_v1';
 
-function hashPass(email: string, password: string) {
-  return String(hash32(`${email.toLocaleLowerCase('tr-TR')}|${password}`));
-}
-
 function readJson<T>(key: string, fallback: T): T {
   try {
     const raw = localStorage.getItem(key);
@@ -152,18 +151,14 @@ export function loadCoachAccounts(): CoachAccount[] {
   }));
 }
 
-export function compressCoachPhoto(file: File): Promise<string> {
+export async function compressCoachPhoto(file: File): Promise<string> {
+  const buf = new Uint8Array(await file.arrayBuffer());
+  const err = imageUploadError(file.type, buf);
+  if (err) throw new Error(err);
+  const blob = new Blob([buf], { type: 'application/octet-stream' });
   return new Promise((resolve, reject) => {
-    if (!file.type.startsWith('image/')) {
-      reject(new Error('Fotoğraf seç.'));
-      return;
-    }
-    if (file.size > 8 * 1024 * 1024) {
-      reject(new Error('Fotoğraf 8 MB’den küçük olsun.'));
-      return;
-    }
     const img = new Image();
-    const url = URL.createObjectURL(file);
+    const url = URL.createObjectURL(blob);
     img.onload = () => {
       URL.revokeObjectURL(url);
       const max = 240;
@@ -225,68 +220,6 @@ export function loadCoachDesk(coachId: string): CoachDesk {
 
 export function saveCoachDesk(coachId: string, desk: CoachDesk) {
   writeJson(DESK_KEY, { ...desks(), [coachId]: desk });
-}
-
-export function registerCoach(input: {
-  name: string;
-  email: string;
-  password: string;
-  track: CoachTrack;
-  focus: string;
-  photo: string;
-  studentCount: number;
-}): { ok: true; session: CoachSession } | { ok: false; error: string } {
-  const name = input.name.trim();
-  const email = input.email.trim().toLocaleLowerCase('tr-TR');
-  const password = input.password;
-  const studentCount = Math.max(0, Math.min(500, Math.round(Number(input.studentCount) || 0)));
-  if (name.length < 2) return { ok: false, error: 'Ad en az 2 karakter.' };
-  if (!email.includes('@')) return { ok: false, error: 'Geçerli e-posta gir.' };
-  if (password.length < 4) return { ok: false, error: 'Şifre en az 4 karakter.' };
-  if (!input.photo.startsWith('data:image/')) return { ok: false, error: 'Koç fotoğrafı gerekli.' };
-  const list = loadCoachAccounts();
-  if (list.some((a) => a.email === email)) return { ok: false, error: 'Bu e-posta ile koç kaydı var. Koçlar’dan giriş yap.' };
-  const acc: CoachAccount = {
-    id: uid('cg_'),
-    name,
-    email,
-    passHash: hashPass(email, password),
-    track: input.track,
-    focus: input.focus.trim() || 'Süreç koçluğu',
-    photo: input.photo,
-    studentCount,
-    status: 'pending',
-  };
-  writeJson(ACC_KEY, [...list, acc]);
-  saveCoachDesk(acc.id, emptyDesk());
-  const session: CoachSession = { coachId: acc.id, name: acc.name, email: acc.email, track: acc.track };
-  saveCoachSession(session);
-  return { ok: true, session };
-}
-
-export function loginCoach(email: string, password: string): { ok: true; session: CoachSession } | { ok: false; error: string } {
-  const e = email.trim().toLocaleLowerCase('tr-TR');
-  const acc = loadCoachAccounts().find((a) => a.email === e);
-  if (!acc || acc.passHash !== hashPass(e, password)) return { ok: false, error: 'E-posta veya şifre yanlış.' };
-  if (acc.status === 'rejected' || acc.status === 'pasif') return { ok: false, error: 'Bu koç hesabı kapalı.' };
-  const session: CoachSession = { coachId: acc.id, name: acc.name, email: acc.email, track: acc.track };
-  saveCoachSession(session);
-  if (!desks()[acc.id]) saveCoachDesk(acc.id, emptyDesk());
-  return { ok: true, session };
-}
-
-export function publicCoaches(): HumanCoach[] {
-  const registered: HumanCoach[] = loadCoachAccounts().filter((a) => a.status === 'active').map((a) => ({
-    id: a.id,
-    name: a.name,
-    track: a.track,
-    focus: a.focus,
-    weeklyHours: 5,
-    approach: `${a.studentCount} öğrenci • kayıtlı koç`,
-    photo: a.photo,
-    studentCount: a.studentCount,
-  }));
-  return registered;
 }
 
 export function loadAllDesks(): Record<string, CoachDesk> {

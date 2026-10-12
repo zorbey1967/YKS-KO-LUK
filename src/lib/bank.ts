@@ -1,5 +1,5 @@
 import type { BankManifest, BankQuestion } from './types';
-import { bundledManifest, questionsForLevel } from '../data/bankData';
+import { BANK, bundledManifest, questionsForLevel } from '../data/bankData';
 import { hash32, seededOrder } from './util';
 
 let manifestCache: BankManifest | null = null;
@@ -73,4 +73,45 @@ export function topicKey(level: string, subject: string, topic: string) {
 
 export function flattenBank(data: Record<string, BankQuestion[]>) {
   return Object.values(data).flat();
+}
+
+export function topicCountOf(counts: Record<string, number> | undefined, level: string, subject: string, topic: string) {
+  return counts?.[topicKey(level, subject, topic)] || 0;
+}
+
+export function pickSeries(list: BankQuestion[], n: number, seed: number) {
+  if (!list.length || n <= 0) return [];
+  const cap = Math.min(n, list.length);
+  return seededOrder(list.length, seed).slice(0, cap).map((i) => list[i]);
+}
+
+export function findBankQuestions(opts: {
+  topic?: string;
+  subject?: string;
+  difficulty?: string;
+  examHint?: string;
+  limit?: number;
+}): BankQuestion[] {
+  const topic = (opts.topic || '').toLocaleLowerCase('tr-TR');
+  const subject = (opts.subject || '').toLocaleLowerCase('tr-TR');
+  const exam = (opts.examHint || '').toLocaleLowerCase('tr-TR');
+  const diff = opts.difficulty;
+  const limit = Math.min(5, Math.max(1, opts.limit || 1));
+  const hits: BankQuestion[] = [];
+  for (const [key, list] of Object.entries(BANK)) {
+    const k = key.toLocaleLowerCase('tr-TR');
+    if (exam.includes('ayt') && !k.includes('ayt')) continue;
+    if (exam.includes('tyt') && !k.includes('tyt')) continue;
+    if (exam.includes('lgs') && !k.includes('8. sınıf') && !k.includes('lgs')) continue;
+    if (exam.includes('kpss') && !k.includes('kpss')) continue;
+    if (subject && !k.includes(subject)) continue;
+    if (topic && !k.includes(topic)) continue;
+    for (const item of list) {
+      if (diff && (item.difficulty || 'Orta') !== diff) continue;
+      hits.push({ ...item, _bankKey: key });
+    }
+  }
+  if (!hits.length) return [];
+  const order = seededOrder(hits.length, hash32(`${topic}|${subject}|${exam}|${Date.now() % 9973}`));
+  return order.slice(0, limit).map((i) => hits[i]);
 }

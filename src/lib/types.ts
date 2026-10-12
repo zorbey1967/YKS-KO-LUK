@@ -1,5 +1,7 @@
 export type PageId = 'home' | 'questionbank' | 'coaches' | 'goal' | 'schedule' | 'tasks' | 'plan' | 'exams' | 'calculator' | 'topics' | 'questions' | 'calendar' | 'timer' | 'analytics' | 'membership' | 'account' | 'settings' | 'admin' | 'meeting';
 
+export type TaskOrigin = 'student' | 'zorro' | 'coach';
+
 export type Task = {
   id: string;
   title: string;
@@ -8,6 +10,23 @@ export type Task = {
   priority: string;
   done: boolean;
   date: string;
+  origin?: TaskOrigin;
+  updatedAt?: string;
+  homeworkId?: string;
+};
+
+export type Tombstone = {
+  kind: 'session' | 'task' | 'mistake' | 'review' | 'exam';
+  id: string;
+  at: string;
+};
+
+export type LearningNote = {
+  topic: string;
+  subject: string;
+  errorKind?: string;
+  note: string;
+  at: string;
 };
 
 export type Exam = {
@@ -17,6 +36,50 @@ export type Exam = {
   tyt: number;
   ayt: number;
   note: string;
+};
+
+export type ExamPriority = 'dusuk' | 'normal' | 'yuksek';
+
+export type ExamOrigin = 'official' | 'user';
+
+export type ExamTarget = {
+  id: string;
+  title: string;
+  kind: string;
+  subject?: string;
+  origin?: ExamOrigin;
+  date: string;
+  startTime: string;
+  endTime: string;
+  durationMin: number;
+  note: string;
+  priority: ExamPriority;
+  isPrimary: boolean;
+  notify: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ExamNotifyPrefs = {
+  exams: boolean;
+  ai: boolean;
+  tasks: boolean;
+};
+
+export type ExamPlanStage = { title: string; body: string };
+
+export type ExamPlanRecord = {
+  examId: string;
+  examDate: string;
+  summary: string;
+  weekHint: string;
+  advice: string;
+  stages: ExamPlanStage[];
+  lastWeek: string;
+  source: 'ai' | 'local';
+  model?: string;
+  createdAt: string;
+  pendingSchedule?: Schedule | null;
 };
 
 export type Topic = {
@@ -63,6 +126,48 @@ export type Session = {
   seconds: number;
   subject: string;
   createdAt: string;
+  kind?: string;
+  plannedMinutes?: number;
+  topic?: string;
+  startedAt?: string;
+  endedAt?: string;
+  asked?: number;
+  correctCount?: number;
+  difficulty?: 'kolay' | 'orta' | 'zor';
+  source?: string;
+  taskId?: string;
+};
+
+export type MistakeReason = 'bilgi' | 'islem' | 'sure' | 'dikkatsizlik';
+
+export type MistakeEntry = {
+  id: string;
+  questionId: string;
+  subject: string;
+  topic: string;
+  level?: string;
+  reason?: MistakeReason | '';
+  wrongCount: number;
+  lastWrongAt: string;
+  lastCorrectAt?: string;
+  status: 'open' | 'reviewing' | 'resolved';
+};
+
+export type ReviewStatus = 'due' | 'waiting' | 'done' | 'snoozed';
+
+export type ReviewItem = {
+  id: string;
+  kind: 'mistake' | 'topic';
+  questionId?: string;
+  subject: string;
+  topic: string;
+  level?: string;
+  intervalIndex: number;
+  dueDate: string;
+  status: ReviewStatus;
+  snoozeUntil?: string;
+  lastResult?: 'correct' | 'wrong';
+  completedOnce?: boolean;
 };
 
 export type PlanBlock = {
@@ -109,6 +214,11 @@ export type AppData = {
   grade: string;
   age: number;
   examDate: string;
+  examTargets: ExamTarget[];
+  examNotifyPrefs: ExamNotifyPrefs;
+  examNotifyLog: Record<string, string>;
+  examPlan: ExamPlanRecord | null;
+  examPlanDraft: ExamPlanRecord | null;
   tasks: Task[];
   exams: Exam[];
   topics: Topic[];
@@ -121,6 +231,11 @@ export type AppData = {
   qb: Record<string, TopicProgress>;
   questionStats: Record<string, QuestionStat>;
   qbMarks: string[];
+  learningNotes: LearningNote[];
+  mistakes: MistakeEntry[];
+  reviews: ReviewItem[];
+  tombstones: Tombstone[];
+  syncRev: number;
 };
 
 export type BankQuestion = {
@@ -130,6 +245,7 @@ export type BankQuestion = {
   a: number;
   e: string;
   difficulty?: string;
+  kind?: string;
   _bankKey?: string;
 };
 
@@ -139,10 +255,12 @@ export type BankManifest = {
   questionCount: number;
   levels: { name: string; slug: string; subjects: number; topics: number }[];
   curriculum: Record<string, Record<string, string[]>>;
+  topicCounts?: Record<string, number>;
 };
 
 export type ProfileRole = 'student' | 'coach' | 'admin';
-export type AccountStatus = 'active' | 'pasif';
+export type AccountStatus = 'active' | 'pasif' | 'pending' | 'rejected';
+export type SignupIntent = 'student' | 'coach';
 
 export type Profile = {
   id?: string;
@@ -151,9 +269,19 @@ export type Profile = {
   plan: string;
   role?: ProfileRole;
   account_status?: AccountStatus;
+  signup_intent?: SignupIntent;
+  signup_grade?: string;
+  signup_track?: string;
+  signup_exam?: string;
+  coach_status?: 'pending' | 'active' | 'rejected' | 'pasif';
   target_department?: string;
   target_rank?: number;
   score?: number;
+  trial_started_at?: string | null;
+  trial_ends_at?: string | null;
+  subscription_status?: string | null;
+  subscription_started_at?: string | null;
+  subscription_ends_at?: string | null;
 };
 
 export const UNSET_LABEL = 'belirtilmedi';
@@ -179,6 +307,11 @@ export const emptyData = (): AppData => ({
   grade: '',
   age: 0,
   examDate: '',
+  examTargets: [],
+  examNotifyPrefs: { exams: true, ai: false, tasks: false },
+  examNotifyLog: {},
+  examPlan: null,
+  examPlanDraft: null,
   tasks: [],
   exams: [],
   topics: [],
@@ -190,6 +323,11 @@ export const emptyData = (): AppData => ({
   qb: {},
   questionStats: {},
   qbMarks: [],
+  learningNotes: [],
+  mistakes: [],
+  reviews: [],
+  tombstones: [],
+  syncRev: 0,
 });
 
 export const NAV: { id: PageId; icon: string; label: string }[] = [
@@ -211,6 +349,64 @@ export const NAV: { id: PageId; icon: string; label: string }[] = [
   { id: 'account', icon: '👤', label: 'Hesabım' },
   { id: 'settings', icon: '⚙', label: 'Ayarlar' },
 ];
+
+const STUDENT_NAV_IDS: PageId[] = [
+  'home',
+  'coaches',
+  'questionbank',
+  'schedule',
+  'calendar',
+  'tasks',
+  'goal',
+  'membership',
+  'account',
+];
+const COACH_NAV_IDS: PageId[] = ['coaches', 'home', 'account', 'settings'];
+
+function navItem(id: PageId, role?: Profile['role']) {
+  const n = NAV.find((x) => x.id === id);
+  if (!n) return null;
+  if (id === 'coaches' && (role === 'coach' || role === 'admin')) return { ...n, label: 'Koçluk' };
+  return n;
+}
+
+/** Kenar menü. */
+export function sidebarNav(
+  role: Profile['role'] | undefined,
+  isAdmin: boolean,
+  restrictedIds?: PageId[] | null,
+) {
+  const ids = role === 'coach' || role === 'admin' ? COACH_NAV_IDS : STUDENT_NAV_IDS;
+  let items = ids.map((id) => navItem(id, role)).filter((x): x is NonNullable<typeof x> => Boolean(x));
+  if (restrictedIds) {
+    items = items.filter((x) => restrictedIds.includes(x.id));
+    if (!items.some((x) => x.id === 'account')) {
+      const acc = navItem('account', role);
+      if (acc) items.push(acc);
+    }
+  }
+  if (isAdmin && !restrictedIds && !items.some((x) => x.id === 'admin')) {
+    const rest = items.slice(1);
+    return [items[0] || NAV[0], ADMIN_NAV, ...rest];
+  }
+  return items;
+}
+
+/** Ctrl+K: kenar menüde olmayan çalışma sayfaları da (Konular, Sorular vb.) bulunur. */
+export function commandNav(
+  role: Profile['role'] | undefined,
+  isAdmin: boolean,
+  restrictedIds?: PageId[] | null,
+) {
+  if (restrictedIds) return sidebarNav(role, isAdmin, restrictedIds);
+  if (role === 'coach' || role === 'admin') return sidebarNav(role, isAdmin, restrictedIds);
+  let items = NAV.map((n) => navItem(n.id, role)).filter((x): x is NonNullable<typeof x> => Boolean(x));
+  if (isAdmin && !items.some((x) => x.id === 'admin')) {
+    const rest = items.slice(1);
+    return [items[0] || NAV[0], ADMIN_NAV, ...rest];
+  }
+  return items;
+}
 
 /** Öğrenci menüsünde yok; hash ve yetkili menü için. */
 export const ADMIN_NAV = { id: 'admin' as const, icon: '🛡', label: 'Yönetici' };

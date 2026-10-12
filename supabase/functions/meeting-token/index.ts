@@ -1,17 +1,12 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { AccessToken } from "npm:livekit-server-sdk";
+import { corsHeaders } from "../_shared/cors.ts";
 
-const cors = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
+const TOKEN_TTL_MAX_SEC = 600;
 
-const TOKEN_TTL_SEC = 600;
-
-function json(data: unknown, status = 200) {
-  return new Response(JSON.stringify(data), { status, headers: { ...cors, "Content-Type": "application/json" } });
+function json(req: Request, data: unknown, status = 200) {
+  return new Response(JSON.stringify(data), { status, headers: { ...corsHeaders(req), "Content-Type": "application/json" } });
 }
 
 function bearerFrom(req: Request) {
@@ -21,7 +16,7 @@ function bearerFrom(req: Request) {
 }
 
 function appointmentIdOk(id: string) {
-  return id.length > 0 && id.length <= 80;
+  return /^[A-Za-z0-9_-]{1,80}$/.test(id);
 }
 
 function connectionIdOk(id: string) {
@@ -33,15 +28,15 @@ function livekitUrlOk(u: string) {
 }
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
-  if (req.method !== "POST") return json({ error: "Yalnızca POST" }, 405);
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders(req) });
+  if (req.method !== "POST") return json(req, { error: "Yalnızca POST" }, 405);
 
   const token = bearerFrom(req);
-  if (!token) return json({ error: "Oturum gerekli" }, 401);
+  if (!token) return json(req, { error: "Oturum gerekli" }, 401);
 
   const url = Deno.env.get("SUPABASE_URL") || "";
   const anon = Deno.env.get("SUPABASE_ANON_KEY") || "";
-  if (!url || !anon) return json({ error: "Sunucu kimlik ayarı eksik" }, 503);
+  if (!url || !anon) return json(req, { error: "Sunucu kimlik ayarı eksik" }, 503);
 
   const supabase = createClient(url, anon, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
@@ -49,46 +44,67 @@ Deno.serve(async (req) => {
   });
 
   const { data: authData, error: authError } = await supabase.auth.getUser(token);
-  if (authError || !authData.user) return json({ error: "Geçersiz veya süresi dolmuş oturum" }, 401);
+  if (authError || !authData.user) return json(req, { error: "Geçersiz veya süresi dolmuş oturum" }, 401);
 
   let body: { appointmentId?: unknown; connectionId?: unknown } = {};
   try {
     body = await req.json();
   } catch {
-    return json({ error: "Geçersiz istek" }, 400);
+    return json(req, { error: "Geçersiz istek" }, 400);
   }
 
   const appointmentId = String(body.appointmentId || "").trim();
-  if (!appointmentIdOk(appointmentId)) return json({ error: "Geçersiz randevu" }, 400);
+  if (!appointmentIdOk(appointmentId)) return json(req, { error: "Geçersiz randevu" }, 400);
   const connectionId = String(body.connectionId || "").trim();
-  if (!connectionIdOk(connectionId)) return json({ error: "Geçersiz bağlantı" }, 400);
+  if (!connectionIdOk(connectionId)) return json(req, { error: "Geçersiz bağlantı" }, 400);
 
   const { data: canJoin, error: joinError } = await supabase.rpc("can_join_meeting", {
     p_appointment_id: appointmentId,
   });
-  if (joinError) return json({ error: "Yetki kontrolü tamamlanamadı" }, 503);
-  if (!canJoin) return json({ error: "Bu görüşmeye katılamazsın" }, 403);
+  if (joinError) return json(req, { error: "Yetki kontrolü tamamlanamadı" }, 503);
+  if (!canJoin) return json(req, { error: "Bu görüşmeye katılamazsın" }, 403);
 
   const { data: roomRow, error: roomError } = await supabase.rpc("ensure_meeting_room", {
     p_appointment_id: appointmentId,
   });
-  if (roomError) return json({ error: "Oda açılamadı" }, 409);
-  const room = roomRow && typeof roomRow === "object" ? roomRow as { id?: string; recording_enabled?: boolean } : null;
+  if (roomError) return json(req, { error: "Oda açılamadı" }, 409);
+  const room = roomRow && typeof roomRow === "object"
+    ? roomRow as { id?: string; recording_enabled?: boolean; status?: string }
+    : null;
   const roomName = String(room?.id || "").trim();
-  if (!roomName) return json({ error: "Oda açılamadı" }, 409);
-  if (room?.recording_enabled) return json({ error: "Kayıt kapalı" }, 400);
+  if (!roomName) return json(req, { error: "Oda açılamadı" }, 409);
+  if (room?.recording_enabled) return json(req, { error: "Kayıt kapalı" }, 400);
+  if (room?.status === "ended" || room?.status === "blocked") {
+    return json(req, { error: "Bu görüşmeye katılamazsın" }, 403);
+  }
+
+  const { data: sessionRaw, error: sessionError } = await supabase.rpc("meeting_session_state", {
+    p_appointment_id: appointmentId,
+  });
+  if (sessionError) return json(req, { error: "Oturum durumu alınamadı" }, 503);
+  const session = sessionRaw && typeof sessionRaw === "object"
+    ? sessionRaw as { status?: string; join_remaining_sec?: unknown }
+    : null;
+  if (session?.status === "ended" || session?.status === "blocked") {
+    return json(req, { error: "Bu görüşmeye katılamazsın" }, 403);
+  }
+  const joinLeft = Math.floor(Number(session?.join_remaining_sec));
+  if (!Number.isFinite(joinLeft) || joinLeft <= 0) {
+    return json(req, { error: "Bu görüşmeye katılamazsın" }, 403);
+  }
+  const tokenTtlSec = Math.max(1, Math.min(TOKEN_TTL_MAX_SEC, joinLeft));
 
   const livekitUrl = (Deno.env.get("LIVEKIT_URL") || "").trim();
   const apiKey = (Deno.env.get("LIVEKIT_API_KEY") || "").trim();
   const apiSecret = (Deno.env.get("LIVEKIT_API_SECRET") || "").trim();
   if (!livekitUrlOk(livekitUrl) || !apiKey || !apiSecret) {
-    return json({ error: "Görüşme sunucusu ayarı yok" }, 503);
+    return json(req, { error: "Görüşme sunucusu ayarı yok" }, 503);
   }
 
   const userId = authData.user.id;
   const at = new AccessToken(apiKey, apiSecret, {
     identity: `${userId}:${connectionId}`,
-    ttl: TOKEN_TTL_SEC,
+    ttl: tokenTtlSec,
     name: userId,
   });
   at.addGrant({
@@ -109,12 +125,12 @@ Deno.serve(async (req) => {
   const { error: logError } = await supabase.rpc("log_meeting_token_ok", {
     p_appointment_id: appointmentId,
   });
-  if (logError) return json({ error: "Katılım kaydı yazılamadı" }, 503);
-  return json({
+  if (logError) return json(req, { error: "Katılım kaydı yazılamadı" }, 503);
+  return json(req, {
     token: accessToken,
     url: livekitUrl,
     room: roomName,
-    expiresAt: new Date(Date.now() + TOKEN_TTL_SEC * 1000).toISOString(),
+    expiresAt: new Date(Date.now() + tokenTtlSec * 1000).toISOString(),
     recording: false,
   });
 });

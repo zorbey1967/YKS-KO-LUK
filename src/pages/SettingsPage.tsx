@@ -8,7 +8,7 @@ import { GoalEditor } from '../components/GoalEditor';
 import { LlmSettingsCard } from '../components/LlmSettingsCard';
 
 export function SettingsPage() {
-  const { data, setData, toast, theme, toggleTheme, user, cloudStatus } = useApp();
+  const { data, setData, toast, theme, toggleTheme, user, cloudStatus, go } = useApp();
   const man = useMemo(() => bundledManifest(), []);
   const raw = (() => {
     try { return localStorage.getItem(storageKey(user?.id)) || ''; } catch { return ''; }
@@ -19,7 +19,8 @@ export function SettingsPage() {
     <GoalEditor compact />
       <LlmSettingsCard />
       <div className="card" style={{ marginTop: 16 }}>
-      <div className="section-title"><h3>⚙ Ayarlar</h3></div>
+      <div className="section-title"><h3>Ayarlar</h3></div>
+      <p className="muted">Bu cihazdaki kayıt boyutu ve bağlantı durumu. Model anahtarı tarayıcıda tutulmaz.</p>
       <div className="status-grid">
         <div className="status"><b>Soru grupları</b><span>{Object.keys(man.curriculum).length} seviye</span></div>
         <div className="status"><b>Soru kayıtları</b><span>{man.questionCount}</span></div>
@@ -28,14 +29,25 @@ export function SettingsPage() {
         <div className="status"><b>Yerel veri</b><span>{(raw.length / 1024).toFixed(1)} KB</span></div>
         <div className="status"><b>Görev / deneme</b><span>{data.tasks.length} / {data.exams.length}</span></div>
       </div>
-      <div className="success" style={{ marginTop: 12 }}>Teknik kontroller: uygulama React + Vite iskeletinde çalışıyor.</div>
       {!isSupabaseConfigured() ? <div className="notice" role="alert" style={{ marginTop: 12 }}>{SUPABASE_UNAVAILABLE}</div> : null}
       <div className="switch">
-        <div><b>Koyu tema</b><br /><small style={{ color: 'var(--muted)' }}>Gece görünümü</small></div>
-        <button className={`toggle ${theme === 'dark' ? 'on' : ''}`} type="button" onClick={toggleTheme}><i /></button>
+        <div>
+          <b>Güvenlik</b>
+          <br />
+          <small className="muted">Model anahtarı tarayıcıda yok. Şifre değişimi Hesabım’da. Çıkış tüm cihazları kapatır.</small>
+        </div>
+        {user ? (
+          <button className="btn secondary" type="button" onClick={() => go('account')}>Hesabım</button>
+        ) : (
+          <button className="btn primary" type="button" onClick={() => go('account')}>Giriş</button>
+        )}
       </div>
       <div className="switch">
-        <div><b>Verileri sıfırla</b><br /><small style={{ color: 'var(--muted)' }}>Bu cihazdaki görev, deneme ve süre kayıtlarını siler.</small></div>
+        <div><b>Koyu tema</b><br /><small className="muted">Gece görünümü</small></div>
+        <button className={`toggle ${theme === 'dark' ? 'on' : ''}`} type="button" aria-pressed={theme === 'dark'} aria-label="Koyu tema" onClick={toggleTheme}><i /></button>
+      </div>
+      <div className="switch">
+        <div><b>Verileri sıfırla</b><br /><small className="muted">Bu cihazdaki görev, deneme ve süre kayıtlarını siler.</small></div>
         <button className="btn danger" type="button" onClick={() => {
           if (!confirm('Bu cihazdaki YKS verileri silinsin mi?')) return;
           setData(emptyData());

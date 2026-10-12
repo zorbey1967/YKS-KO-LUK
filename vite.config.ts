@@ -10,5 +10,13 @@ export default defineConfig({
   resolve: {
     alias: { '@': path.resolve(root, 'src') },
   },
-  server: { port: 5173, host: true },
+  server: {
+    port: 5173,
+    host: true,
+    headers: {
+      'X-Content-Type-Options': 'nosniff',
+      'Referrer-Policy': 'strict-origin-when-cross-origin',
+      'X-Frame-Options': 'DENY',
+    },
+  },
 });

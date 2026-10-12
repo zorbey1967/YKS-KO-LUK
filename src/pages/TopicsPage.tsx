@@ -18,24 +18,24 @@ export function TopicsPage() {
     <div className="grid two">
       <div className="card">
         <div className="section-title">
-          <h3>📚 Müfredat</h3>
-          <select value={data.grade} onChange={(e) => setData(applyGradeKeepAge(data, e.target.value))}>
+          <h3>Müfredat</h3>
+          <select aria-label="Sınıf" value={data.grade} onChange={(e) => setData(applyGradeKeepAge(data, e.target.value))}>
             <option value="">Belirtilmedi</option>
             {GRADES.map((g) => <option key={g} value={g}>{g}</option>)}
           </select>
         </div>
-        <p style={{ color: 'var(--muted)', marginTop: 0 }}>
+        <p className="muted" style={{ marginTop: 0 }}>
           {subjects.length} ders • {subjects.reduce((n, s) => n + (curr[s] || []).length, 0)} konu.
-          {data.grade === 'Mezun / YKS' || data.grade.startsWith('11') || data.grade.startsWith('12')
+          {(data.grade === 'Mezun / YKS' || data.grade.startsWith('11') || data.grade.startsWith('12'))
             ? ' TYT ve AYT başlıkları tam listelenir; pratik için Soru Bankası’nda YKS TYT / YKS AYT’yi aç.'
             : ' Takibe aldığın konular programda öne çıkar.'}
         </p>
         <div className="actions" style={{ marginBottom: 12 }}>
-          <button className="btn primary" type="button" onClick={() => go('questionbank')}>🧠 Soru çöz</button>
+          <button className="btn primary" type="button" onClick={() => go('questionbank')}>Soru çöz</button>
         </div>
         <div className="chip-row">
           {subjects.map((s) => (
-            <button key={s} className={`chip ${s === activeSubject ? 'on' : ''}`} type="button" onClick={() => setSubject(s)}>{s}</button>
+            <button key={s} className={`chip ${s === activeSubject ? 'on' : ''}`} type="button" aria-pressed={s === activeSubject} onClick={() => setSubject(s)}>{s}</button>
           ))}
         </div>
         <div style={{ marginTop: 12 }}>
@@ -82,8 +82,8 @@ export function TopicsPage() {
               </div>
               <div className="progress"><i style={{ width: `${x.level}%` }} /></div>
               <div className="actions">
-                <button className="btn secondary" type="button" onClick={() => setData({ ...data, topics: data.topics.map((t) => t.id === x.id ? { ...t, level: Math.max(0, t.level - 10) } : t) })}>−</button>
-                <button className="btn secondary" type="button" onClick={() => setData({ ...data, topics: data.topics.map((t) => t.id === x.id ? { ...t, level: Math.min(100, t.level + 10) } : t) })}>＋</button>
+                <button className="btn secondary" type="button" aria-label="Seviyeyi düşür" onClick={() => setData({ ...data, topics: data.topics.map((t) => t.id === x.id ? { ...t, level: Math.max(0, t.level - 10) } : t) })}>−</button>
+                <button className="btn secondary" type="button" aria-label="Seviyeyi yükselt" onClick={() => setData({ ...data, topics: data.topics.map((t) => t.id === x.id ? { ...t, level: Math.min(100, t.level + 10) } : t) })}>+</button>
                 <button className="btn secondary" type="button" onClick={() => {
                   setBankJump(jumpFromTracker(data.grade, x.subject, x.name));
                   go('questionbank');
@@ -93,13 +93,13 @@ export function TopicsPage() {
           )) : <div className="empty">Soldan konu ekle.</div>}
         </div>
         <div className="card" style={{ marginTop: 16 }}>
-          <div className="section-title"><h3>🎯 Öncelik</h3></div>
+          <div className="section-title"><h3>Öncelik</h3></div>
           {weak.length ? weak.map((x) => (
             <div className="topic-row" key={x.id}>
               <div className="topic-head"><b>{x.name}</b><span className="chip">{x.level}%</span></div>
               <small style={{ color: 'var(--muted)' }}>{x.subject} — programda öne alınır.</small>
             </div>
-          )) : <div className="empty">Veri yok.</div>}
+          )) : <div className="empty">Takibe konu yok.</div>}
         </div>
       </div>
     </div>

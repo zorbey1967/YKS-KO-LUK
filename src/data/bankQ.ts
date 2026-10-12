@@ -7,6 +7,7 @@ export function q(
   answer: number,
   explain: string,
   difficulty = 'Orta',
+  kind?: string,
 ): BankQuestion {
-  return { id, q: text, o: options, a: answer, e: explain, difficulty };
+  return { id, q: text, o: options, a: answer, e: explain, difficulty, kind };
 }

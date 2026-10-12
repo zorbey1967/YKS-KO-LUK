@@ -1,7 +1,15 @@
 project_id = "naiakscryafhvcghjmzx"
 
+# Gateway JWT kapalı: tarayıcı Authorization bazen 401 üretiyordu.
+# Kimlik: student-ai içinde getUser(token) + billingOk; webhook imza/retrieve.
 [functions.student-ai]
 verify_jwt = false
 
 [functions.meeting-token]
 verify_jwt = true
+
+[functions.billing-checkout]
+verify_jwt = true
+
+[functions.billing-webhook]
+verify_jwt = false

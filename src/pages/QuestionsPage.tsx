@@ -25,11 +25,20 @@ export function QuestionsPage() {
   return (
     <>
       <div className="card">
-        <div className="section-title"><h3>❓ Soru merkezi</h3><span>Hızlı kayıt</span></div>
-        <p style={{ color: 'var(--muted)' }}>Kendi deneme setini buraya yaz; hazır ÖSYM üslubu maddeler için Soru Bankası’nda YKS TYT/AYT konularının tamamı var.</p>
+        <div className="section-title"><h3>Soru merkezi</h3><span>Hızlı kayıt</span></div>
+        <p className="muted">Kendi setini buraya yaz. Hazır maddeler için Soru Bankası’nı kullan.</p>
         <div className="actions" style={{ marginBottom: 12 }}>
           <button className="btn primary" type="button" onClick={() => go('questionbank')}>Soru Bankası</button>
         </div>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (c + w + b <= 0) return toast('En az bir soru gir.');
+            setData({ ...data, questions: [...data.questions, { date: today(), subject, correct: Math.max(0, c), wrong: Math.max(0, w), blank: Math.max(0, b), net: calcNet(c, w) }] });
+            setC(0); setW(0); setB(0);
+            toast('Soru seti kaydedildi');
+          }}
+        >
         <div className="form-grid">
           <div className="field">
             <label>Ders</label>
@@ -37,26 +46,24 @@ export function QuestionsPage() {
               {STUDY_SUBJECTS.filter((s) => s !== 'Odak').map((s) => <option key={s}>{s}</option>)}
             </select>
           </div>
-          <div className="field"><label>Doğru</label><input type="number" value={c} onChange={(e) => setC(Number(e.target.value) || 0)} /></div>
-          <div className="field"><label>Yanlış</label><input type="number" value={w} onChange={(e) => setW(Number(e.target.value) || 0)} /></div>
-          <div className="field"><label>Boş</label><input type="number" value={b} onChange={(e) => setB(Number(e.target.value) || 0)} /></div>
+          <div className="field"><label>Doğru</label><input type="number" min={0} value={c} onChange={(e) => setC(Math.max(0, Number(e.target.value) || 0))} /></div>
+          <div className="field"><label>Yanlış</label><input type="number" min={0} value={w} onChange={(e) => setW(Math.max(0, Number(e.target.value) || 0))} /></div>
+          <div className="field"><label>Boş</label><input type="number" min={0} value={b} onChange={(e) => setB(Math.max(0, Number(e.target.value) || 0))} /></div>
         </div>
         <div className="actions">
-          <button className="btn primary" type="button" onClick={() => {
-            if (c + w + b <= 0) return toast('En az bir soru gir.');
-            setData({ ...data, questions: [...data.questions, { date: today(), subject, correct: c, wrong: w, blank: b, net: calcNet(c, w) }] });
-            toast('Soru seti kaydedildi');
-          }}>📌 Seti kaydet</button>
+          <button className="btn primary" type="submit">Seti kaydet</button>
           <button className="btn" type="button" onClick={() => {
             if (!data.questions.length) return toast('Silinecek set yok.');
+            if (!confirm('Son soru seti silinsin mi?')) return;
             setData({ ...data, questions: data.questions.slice(0, -1) });
             toast('Son set silindi');
           }}>Son seti sil</button>
         </div>
+        </form>
       </div>
       <div className="card" style={{ marginTop: 16 }}>
-        <div className="section-title"><h3>🧠 Koç önerisi</h3></div>
-        <div className="success">{coach.msg}</div>
+        <div className="section-title"><h3>Koç önerisi</h3></div>
+        <p className="muted">{coach.msg}</p>
       </div>
       <div className="grid two" style={{ marginTop: 16 }}>
         <div className="card">

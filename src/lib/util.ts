@@ -25,12 +25,6 @@ export function calcNet(correct: number, wrong: number) {
   return (Number(correct) || 0) - (Number(wrong) || 0) / 4;
 }
 
-export function escapeHtml(s: string) {
-  return String(s || '').replace(/[&<>"']/g, (m) => (
-    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m] || m
-  ));
-}
-
 export function hash32(s: string) {
   let h = 2166136261;
   for (let i = 0; i < s.length; i++) {

@@ -3,10 +3,9 @@ import { useApp } from '../context/AppContext';
 import {
   COACH_TRACKS,
   clearCoachSession,
+  emptyDesk,
   formatTry,
   loadCoachDesk,
-  loadCoachSession,
-  loginCoach,
   monthPayments,
   saveCoachDesk,
   saveCoachSession,
@@ -17,11 +16,16 @@ import {
   type CoachTrack,
   type HumanCoach,
 } from '../lib/coaches';
-import { addCoachSlot, closeCoachSlot, fetchActiveCoaches, fetchCoachDesk, fetchMyCoach, listMySlots, listOpenSlots, pushCoachDesk, requestAppointment, respondAppointment, runAppointmentJobs } from '../lib/cloudPlatform';
+import { addCoachSlot, assignCoachHomework, closeCoachSlot, fetchActiveCoaches, fetchCoachDesk, fetchCoachStudentBrief, fetchLinkedStudents, fetchMyCoach, listMySlots, listOpenSlots, requestAppointment, respondAppointment, runAppointmentJobs, setCoachHomeworkDone, type LinkedStudentRow } from '../lib/cloudPlatform';
+import { CoachStudyBriefView } from '../components/CoachStudyBrief';
+import type { CoachStudyBrief } from '../lib/coachBrief';
 import { istanbulToday, istanbulWallIso, listMyAppointments, nextBookSlot, splitAppointmentsBySlot, type MyAppointment } from '../lib/meeting';
-import { supabase, withTimeout } from '../lib/supabase';
-import { today, uid } from '../lib/util';
+import { SESSION_REQUIRED, SUPABASE_UNAVAILABLE, supabase, withTimeout } from '../lib/supabase';
+import { today } from '../lib/util';
 import { MeetingJoinButton } from '../components/MeetingJoinButton';
+import { CoachZorroAssist } from '../components/CoachZorroAssist';
+import { getCoachDisplayName, getPersonDisplayName } from '../lib/displayName';
+import { emailLooksValid, normalizeEmailInput, passwordPolicyError, publicAuthError } from '../lib/authUi';
 
 type PanelTab = 'ozet' | 'ogrenci' | 'odev' | 'para' | 'randevu' | 'musait';
 
@@ -31,7 +35,7 @@ const MINS = Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, '0')
 export function CoachesPage() {
   const { toast, go, user, profile } = useApp();
   const [session, setSession] = useState<CoachSession | null>(null);
-  const [desk, setDesk] = useState<CoachDesk>(() => (loadCoachSession() ? loadCoachDesk(loadCoachSession()!.coachId) : { students: [], homeworks: [], payments: [], appointments: [] }));
+  const [desk, setDesk] = useState<CoachDesk>(() => emptyDesk());
   const [tab, setTab] = useState<PanelTab>('ozet');
   const [track, setTrack] = useState<CoachTrack | 'Tümü'>('Tümü');
   const [email, setEmail] = useState('');
@@ -40,10 +44,9 @@ export function CoachesPage() {
   const [hwStudent, setHwStudent] = useState('');
   const [hwTitle, setHwTitle] = useState('');
   const [hwDue, setHwDue] = useState(today());
-  const [stName, setStName] = useState('');
-  const [stGrade, setStGrade] = useState('');
+  const [linked, setLinked] = useState<LinkedStudentRow[]>([]);
+  const [linkedMsg, setLinkedMsg] = useState('');
   const [bookCoach, setBookCoach] = useState<HumanCoach | null>(null);
-  const [bookName, setBookName] = useState('');
   const [bookSlots, setBookSlots] = useState<{ id: string; date: string; time: string }[]>([]);
   const [bookSlotId, setBookSlotId] = useState('');
   const [bookSlotsMsg, setBookSlotsMsg] = useState('');
@@ -61,6 +64,10 @@ export function CoachesPage() {
   const [listTick, setListTick] = useState(0);
   const [nowTick, setNowTick] = useState(0);
   const [showOldSlots, setShowOldSlots] = useState(false);
+  const [briefId, setBriefId] = useState('');
+  const [brief, setBrief] = useState<CoachStudyBrief | null>(null);
+  const [briefErr, setBriefErr] = useState('');
+  const coachUx = profile?.role === 'coach';
 
   useEffect(() => {
     const apply = () => {
@@ -83,7 +90,7 @@ export function CoachesPage() {
           const local = loadCoachDesk(session.coachId);
           const merged = {
             ...d,
-            homeworks: d.homeworks.length ? d.homeworks : local.homeworks,
+            homeworks: d.homeworks,
             payments: d.payments.length ? d.payments : local.payments,
           };
           setDesk(merged);
@@ -133,27 +140,27 @@ export function CoachesPage() {
   useEffect(() => {
     if (!user) {
       setCloudCoachId(null);
-      setSession(loadCoachSession());
+      setSession(null);
       return;
     }
     let alive = true;
     void fetchMyCoach(user.id).then((mine) => {
       if (!alive) return;
-      if (!mine || mine.status === 'rejected' || mine.status === 'pasif') {
+      if (!coachUx || !mine || mine.status !== 'active') {
         clearCoachSession();
         setSession(null);
         setCloudCoachId(null);
         setCoachScore(null);
         return;
       }
-      setCloudCoachId(mine.status === 'active' ? mine.id : null);
-      setCoachScore(typeof mine.score === 'number' ? mine.score : 100);
-      const sess: CoachSession = { coachId: mine.id, name: mine.name, email: mine.email, track: mine.track };
+      setCloudCoachId(mine.id);
+      setCoachScore(typeof mine.score === 'number' ? mine.score : null);
+      const sess: CoachSession = { coachId: mine.id, name: getCoachDisplayName(mine.name), email: mine.email, track: mine.track };
       saveCoachSession(sess);
       setSession(sess);
     });
     return () => { alive = false; };
-  }, [user]);
+  }, [user, coachUx]);
 
   useEffect(() => {
     if (!session || !cloudCoachId) {
@@ -181,7 +188,7 @@ export function CoachesPage() {
       const local = loadCoachDesk(session.coachId);
       const merged = {
         ...d,
-        homeworks: d.homeworks.length ? d.homeworks : local.homeworks,
+        homeworks: d.homeworks,
         payments: d.payments.length ? d.payments : local.payments,
       };
       setDesk(merged);
@@ -195,11 +202,31 @@ export function CoachesPage() {
     return () => window.clearInterval(id);
   }, []);
 
+  useEffect(() => {
+    if (!session) {
+      setLinked([]);
+      setLinkedMsg('');
+      return;
+    }
+    let alive = true;
+    void fetchLinkedStudents().then((res) => {
+      if (!alive) return;
+      if (!res.ok) {
+        setLinked([]);
+        setLinkedMsg(res.missing ? 'Bağlı öğrenci özeti (014) yok. Randevusu olan öğrenci randevu listesinden görünür.' : res.error);
+        return;
+      }
+      setLinkedMsg('');
+      setLinked(res.rows);
+    });
+    return () => { alive = false; };
+  }, [session, listTick]);
+
   const coaches = useMemo(() => (track === 'Tümü' ? list : list.filter((c) => c.track === track)), [list, track]);
   const allAppts = useMemo(() => {
     const map = new Map<string, MyAppointment>();
     for (const a of myAppts) map.set(a.id, a);
-    const coachName = session?.name || 'Koç';
+    const coachName = getCoachDisplayName(session?.name);
     for (const a of desk.appointments) {
       if (map.has(a.id)) continue;
       map.set(a.id, { ...a, coachName, startsAt: a.startsAt ?? null });
@@ -210,59 +237,62 @@ export function CoachesPage() {
     () => splitAppointmentsBySlot(mySlots.map((s) => ({ ...s, minutes: 40 }))),
     [mySlots, nowTick],
   );
-
-  function persist(next: CoachDesk) {
-    if (!session) return;
-    setDesk(next);
-    saveCoachDesk(session.coachId, next);
-    void pushCoachDesk(session.coachId, next);
-  }
+  const pendingAppts = useMemo(() => allAppts.filter((a) => a.status === 'bekliyor'), [allAppts]);
+  const todayLessons = useMemo(
+    () => allAppts.filter((a) => a.date === istanbulToday() && a.status === 'onay'),
+    [allAppts],
+  );
 
   async function onLogin() {
-    if (supabase && email && password) {
-      try {
-        const { error } = await withTimeout(supabase.auth.signInWithPassword({ email, password }));
-        if (!error) {
-          const { data } = await supabase.auth.getUser();
-          const uid = data.user?.id;
-          const mine = uid ? await fetchMyCoach(uid) : null;
-          if (mine && (mine.status === 'rejected' || mine.status === 'pasif')) {
-            setAuthMsg('Bu koç hesabı kapalı.');
-            return;
-          }
-          if (mine) {
-            const cloudDesk = await fetchCoachDesk(mine.id);
-            const sess: CoachSession = { coachId: mine.id, name: mine.name, email: mine.email, track: mine.track };
-            saveCoachSession(sess);
-            setSession(sess);
-            const local = loadCoachDesk(mine.id);
-            const merged = cloudDesk
-              ? { ...cloudDesk, homeworks: cloudDesk.homeworks.length ? cloudDesk.homeworks : local.homeworks, payments: cloudDesk.payments.length ? cloudDesk.payments : local.payments }
-              : local;
-            setDesk(merged);
-            saveCoachDesk(mine.id, merged);
-            setPassword('');
-            setAuthMsg(mine.status === 'pending' ? 'Başvurun incelemede; panel açık.' : '');
-            toast('Koç girişi yapıldı.');
-            return;
-          }
-          setAuthMsg('Bu hesap koç değil. Koç kaydı Hesabım’dan yapılır.');
-          return;
-        }
-      } catch {
-        /* yerel giriş */
-      }
-    }
-    const res = loginCoach(email, password);
-    if (!res.ok) {
-      setAuthMsg(res.error);
+    const mail = normalizeEmailInput(email);
+    const policy = passwordPolicyError(password, 'login');
+    if (!emailLooksValid(mail) || policy) {
+      setAuthMsg(policy || 'Geçerli e-posta ve şifre gerekli.');
       return;
     }
-    setSession(res.session);
-    setDesk(loadCoachDesk(res.session.coachId));
-    setPassword('');
-    setAuthMsg('');
-    toast('Koç girişi yapıldı.');
+    if (!supabase) {
+      setAuthMsg(SUPABASE_UNAVAILABLE);
+      return;
+    }
+    try {
+      const { error } = await withTimeout(supabase.auth.signInWithPassword({ email: mail, password }));
+      if (error) {
+        setAuthMsg(publicAuthError(error));
+        return;
+      }
+      const { data } = await supabase.auth.getUser();
+      const uid = data.user?.id;
+      if (!uid) {
+        setAuthMsg(SESSION_REQUIRED);
+        return;
+      }
+      const mine = await fetchMyCoach(uid);
+      if (!mine) {
+        setAuthMsg('Bu hesap koç değil. Koç kaydı Hesabım’dan yapılır.');
+        return;
+      }
+      if (mine.status !== 'active') {
+        setAuthMsg(mine.status === 'pending' ? 'Koç başvurun yönetici onayı bekliyor. Panel henüz kapalı.' : 'Bu koç hesabı kapalı.');
+        return;
+      }
+      const cloudDesk = await fetchCoachDesk(mine.id);
+      const sess: CoachSession = { coachId: mine.id, name: getCoachDisplayName(mine.name), email: mine.email, track: mine.track };
+      saveCoachSession(sess);
+      setSession(sess);
+      setCloudCoachId(mine.id);
+      setCoachScore(typeof mine.score === 'number' ? mine.score : null);
+      const local = loadCoachDesk(mine.id);
+      const merged = cloudDesk
+        ? { ...cloudDesk, homeworks: cloudDesk.homeworks, payments: cloudDesk.payments.length ? cloudDesk.payments : local.payments }
+        : { ...emptyDesk(), appointments: [] };
+      setDesk(merged);
+      saveCoachDesk(mine.id, merged);
+      setPassword('');
+      setAuthMsg('');
+      toast('Koç girişi yapıldı.');
+    } catch (e) {
+      setAuthMsg(publicAuthError(e));
+    }
   }
 
   async function onLogout() {
@@ -276,20 +306,16 @@ export function CoachesPage() {
 
   function addHomework() {
     if (!hwStudent || !hwTitle.trim()) return toast('Öğrenci ve ödev başlığı gerekli.');
-    const item: CoachHomework = { id: uid('hw_'), studentId: hwStudent, title: hwTitle.trim(), due: hwDue, done: false };
-    persist({ ...desk, homeworks: [item, ...desk.homeworks] });
-    setHwTitle('');
-    toast('Ödev atandı.');
-  }
-
-  function addStudent() {
-    if (stName.trim().length < 2) return toast('Öğrenci adı gerekli.');
-    persist({
-      ...desk,
-      students: [{ id: uid('st_'), name: stName.trim(), grade: stGrade.trim() || '—', note: '' }, ...desk.students],
+    void assignCoachHomework(hwStudent, hwTitle.trim(), hwDue).then((res) => {
+      if (!res.ok) {
+        toast(res.missing ? 'Ödev tablosu yok (014). Sahte ödev yazılmadı.' : res.error);
+        return;
+      }
+      const item: CoachHomework = { id: res.id, studentId: hwStudent, title: hwTitle.trim(), due: hwDue, done: false };
+      setDesk((d) => ({ ...d, homeworks: [item, ...d.homeworks] }));
+      setHwTitle('');
+      toast('Ödev öğrenci hesabına yazıldı.');
     });
-    setStName('');
-    toast('Öğrenci eklendi.');
   }
 
   async function applyCloudDesk(coachId: string) {
@@ -298,7 +324,7 @@ export function CoachesPage() {
     const local = loadCoachDesk(coachId);
     const merged = {
       ...d,
-      homeworks: d.homeworks.length ? d.homeworks : local.homeworks,
+      homeworks: d.homeworks,
       payments: d.payments.length ? d.payments : local.payments,
     };
     setDesk(merged);
@@ -331,12 +357,11 @@ export function CoachesPage() {
       go('account');
       return;
     }
-    const studentName = (bookName.trim() || profile?.name || '').trim();
-    if (studentName.length < 2) return toast('Adını yaz.');
+    const studentName = getPersonDisplayName(profile?.name, '');
+    if (studentName.length < 2) return toast('Hesabında görünen ad yok. Kayıt adınla giriş yap.');
     if (!bookSlotId) return toast('Koçun açtığı bir saat seç.');
     const res = await requestAppointment(bookSlotId);
     setBookCoach(null);
-    setBookName('');
     setBookSlotId('');
     toast(res.ok
       ? 'Talep gönderildi. Koç onaylamadan randevu kesinleşmez. Aynı saat için başka koça da talep gönderebilirsin; biri kabul edince diğerleri düşer.'
@@ -344,6 +369,7 @@ export function CoachesPage() {
   }
 
   async function addMySlot() {
+    if (!user) return toast(SESSION_REQUIRED);
     const iso = istanbulWallIso(slotDate, `${slotHour}:${slotMin}`);
     const res = await addCoachSlot(iso);
     if (!res.ok) return toast(res.error);
@@ -376,14 +402,15 @@ export function CoachesPage() {
   }
 
   const monthTotal = monthPayments(desk);
-  const studentName = (id: string) => desk.students.find((s) => s.id === id)?.name || 'Öğrenci';
+  const studentName = (id: string) =>
+    linked.find((s) => s.id === id)?.name || desk.students.find((s) => s.id === id)?.name || 'Öğrenci';
 
   function apptRow(a: MyAppointment) {
     const asCoach = Boolean(session && a.coachId === (cloudCoachId || session.coachId));
     return (
       <div className="plan-item" key={a.id}>
         <span>
-          {a.coachName} • {a.studentName} • {a.date} {a.time} ({a.minutes} dk)
+          {asCoach ? a.studentName : a.coachName} • {a.date} {a.time} ({a.minutes} dk)
           <br />
           <small className="muted">{appointmentStatusLabel(a, asCoach ? 'coach' : 'student')}</small>
           {user && a.studentId === user.id && a.cancelReason === 'student_no_show' ? (
@@ -412,15 +439,15 @@ export function CoachesPage() {
     <>
       <div className="hero">
         <div className="eyebrow" style={{ color: '#cfe1ff' }}>Koçluk</div>
-        <h2>{session ? `Koç paneli • ${session.name}` : 'Koçlar'}</h2>
+        <h2>{session ? `Koçluk paneli • ${getCoachDisplayName(session.name)}` : 'Koçlar'}</h2>
         <p>
           {session
-            ? 'Öğrenciler, ödev, tahsilat ve randevular bu panelde.'
-            : 'Yayınlanan koçlardan randevu al. Koç olmak için Hesabım’dan “Koç” seçerek kayıt ol.'}
+            ? 'Öğrencilerin, randevuların ve müsaitliklerin bu panelde.'
+            : 'Yayınlanan koçlardan randevu al. Koç olmak için Hesabım’dan kayıt ol.'}
         </p>
       </div>
 
-      {!session ? (
+      {!user ? (
         <div className="card" style={{ marginTop: 16 }}>
           <div className="section-title">
             <h3>Koç girişi</h3>
@@ -443,13 +470,22 @@ export function CoachesPage() {
           </form>
           {authMsg ? <div className="notice" style={{ marginTop: 12 }}>{authMsg}</div> : null}
         </div>
-      ) : (
+      ) : null}
+
+      {coachUx && user && !session ? (
+        <div className="card" style={{ marginTop: 16 }}>
+          <p className="muted">Koç kaydın henüz yok veya onay bekliyor. Panel, yönetici onayından sonra açılır.</p>
+        </div>
+      ) : null}
+
+      {session ? (
         <>
           <div className="card" style={{ marginTop: 16 }}>
             <div className="section-title">
               <h3>Koç paneli</h3>
               <button className="btn" type="button" onClick={onLogout}>Çıkış</button>
             </div>
+            <CoachZorroAssist students={linked} homeworks={desk.homeworks} />
             <div className="chip-row" style={{ marginBottom: 12 }}>
               {([['ozet', 'Özet'], ['ogrenci', 'Öğrenciler'], ['odev', 'Ödev'], ['para', 'Tahsilat'], ['randevu', 'Randevu'], ['musait', 'Boşum']] as const).map(([id, label]) => (
                 <button key={id} className={`chip ${tab === id ? 'on' : ''}`} type="button" onClick={() => setTab(id)}>{label}</button>
@@ -458,28 +494,64 @@ export function CoachesPage() {
             <div className="grid stats">
               <div className="card stat" style={{ boxShadow: 'none' }}><div className="label">Öğrenci</div><div className="value">{desk.students.length}</div></div>
               <div className="card stat" style={{ boxShadow: 'none' }}><div className="label">Açık ödev</div><div className="value">{desk.homeworks.filter((h) => !h.done).length}</div></div>
-              <div className="card stat" style={{ boxShadow: 'none' }}><div className="label">Bu ay</div><div className="value" style={{ fontSize: 20 }}>{formatTry(monthTotal)}</div></div>
-              <div className="card stat" style={{ boxShadow: 'none' }}><div className="label">Puan</div><div className="value">{coachScore ?? '—'}</div></div>
-              <div className="card stat" style={{ boxShadow: 'none' }}><div className="label">Bekleyen randevu</div><div className="value">{desk.appointments.filter((a) => a.status === 'bekliyor').length}</div></div>
+              <div className="card stat" style={{ boxShadow: 'none' }}><div className="label">Bekleyen talep</div><div className="value">{pendingAppts.length}</div></div>
+              {coachScore != null ? <div className="card stat" style={{ boxShadow: 'none' }}><div className="label">Puan</div><div className="value">{coachScore}</div></div> : null}
             </div>
+            {tab === 'ozet' ? (
+              <div style={{ marginTop: 12 }}>
+                <div className="section-title"><h3>Bugün</h3></div>
+                {todayLessons.length ? todayLessons.map((a) => (
+                  <div className="plan-item" key={a.id}>
+                    <span>{a.time} • {a.studentName}<br /><small className="muted">{a.minutes} dk</small></span>
+                    <MeetingJoinButton appt={a} userId={user?.id} coachId={cloudCoachId} now={Date.now()} />
+                  </div>
+                )) : <div className="empty">Bugün onaylı ders yok.</div>}
+                {pendingAppts.length ? (
+                  <p className="muted" style={{ marginBottom: 0 }}>{pendingAppts.length} yeni talep Randevu sekmesinde.</p>
+                ) : null}
+              </div>
+            ) : null}
           </div>
 
           {tab === 'ozet' || tab === 'ogrenci' ? (
             <div className="card" style={{ marginTop: 16 }}>
               <div className="section-title"><h3>Öğrencilerin</h3></div>
-              <div className="form-grid">
-                <div className="field"><label>Ad</label><input value={stName} onChange={(e) => setStName(e.target.value)} placeholder="Öğrenci adı" /></div>
-                <div className="field"><label>Sınıf</label><input value={stGrade} onChange={(e) => setStGrade(e.target.value)} placeholder="belirtilmedi" /></div>
-              </div>
-              <div className="actions">
-                <button className="btn primary" type="button" onClick={addStudent}>Öğrenci ekle</button>
-              </div>
-              {desk.students.length ? desk.students.map((s) => (
+              <p className="muted">Liste randevu / eşleşmeden gelir. İsimle sahte öğrenci eklenmez.</p>
+              {linkedMsg ? <p className="notice">{linkedMsg}</p> : null}
+              {(linked.length ? linked : desk.students.filter((s) => s.id.length > 20)).length ? (linked.length ? linked : desk.students).map((s) => (
                 <div className="plan-item" key={s.id}>
-                  <span><b>{s.name}</b><br /><small style={{ color: 'var(--muted)' }}>{s.grade} • {s.note}</small></span>
+                  <span>
+                    <b>{s.name}</b>
+                    <br />
+                    <small className="muted">
+                      {('grade' in s && s.grade) ? s.grade : ''}
+                      {'dept' in s && s.dept ? ` • ${s.dept}` : ''}
+                      {'examDate' in s && s.examDate ? ` • sınav ${s.examDate}` : ''}
+                      {'openTasks' in s ? ` • ${s.openTasks} açık görev` : ''}
+                    </small>
+                  </span>
+                  <button className="btn secondary" type="button" onClick={() => {
+                    setBriefId(s.id);
+                    setBrief(null);
+                    setBriefErr('');
+                    void fetchCoachStudentBrief(s.id, today()).then((res) => {
+                      if (!res.ok) {
+                        setBriefErr(res.missing ? 'Özet RPC (025) yok veya yetkisiz.' : res.error);
+                        return;
+                      }
+                      setBrief(res.brief);
+                    });
+                  }}>Özet</button>
                   <span className="chip">{desk.homeworks.filter((h) => h.studentId === s.id && !h.done).length} ödev</span>
                 </div>
-              )) : <div className="empty">Öğrenci yok.</div>}
+              )) : <div className="empty">Bağlı öğrenci yok (onaylı randevu veya eşleşme).</div>}
+              {briefErr ? <p className="notice">{briefErr}</p> : null}
+              {brief && briefId ? (
+                <CoachStudyBriefView
+                  brief={brief}
+                  name={(linked.find((s) => s.id === briefId) || desk.students.find((s) => s.id === briefId))?.name || 'Öğrenci'}
+                />
+              ) : null}
             </div>
           ) : null}
 
@@ -492,6 +564,7 @@ export function CoachesPage() {
                   <select value={hwStudent} onChange={(e) => setHwStudent(e.target.value)}>
                     <option value="">Seç</option>
                     {desk.students.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                    {linked.filter((s) => !desk.students.some((d) => d.id === s.id)).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                   </select>
                 </div>
                 <div className="field"><label>Teslim</label><input type="date" value={hwDue} onChange={(e) => setHwDue(e.target.value)} /></div>
@@ -505,9 +578,14 @@ export function CoachesPage() {
                   <span>
                     {h.title}
                     <br />
-                    <small className="muted">{studentName(h.studentId)} • {h.due}</small>
+                    <small className="muted">{studentName(h.studentId)} • {h.due}{h.updatedAt && h.createdAt && h.updatedAt !== h.createdAt ? ' • güncellendi' : ''}</small>
                   </span>
-                  <button className="btn secondary" type="button" onClick={() => persist({ ...desk, homeworks: desk.homeworks.map((x) => x.id === h.id ? { ...x, done: !x.done } : x) })}>
+                  <button className="btn secondary" type="button" onClick={() => {
+                    void setCoachHomeworkDone(h.id, !h.done).then((res) => {
+                      if (!res.ok) return toast(res.error);
+                      setDesk((d) => ({ ...d, homeworks: d.homeworks.map((x) => x.id === h.id ? { ...x, done: !x.done } : x) }));
+                    });
+                  }}>
                     {h.done ? 'Aç' : 'Tamam'}
                   </button>
                 </div>
@@ -577,7 +655,7 @@ export function CoachesPage() {
             </div>
           ) : null}
         </>
-      )}
+      ) : null}
 
       <div className="card" style={{ marginTop: 16 }}>
         <div className="section-title"><h3>Randevularım</h3><span>Görüşme</span></div>
@@ -598,8 +676,9 @@ export function CoachesPage() {
         )}
       </div>
 
+      {!coachUx ? (
       <div className="card" style={{ marginTop: 16 }}>
-        <div className="section-title"><h3>Randevu al</h3><span>Öğrenciler</span></div>
+        <div className="section-title"><h3>Randevu al</h3><span>Koçlar</span></div>
         <p className="muted" style={{ marginTop: 0 }}>Koçun açtığı saatlerden seç. Son talep, dersten 30 dk önce kapanır. Saatler Türkiye.</p>
         {listError ? <div className="notice" style={{ marginBottom: 12 }} role="alert">{listError}</div> : null}
         <div className="chip-row" style={{ marginBottom: 12 }}>
@@ -616,32 +695,33 @@ export function CoachesPage() {
                 <div className="subject-icon" style={{ overflow: 'hidden', padding: 0 }}>
                   {c.photo
                     ? <img className="coach-photo" src={c.photo} alt="" width={42} height={42} />
-                    : c.name.trim().charAt(0)}
+                    : getCoachDisplayName(c.name).charAt(0)}
                 </div>
                 <div>
-                  <b>{c.name}</b>
-                  <div><span className="chip">{c.track}</span> <span className="chip">{c.studentCount} öğrenci</span></div>
+                  <b>{getCoachDisplayName(c.name)}</b>
+                  <div><span className="chip">Koç</span> <span className="chip">{c.track}</span></div>
                 </div>
               </div>
               <p className="muted">{c.focus}</p>
               <div className="plan-item"><span>Süre</span><b>40 dk</b></div>
               <div className="actions">
-                <button className="btn primary" type="button" onClick={() => void openBook(c)}>Randevu talep et</button>
+                <button className="btn primary" type="button" onClick={() => void openBook(c)}>Randevu al</button>
               </div>
             </div>
           ))}
         </div>
       </div>
+      ) : null}
 
-      {bookCoach ? (
-        <div className="modal" role="dialog" aria-modal="true" aria-label={`Randevu • ${bookCoach.name}`} onClick={() => setBookCoach(null)}>
+      {bookCoach && !coachUx ? (
+        <div className="modal" role="dialog" aria-modal="true" aria-label={`Randevu • ${getCoachDisplayName(bookCoach.name)}`} onClick={() => setBookCoach(null)}>
           <div className="modal-box" onClick={(e) => e.stopPropagation()}>
             <div className="section-title">
-              <h3>Randevu • {bookCoach.name}</h3>
+              <h3>Randevu • {getCoachDisplayName(bookCoach.name)}</h3>
               <button className="btn secondary" type="button" onClick={() => setBookCoach(null)}>Kapat</button>
             </div>
             <div className="form-grid" style={{ marginTop: 12 }}>
-              <div className="field"><label>Adın</label><input value={bookName} onChange={(e) => setBookName(e.target.value)} placeholder={profile?.name || 'Öğrenci adı'} /></div>
+              <div className="field"><label>Adın</label><input value={getPersonDisplayName(profile?.name, 'Öğrenci')} readOnly /></div>
               <div className="field" style={{ gridColumn: '1 / -1' }}>
                 <label>Açık saat (Türkiye, 30 dk kuralı)</label>
                 <select value={bookSlotId} onChange={(e) => setBookSlotId(e.target.value)}>

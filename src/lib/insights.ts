@@ -1,10 +1,18 @@
 import type { AppData, ScheduleDay, Task } from './types';
+import { remainingClock, istanbulDateKey } from './countdown';
 import { today, uid } from './util';
 
 const DAYS = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
 
 export function weekdayName(d = new Date()) {
-  return DAYS[d.getDay()];
+  const iso = istanbulDateKey(d);
+  const dt = new Date(`${iso}T12:00:00+03:00`);
+  return DAYS[dt.getUTCDay()];
+}
+
+export function weekdayNameIstanbul(iso: string) {
+  const dt = new Date(`${iso}T12:00:00+03:00`);
+  return DAYS[Number.isNaN(dt.getTime()) ? new Date().getUTCDay() : dt.getUTCDay()];
 }
 
 export function todaySchedule(data: AppData): ScheduleDay | undefined {
@@ -13,15 +21,11 @@ export function todaySchedule(data: AppData): ScheduleDay | undefined {
 }
 
 export function examCountdown(iso: string) {
-  if (!iso || !String(iso).trim()) return { days: 0, label: 'Tarih yok', past: false, unset: true };
-  const end = new Date(`${iso}T00:00:00`);
-  if (Number.isNaN(end.getTime())) return { days: 0, label: 'Tarih yok', past: false, unset: true };
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
-  const days = Math.round((end.getTime() - start.getTime()) / 86400000);
-  if (days > 0) return { days, label: `${days} gün`, past: false, unset: false };
-  if (days === 0) return { days: 0, label: 'Bugün', past: false, unset: false };
-  return { days, label: `${Math.abs(days)} gün önce`, past: true, unset: false };
+  const c = remainingClock(iso);
+  if (c.phase === 'unset') return { days: 0, label: 'Tarih yok', past: false, unset: true };
+  if (c.phase === 'past') return { days: 0, label: 'Sınav tamamlandı', past: true, unset: false };
+  if (c.phase === 'today') return { days: 0, label: c.label, past: false, unset: false };
+  return { days: c.days, label: c.label, past: false, unset: false };
 }
 
 export function weekGoalPct(data: AppData) {

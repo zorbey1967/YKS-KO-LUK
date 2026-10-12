@@ -3,11 +3,16 @@ import { eliteReport } from '../lib/elite';
 import { examCountdown, weekGoalPct, weekMinutes } from '../lib/insights';
 import { setBankJump, weakBankTopics } from '../lib/practice';
 import { ExamInsight } from '../components/ExamInsight';
+import { FeatureLock } from '../components/FeatureLock';
 import { examKind, examTitle } from '../lib/stage';
 import { localDateKey } from '../lib/util';
+import { canUseFeature } from '../lib/subscription';
 
 export function AnalyticsPage() {
-  const { data, go } = useApp();
+  const { data, go, profile } = useApp();
+  if (!canUseFeature(profile, 'analytics')) {
+    return <FeatureLock title="Analiz Pro veya deneme süresinde" />;
+  }
   const total = data.sessions.reduce((a, x) => a + x.minutes, 0);
   const avgTyt = data.exams.length ? data.exams.reduce((a, x) => a + Number(x.tyt || 0), 0) / data.exams.length : 0;
   const avgAyt = data.exams.length ? data.exams.reduce((a, x) => a + Number(x.ayt || 0), 0) / data.exams.length : 0;
@@ -41,16 +46,21 @@ export function AnalyticsPage() {
   return (
     <>
       <div className="grid stats">
-        <div className="card stat"><div className="label">TOPLAM ÇALIŞMA</div><div className="value">{(total / 60).toFixed(1)}s</div><div className="sub">Kayıtlı oturumlar</div></div>
-        <div className="card stat"><div className="label">ORT. {n1} / {n2}</div><div className="value">{avgTyt.toFixed(1)} / {avgAyt.toFixed(1)}</div><div className="sub">{data.exams.length} deneme</div></div>
-        <div className="card stat"><div className="label">SORU</div><div className="value">{qs + bankSolved}</div><div className="sub">Banka doğruluk %{acc}</div></div>
-        <div className="card stat"><div className="label">HAFTA</div><div className="value">{weekPct}%</div><div className="sub">{(week / 60).toFixed(1)} / {weekGoal.hoursLabel}</div></div>
+        {total ? <div className="card stat"><div className="label">TOPLAM ÇALIŞMA</div><div className="value">{(total / 60).toFixed(1)}s</div><div className="sub">Kayıtlı oturumlar</div></div> : null}
+        {data.exams.length ? <div className="card stat"><div className="label">ORT. {n1} / {n2}</div><div className="value">{avgTyt.toFixed(1)} / {avgAyt.toFixed(1)}</div><div className="sub">{data.exams.length} deneme</div></div> : null}
+        {(qs || bankSolved) ? <div className="card stat"><div className="label">SORU</div><div className="value">{qs + bankSolved}</div><div className="sub">{bankSolved ? `Banka doğruluk %${acc}` : 'Kayıtlı set'}</div></div> : null}
+        {data.weekHours > 0 ? <div className="card stat"><div className="label">HAFTA</div><div className="value">{weekPct}%</div><div className="sub">{(week / 60).toFixed(1)} / {weekGoal.hoursLabel}</div></div> : null}
       </div>
-      <div className="notice" style={{ marginBottom: 16 }}>{!data.examDate ? `Sınav tarihi belirtilmedi. ${elite.headline}.` : count.past ? 'Sınav tarihi geçti — Hedefim’den yeni tarih seç.' : `${examTitle(data)}’ye ${count.label}. ${elite.headline}. Görev tamamlanma ${data.tasks.length ? Math.round((done / data.tasks.length) * 100) : 0}%.`}</div>
+      {(!total && !data.exams.length && !qs && !bankSolved && data.weekHours <= 0) ? <div className="empty">Henüz analiz edilecek kayıt yok.</div> : null}
+      {data.examDate ? (
+        <div className="notice banner" style={{ marginBottom: 16 }}>{count.past ? 'Sınav tarihi geçti.' : `${examTitle(data)}’ye ${count.label}.`}{data.tasks.length ? ` Görev tamamlanma %${Math.round((done / data.tasks.length) * 100)}.` : ''}</div>
+      ) : null}
+      {(data.examDate || bankSolved || data.exams.length) ? (
       <div className="card" style={{ marginBottom: 16 }}>
         <div className="section-title"><h3>Sınav temposu</h3><span>{elite.phase}</span></div>
-        {elite.lines.map((ln) => <p key={ln.slice(0, 40)} style={{ color: 'var(--muted)', fontSize: 13, margin: '6px 0' }}>{ln}</p>)}
+        {elite.lines.map((ln) => <p key={ln.slice(0, 40)} className="muted" style={{ margin: '6px 0' }}>{ln}</p>)}
       </div>
+      ) : null}
       <div style={{ marginBottom: 16 }}><ExamInsight /></div>
       <div className="grid two">
         <div className="card">

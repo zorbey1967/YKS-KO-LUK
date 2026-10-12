@@ -2,7 +2,7 @@
 export const SITE_ORIGIN = 'https://e-kocluk.vercel.app';
 export const SITE_NAME = 'Öğrenci E-Koçluk';
 export const SITE_DESCRIPTION =
-  'YKS ve okul için e-koçluk paneli: hedef, program, deneme, net hesabı ve soru bankası. Ücretsiz kayıt; kart çekilmez.';
+  'YKS ve okul için e-koçluk paneli: hedef, program, deneme, net hesabı ve soru bankası. Kayıt sonrası 14 gün deneme.';
 
 export async function copySiteUrl() {
   try {

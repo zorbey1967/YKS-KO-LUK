@@ -110,19 +110,19 @@ async function runModel(body: StudentAiBody, keys: Keys) {
   if ((want === 'openai' || want === 'auto') && openaiKey) {
     try {
       const r = await openaiChat(process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1', openaiKey, process.env.OPENAI_MODEL || 'gpt-4o-mini', messages);
-      return { ...packAiResult(body.action || 'chat', r.text), model: `OpenAI · ${r.model}` };
+      return { ...packAiResult(body.action || 'chat', r.text), model: 'Zorro' };
     } catch (e) { errors.push(`openai: ${e instanceof Error ? e.message : e}`); }
   }
   if ((want === 'gemini' || want === 'auto') && geminiKey) {
     try {
       const r = await geminiChat(geminiKey, system, user, body.history || [], jsonMode);
-      return { ...packAiResult(body.action || 'chat', r.text), model: `Gemini · ${r.model}` };
+      return { ...packAiResult(body.action || 'chat', r.text), model: 'Zorro' };
     } catch (e) { errors.push(`gemini: ${e instanceof Error ? e.message : e}`); }
   }
   if ((want === 'ollama' || want === 'auto') && await ollamaUp()) {
     try {
       const r = await openaiChat('http://127.0.0.1:11434/v1', 'ollama', keys.ollamaModel || 'llama3.2', messages);
-      return { ...packAiResult(body.action || 'chat', r.text), model: `Ollama · ${r.model}` };
+      return { ...packAiResult(body.action || 'chat', r.text), model: 'Zorro' };
     } catch (e) { errors.push(`ollama: ${e instanceof Error ? e.message : e}`); }
   }
 

@@ -1,10 +1,13 @@
 import type { AppData, PlanBlock } from './types';
 import { examCountdown, todaySchedule, weekMinutes, studyStreak } from './insights';
+import { remainingClock } from './countdown';
+import { primaryExam } from './examTargets';
 import { examKind, examTitle } from './stage';
 import { curriculumForGrade } from './curriculum';
 import { eliteReport } from './elite';
 import { today } from './util';
 import { weakBankTopics } from './practice';
+import { localTeachLesson } from './zoroText';
 
 export type CoachSnap = {
   kind: 'YKS' | 'KPSS' | 'Okul';
@@ -42,7 +45,10 @@ export function coachSnapshot(data: AppData): CoachSnap {
   const correct = stats.reduce((a, s) => a + s.correct, 0);
   const acc = solved ? Math.round((correct / solved) * 100) : 0;
   const study = data.sessions.filter((x) => x.date === todayKey).reduce((a, x) => a + x.minutes, 0);
-  const count = examCountdown(data.examDate);
+  const primary = primaryExam(data.examTargets || []);
+  const examIso = primary?.date || data.examDate;
+  const count = examCountdown(examIso);
+  const live = remainingClock(examIso, primary?.startTime);
   const day = todaySchedule(data);
   const last = data.calcs[0];
   const kind = examKind(data);
@@ -64,7 +70,7 @@ export function coachSnapshot(data: AppData): CoachSnap {
   return {
     kind,
     exam: examTitle(data),
-    countdown: count.label,
+    countdown: live.phase === 'unset' ? count.label : live.headline,
     past: count.past,
     age: data.age > 0 ? data.age : 0,
     grade: data.grade,
@@ -90,11 +96,15 @@ export function coachSnapshot(data: AppData): CoachSnap {
 export function coachContext(data: AppData) {
   const s = coachSnapshot(data);
   return [
+    'Davranış: Basit bilgi sorusuna kısa cevap. Çözüm isteyen soruda önce anla, parçala, bir ipucu ver, deneme iste; sonra çözümü anlat. Kesin sıralama/başarı sözü yok. Bağlamda olmayan net, yüzde, randevu uydurma. İnsan koçun yerini alma. Planı sessizce değiştirme; öner ve onay bekle.',
     `Öğrenci: ${s.grade || 'belirtilmedi'}, ${s.age > 0 ? `${s.age} yaş` : 'yaş belirtilmedi'}, alan ${s.track || 'belirtilmedi'}, hedef ${s.dept || 'belirtilmedi'} (sıra ${s.rank > 0 ? s.rank : 'belirtilmedi'}).`,
-    `Sınav: ${s.exam} • ${!data.examDate ? 'tarih belirtilmedi' : s.past ? `tarih geçti (${s.countdown})` : `${s.countdown} kaldı`}${data.examDate ? ` • ${data.examDate}` : ''}.`,
+    `Sınav: ${s.exam} • ${s.countdown}${data.examDate || data.examTargets?.length ? '' : ' • tarih belirtilmedi'}.`,
+    data.examTargets?.length
+      ? `Kayıtlı sınav hedefleri: ${data.examTargets.map((t) => `${t.title} (${t.kind}) ${t.date}${t.isPrimary ? ' ana' : ''}`).join('; ')}.`
+      : 'Kayıtlı çoklu sınav hedefi yok.',
     `Bugün ${s.todayStudy} dk, ${s.open} açık görev${s.openTitle ? ` (ilk: ${s.openTitle})` : ''}, seri ${s.streak} gün, hafta ${s.weekMins} dk / hedef ${s.weekHours > 0 ? `${s.weekHours}s` : 'belirtilmedi'}.`,
-    s.weak.length ? `Zayıf konular: ${s.weak.join(', ')}.` : 'Konu seviyesi kaydı az.',
-    s.lastExam ? `Son deneme: ${s.lastExam}.` : '',
+    s.weak.length ? `Zayıf konular (kayıtlı): ${s.weak.join(', ')}.` : 'Kayıtlı zayıf konu yok.',
+    s.lastExam ? `Son deneme: ${s.lastExam}.` : 'Deneme kaydı yok.',
     s.lastNet ? `Son net: ${s.lastNet}.` : '',
     s.solved ? `Soru bankası: ${s.solved} soru, doğruluk %${s.acc}.` : 'Soru bankasında henüz deneme yok.',
     s.todayBlocks ? `Bugünün programı: ${s.todayBlocks}.` : 'Bugün için haftalık program bloğu yok.',
@@ -123,8 +133,8 @@ export function generatePlan(data: AppData, minutes: number, focus: string): Pla
   const s = coachSnapshot(data);
   const mins = Math.max(s.age > 0 && s.age <= 9 ? 40 : 60, minutes || 180);
   const unit = blockLen(s.age);
-  const weakName = s.weak[0]?.replace(/\s*\(%\d+\)/, '') || s.subjects[0] || 'Eksik konu';
-  const weak2 = s.weak[1]?.replace(/\s*\(%\d+\)/, '') || s.subjects[1] || 'Tekrar';
+  const weakName = s.weak[0]?.replace(/\s*\(%\d+\)/, '') || '';
+  const weak2 = s.weak[1]?.replace(/\s*\(%\d+\)/, '') || '';
   let remain = mins;
   const out: PlanBlock[] = [];
   const add = (text: string, m: number, icon?: string) => {
@@ -133,6 +143,9 @@ export function generatePlan(data: AppData, minutes: number, focus: string): Pla
     out.push({ text, minutes: mm, icon: icon || iconForTopic(text) });
     remain -= mm;
   };
+  if (!weakName) {
+    add('Kayıtlı zayıf konu yok — Hedefim veya soru bankasından veri gir', Math.min(20, unit));
+  }
 
   if (focus === 'Programdan bugün') {
     const day = todaySchedule(data);
@@ -143,12 +156,12 @@ export function generatePlan(data: AppData, minutes: number, focus: string): Pla
   }
 
   if (s.kind === 'Okul' && s.age > 0 && s.age <= 9) {
-    add(`${weakName} (kısa, oyunlu)`, unit, '🎯');
+    if (weakName) add(`${weakName} (kısa, oyunlu)`, unit, '🎯');
     add('Okuma / hikâye', 15, '📖');
     add('Matematik pratik', unit, '➗');
     add('Serbest tekrar', 15, '📘');
   } else if (s.kind === 'Okul') {
-    add(`${weakName} konu + soru`, unit + 10);
+    if (weakName) add(`${weakName} konu + soru`, unit + 10);
     add('Matematik / problem', unit);
     add('Okuma-anlama', Math.min(30, unit));
     add('Kısa yanlış kontrolü', 15, '🔎');
@@ -228,7 +241,7 @@ export function coachAdvice(data: AppData) {
   const s = coachSnapshot(data);
   const e = eliteReport(data);
   let msg = e.headline + ' — ' + (e.lines[0] || `${s.exam} için bugün ${blockLen(s.age)} dk net blok.`);
-  if (s.open) msg = `Bugünün ${s.open} görevi kaldı. İlk: “${s.openTitle}”. Sonra ${e.dailyMin} dk / ~${e.dailyQ} soru.`;
+  if (s.open) msg = `Bugünün ${s.open} görevi kaldı. İlk: “${s.openTitle}”.`;
   else if (s.solved && s.acc < 60) msg = `Doğruluk %${s.acc} (${e.phase}). Yanlış kuyruğu bitmeden yeni konu açma.`;
   else if (e.weakLesson) msg = `${e.phase}. En düşük net: ${e.weakLesson}. Zamanlı 20 soru + 15 dk analiz.`;
   else if (s.weak[0]) msg = `${e.phase}. Öncelik ${s.weak[0]}.`;
@@ -243,7 +256,22 @@ export function chatReply(q: string, data: AppData): { text: string; plan?: Plan
   const unit = blockLen(s.age);
 
   if (/\b(selam|merhaba|hey|sa\b)/.test(t)) {
-    return { text: `Selam. ${s.grade || 'sınıf belirtilmedi'}, ${s.age > 0 ? `${s.age} yaş` : 'yaş belirtilmedi'}, hedef ${s.dept || 'belirtilmedi'}. ${s.exam}’ye ${!data.examDate ? 'tarih belirtilmedi' : s.past ? 'tarih geçmiş' : s.countdown}. Ne çalışmak istiyorsun?` };
+    return { text: `Selam. ${s.grade || 'sınıf belirtilmedi'}, ${s.age > 0 ? `${s.age} yaş` : 'yaş belirtilmedi'}, hedef ${s.dept || 'belirtilmedi'}. ${s.exam}’ye ${!data.examDate && !data.examTargets?.length ? 'tarih belirtilmedi' : s.past ? 'tarih geçmiş' : s.countdown}. Ne çalışmak istiyorsun?` };
+  }
+  if (/anlat|nedir|öğret|konuyu/.test(t) && !/kaç gün|program|plan/.test(t)) {
+    const lesson = localTeachLesson(q);
+    if (lesson) return { text: lesson };
+    const subject = extractSubject(q, data) || 'belirtilen konu';
+    return {
+      text: `${subject}: kısa tanım + bir örnek + sen dene. Emin olmadığım formülü yazmam. İstersen soruyu daha net yaz.`,
+    };
+  }
+  if (/kaç gün kald|sınava kaç|sınavına/.test(t)) {
+    return {
+      text: !data.examDate && !data.examTargets?.length
+        ? 'Kayıtlı sınav tarihi yok. Sınav Merkezi’nden ekle; tarih uydurulmaz.'
+        : `${s.exam}: ${s.countdown}${data.examDate ? ` (${data.examDate})` : ''}. Kazanma garantisi yok.`,
+    };
   }
   if (t.includes('yoruld') || t.includes('motiv') || t.includes('çalışam') || t.includes('ertele')) {
     return { text: `${unit} dakikalık mini blok yeter: 2 dk hazırlık, ${unit - 7} dk tek konu, 5 dk kapanış. Telefonu başka odaya koy. Bitince 1 görevi işaretle — seri ${s.streak} gün.` };
@@ -271,17 +299,23 @@ export function chatReply(q: string, data: AppData): { text: string; plan?: Plan
         : 'Yanlış biriktikçe konu listesi çıkar. Soru bankasından işaretlediklerini bugün tekrar çöz.',
     };
   }
-  if (t.includes('program') || t.includes('ders program')) {
-    if (s.todayBlocks) return { text: `Bugün ${s.todayBlocks}` };
+  if (t.includes('program') || t.includes('ders program') || /ne çalışmalıyım|çalışamadım|yarın.*çalış/.test(t)) {
+    if (s.todayBlocks) {
+      return {
+        text: t.includes('çalışamad')
+          ? `Bugünkü kayıtlı bloklar: ${s.todayBlocks}. Tamamlanmamış görünüyor (${s.todayStudy} dk kayıtlı). Programı kendim değiştiririm; onaylarsan Ders Programım’dan AI önerisi isteyebilirsin.`
+          : `Bugün ${s.todayBlocks}`,
+      };
+    }
     return {
       text: data.schedule.days.length
         ? `Haftalık programın ${data.schedule.days.length} gün ama bugün için blok yok. Ders Programım’dan yeniden üret veya “bugün plan” yaz.`
         : 'Haftalık program yok. Ders Programım’dan PDF veya “AI program” ile üret.',
     };
   }
-  if (t.includes('sınav') || t.includes('yks') || t.includes('kpss') || t.includes('kaç gün') || t.includes('hedef')) {
+  if (t.includes('sınav') || t.includes('kaç gün') || t.includes('hedef')) {
     return {
-      text: `Hedef ${s.dept || 'belirtilmedi'} • sıra ${s.rank > 0 ? Number(s.rank).toLocaleString('tr-TR') : 'belirtilmedi'} • ${s.exam} ${s.past ? `geçti (${s.countdown})` : `${s.countdown} kaldı`} (${data.examDate || 'tarih belirtilmedi'}). Yaş ${s.age > 0 ? s.age : 'belirtilmedi'}, sınıf ${s.grade || 'belirtilmedi'}, alan ${s.track || 'belirtilmedi'}. Hedefim sayfasından değiştirebilirsin.`,
+      text: `Hedef ${s.dept || 'belirtilmedi'} • ${s.exam}: ${s.countdown}${data.examDate ? ` (${data.examDate})` : ''}. Sınıf ${s.grade || 'belirtilmedi'}, alan ${s.track || 'belirtilmedi'}. Kayıt yoksa tarih uydurulmaz.`,
     };
   }
   if (t.includes('net') || t.includes('deneme')) {
@@ -329,7 +363,7 @@ export function chatReply(q: string, data: AppData): { text: string; plan?: Plan
 }
 
 export const COACH_CHIPS: Record<CoachSnap['kind'], string[]> = {
-  YKS: ['Zor konu temposu', 'Zamanlı 40 soru', 'Performansım', 'Yanlış analizi'],
-  KPSS: ['Bugün GY-GK', '90 dk plan', 'Performansım', 'Deneme nasıl?'],
-  Okul: ['Bugün ne çalışayım?', '40 dk plan', 'Ödev + tekrar', 'Performansım'],
+  YKS: ['Öğren', 'Soru çöz', 'Deneme analizi', 'Planım', 'Tekrar'],
+  KPSS: ['Öğren', 'Soru çöz', 'Deneme analizi', 'Planım', 'Tekrar'],
+  Okul: ['Öğren', 'Soru çöz', 'Deneme analizi', 'Planım', 'Tekrar'],
 };

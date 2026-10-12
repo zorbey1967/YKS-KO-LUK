@@ -7,6 +7,8 @@ import { suggestedDailyMinutes, examKind } from '../lib/stage';
 import { today } from '../lib/util';
 import { assertPdfFile, clearSchedulePdf, loadSchedulePdf, saveSchedulePdf } from '../lib/pdfStore';
 
+import { ExamCenter } from '../components/ExamCenter';
+
 export function SchedulePage() {
   const { data, setData, toast } = useApp();
   const age = data.age > 0 ? data.age : 0;
@@ -82,14 +84,15 @@ export function SchedulePage() {
 
   return (
     <>
-      <div className="hero">
+      <ExamCenter />
+      <div id="week-program" className="hero" style={{ marginTop: 20 }}>
         <div className="eyebrow" style={{ color: '#cfe1ff' }}>Haftalık ritim</div>
-        <h2>PDF yükle, AI ile program üret</h2>
-        <p>Okul programını PDF olarak ekle. AI okul saatlerini korur, boşluklara çalışma blokları koyar. AI yoksa yerel üretici devreye girer.</p>
+        <h2>PDF yükle, haftalık program üret</h2>
+        <p>Okul programını PDF olarak ekle. Sunucu koçu okul saatlerini korur, boşluklara çalışma koyar. Yanıt yoksa yerel üretici kullanılır.</p>
       </div>
       <div className="grid two" style={{ marginTop: 16 }}>
         <div className="card">
-          <div className="section-title"><h3>📄 Program PDF</h3><span>{data.grade}</span></div>
+          <div className="section-title"><h3>Program PDF</h3><span>{data.grade}</span></div>
           <label
             className="dropzone"
             onDragOver={(e) => e.preventDefault()}
@@ -100,8 +103,17 @@ export function SchedulePage() {
             <small>{file ? `${file.name} • ${(file.size / 1024 / 1024).toFixed(2)} MB` : sch.pdfName ? `${sch.pdfName} • kayıtlı` : 'Henüz PDF yok • en fazla 12 MB'}</small>
           </label>
           <div className="actions">
-            <button className="btn primary" type="button" disabled={!!busy} onClick={() => void fromPdfAi()}>🤖 PDF’den AI program</button>
-            <button className="btn" type="button" disabled={!!busy} onClick={() => void fromAi()}>✨ AI program (PDF’siz)</button>
+            <button className="btn primary" type="button" disabled={!!busy} onClick={() => void fromPdfAi()}>PDF’den program</button>
+            <button className="btn" type="button" disabled={!!busy} onClick={() => void fromAi()}>Sunucu ile program</button>
+            <button className="btn danger" type="button" onClick={() => {
+              if (!sch.days.length) return toast('Silinecek program yok.');
+              if (!confirm('AI / çalışma programı silinsin mi? Sınavlar, randevular ve hesabın durur.')) return;
+              setData({
+                ...data,
+                schedule: { ...sch, days: [], source: '', notes: '', updatedAt: new Date().toISOString() },
+              });
+              toast('Çalışma programı silindi');
+            }}>Programı sil</button>
             <button className="btn danger" type="button" onClick={() => {
               void clearSchedulePdf();
               setFile(null);
@@ -114,7 +126,7 @@ export function SchedulePage() {
           {preview ? <p className="pdf-preview">{preview}…</p> : null}
         </div>
         <div className="card">
-          <div className="section-title"><h3>🗓️ Ayarlar</h3><span>{data.track}</span></div>
+          <div className="section-title"><h3>Ayarlar</h3><span>{data.track}</span></div>
           <div className="form-grid">
             <div className="field"><label>Günlük hedef (dk)</label><input type="number" min={60} value={daily} onChange={(e) => setDaily(Number(e.target.value) || 0)} /></div>
             <div className="field">
@@ -174,7 +186,7 @@ export function SchedulePage() {
               <div className="plan-item" key={`${d.day}-${i}`}><span>{b.icon} {b.title}</span><b>{b.minutes} dk</b></div>
             ))}
           </div>
-        )) : <div className="card empty">PDF yükleyip “PDF’den AI program”a bas, veya yerel üret.</div>}
+        )) : <div className="card empty">PDF yükleyip program üret, veya soldan yerel üret.</div>}
       </div>
     </>
   );
