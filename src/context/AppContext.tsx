@@ -11,7 +11,7 @@ import { getPersonDisplayName } from '../lib/displayName';
 import { parseAccountStatus, fetchMyCoach, pushStudentData } from '../lib/cloudPlatform';
 import { mergeAppData } from '../lib/syncMerge';
 import { resolveAccessGate, type AccessGate } from '../lib/accessGate';
-import { consumeOAuthRedirect } from '../lib/authCallback';
+import { consumeOAuthRedirect, noteOAuthAuthEvent, oauthConsumeBusy, urlHasOAuthCallback } from '../lib/authCallback';
 
 type Ctx = {
   page: PageId;
@@ -298,8 +298,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [theme]);
 
   useEffect(() => {
-    syncHashFromPath();
+    const oauthPending = urlHasOAuthCallback(location.search, location.hash);
+    if (!oauthPending) syncHashFromPath();
     const onHash = () => {
+      if (urlHasOAuthCallback(location.search, location.hash)) return;
       const raw = pageFromHash();
       const dest = coerceAppPage(raw, profileRef.current?.role, accessGateRef.current, isAdminRef.current);
       if (dest !== raw) location.hash = `/${dest}`;
@@ -324,7 +326,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return () => window.removeEventListener('hashchange', onHash);
     }
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      noteOAuthAuthEvent(event);
       if (event === 'TOKEN_REFRESHED') return;
+      if (event === 'INITIAL_SESSION' && !session && (oauthPending || oauthConsumeBusy())) return;
       const u = session?.user || null;
       userRef.current = u;
       setUser(u);
