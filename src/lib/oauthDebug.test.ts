@@ -13,6 +13,17 @@ describe('oauth debug', () => {
     expect(href).not.toContain('skip_http_redirect');
   });
 
+  it('göreli authorize URL uygulamanın origin’ine çözülmez', () => {
+    const href = authorizeUrlForNavigation(
+      '/auth/v1/authorize?provider=google&redirect_to=https%3A%2F%2Fe-kocluk.vercel.app%2F&code_challenge=x&code_challenge_method=s256',
+      'https://naiakscryafhvcghjmzx.supabase.co',
+    );
+    expect(href.startsWith('https://naiakscryafhvcghjmzx.supabase.co/auth/v1/authorize')).toBe(true);
+    expect(href).not.toContain('e-kocluk.vercel.app/auth');
+    expect(inspectAuthorizeUrl(href, 'https://naiakscryafhvcghjmzx.supabase.co').ok).toBe(true);
+    expect(inspectAuthorizeUrl('https://e-kocluk.vercel.app/auth/v1/authorize?provider=google&redirect_to=https%3A%2F%2Fe-kocluk.vercel.app%2F&code_challenge=x', 'https://naiakscryafhvcghjmzx.supabase.co').host).toBe('naiakscryafhvcghjmzx.supabase.co');
+  });
+
   it('panel token göstermez', () => {
     const text = formatOAuthDebugPanel({
       step: 'session_ok',

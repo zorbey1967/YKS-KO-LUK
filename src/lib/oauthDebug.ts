@@ -99,21 +99,40 @@ export function formatOAuthDebugPanel(snap: OAuthDebugSnapshot) {
   ].join('\n');
 }
 
-export function inspectAuthorizeUrl(raw: string) {
+function isAuthHost(host: string) {
+  return host.endsWith('.supabase.co') || host === '127.0.0.1' || host === 'localhost';
+}
+
+function authUrlBase(explicit?: string) {
+  const raw = String(explicit || '').replace(/\/$/, '');
+  if (raw) return raw;
+  return 'http://127.0.0.1:54321';
+}
+
+export function inspectAuthorizeUrl(raw: string, supabaseBase?: string) {
   try {
-    const u = new URL(raw, 'https://e-kocluk.vercel.app/');
+    const href = authorizeUrlForNavigation(raw, supabaseBase);
+    const u = new URL(href);
     const provider = u.searchParams.get('provider') || '';
     const redirectTo = u.searchParams.get('redirect_to') || '';
     const codeChallenge = Boolean(u.searchParams.get('code_challenge'));
     const authorizeState = Boolean(u.searchParams.get('state'));
     const skipHttpRedirect = u.searchParams.get('skip_http_redirect');
+    const authorizePath = u.pathname.includes('/auth/v1/authorize');
     return {
       provider,
       redirectTo,
       codeChallenge,
       authorizeState,
       skipHttpRedirect,
-      ok: provider === 'google' && Boolean(redirectTo) && codeChallenge && skipHttpRedirect !== 'true',
+      host: u.hostname,
+      ok:
+        isAuthHost(u.hostname)
+        && authorizePath
+        && provider === 'google'
+        && Boolean(redirectTo)
+        && codeChallenge
+        && skipHttpRedirect !== 'true',
     };
   } catch {
     return {
@@ -122,14 +141,25 @@ export function inspectAuthorizeUrl(raw: string) {
       codeChallenge: false,
       authorizeState: false,
       skipHttpRedirect: null as string | null,
+      host: '',
       ok: false,
     };
   }
 }
 
-/** skipBrowserRedirect=true GoTrue URL'sine skip_http_redirect ekler; tarayıcı 302'si için silinmeli. */
-export function authorizeUrlForNavigation(raw: string) {
-  const u = new URL(raw, 'https://e-kocluk.vercel.app/');
+/** skip_http_redirect silinir. Göreli URL asla uygulama origin’ine (e-kocluk) çözülmez. */
+export function authorizeUrlForNavigation(raw: string, supabaseBase?: string) {
+  const fallback = authUrlBase(supabaseBase);
+  let u: URL;
+  try {
+    u = new URL(raw);
+  } catch {
+    u = new URL(raw, `${fallback}/`);
+  }
   u.searchParams.delete('skip_http_redirect');
-  return u.toString();
+  if (isAuthHost(u.hostname) && u.pathname.includes('/auth/v1/authorize')) return u.toString();
+  const rebuilt = new URL(`${fallback}/auth/v1/authorize`);
+  u.searchParams.forEach((value, key) => rebuilt.searchParams.set(key, value));
+  rebuilt.searchParams.delete('skip_http_redirect');
+  return rebuilt.toString();
 }

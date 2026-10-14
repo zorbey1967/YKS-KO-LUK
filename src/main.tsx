@@ -26,3 +26,4 @@ createRoot(rootEl).render(
     <App />
   </StrictMode>,
 );
+document.getElementById('boot')?.remove();

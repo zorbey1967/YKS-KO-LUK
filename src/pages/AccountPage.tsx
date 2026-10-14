@@ -37,6 +37,7 @@ export function AccountPage() {
   const [photo, setPhoto] = useState('');
   const [mode, setMode] = useState<'giris' | 'kayit' | 'sifre'>('giris');
   const [busy, setBusy] = useState(false);
+  const [googleBusy, setGoogleBusy] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [newPassword2, setNewPassword2] = useState('');
   const coach = coachAdvice(data);
@@ -51,7 +52,10 @@ export function AccountPage() {
 
   useEffect(() => {
     const onShow = (e: PageTransitionEvent) => {
-      if (e.persisted) setBusy(false);
+      if (e.persisted) {
+        setBusy(false);
+        setGoogleBusy(false);
+      }
     };
     window.addEventListener('pageshow', onShow);
     return () => window.removeEventListener('pageshow', onShow);
@@ -206,15 +210,14 @@ export function AccountPage() {
   async function signInGoogle() {
     if (!supabase) return setAuthMsg(SUPABASE_UNAVAILABLE);
     if (location.hash.includes('oauth=google')) location.hash = '/account';
-    setBusy(true);
+    setGoogleBusy(true);
     setAuthMsg('Google’a yönlendiriliyorsun…');
     try {
-      await withTimeout(beginGoogleSignIn(supabase, window.location.origin), 12000);
-      setAuthMsg('Google hesabını seç. Bu sayfa yönlendirmeden sonra kendiliğinden kapanır.');
+      await withTimeout(beginGoogleSignIn(supabase, window.location.origin), 8000);
     } catch (e) {
       setAuthMsg(publicAuthError(e));
     } finally {
-      setBusy(false);
+      setGoogleBusy(false);
     }
   }
 
@@ -305,8 +308,8 @@ export function AccountPage() {
           {!supabase ? <div className="notice" role="alert">{SUPABASE_UNAVAILABLE}</div> : null}
           {mode !== 'sifre' ? (
             <div className="actions" style={{ marginBottom: 12 }}>
-              <button className="btn secondary" type="button" disabled={busy || !supabase} onClick={() => void signInGoogle()}>
-                Google ile devam et
+              <button className="btn secondary" type="button" disabled={googleBusy || !supabase} onClick={() => void signInGoogle()}>
+                {googleBusy ? 'Google’a gidiliyor…' : 'Google ile devam et'}
               </button>
               <p className="muted" style={{ margin: 0 }}>Mevcut e-posta hesabı Google ile otomatik birleştirilmez.</p>
             </div>

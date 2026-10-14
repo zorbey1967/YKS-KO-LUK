@@ -38,5 +38,7 @@ describe('Google OAuth', () => {
       provider: 'google',
       options: { redirectTo: 'https://e-kocluk.vercel.app/', skipBrowserRedirect: true },
     });
+    const assigned = called as { options: { redirectTo: string } };
+    expect(assigned.options.redirectTo).toBe('https://e-kocluk.vercel.app/');
   });
 });

@@ -1,6 +1,7 @@
 import { authEmailRedirectTo, isAllowedAuthOrigin } from './authRedirect';
 import { authorizeUrlForNavigation, inspectAuthorizeUrl, writeOAuthDebug, yesNo } from './oauthDebug';
 import { SITE_ORIGIN } from './site';
+import { supabaseUrl } from './supabase';
 
 /** PKCE: kod query’de kalır; hash rota ile çakışmaz. */
 export function authOAuthRedirectTo(candidateOrigin?: string) {
@@ -66,8 +67,8 @@ export async function beginGoogleSignIn(client: GoogleOAuthClient, origin?: stri
     writeOAuthDebug({ step: 'signin_error', exchangeError: 'Authorize URL yok', exchange: 'ERROR' });
     throw new Error('Google yönlendirme adresi oluşmadı.');
   }
-  const href = authorizeUrlForNavigation(raw);
-  const info = inspectAuthorizeUrl(href);
+  const href = authorizeUrlForNavigation(raw, supabaseUrl);
+  const info = inspectAuthorizeUrl(href, supabaseUrl);
   writeOAuthDebug({
     step: 'authorize_ready',
     provider: info.provider,

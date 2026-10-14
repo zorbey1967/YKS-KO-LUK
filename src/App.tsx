@@ -56,6 +56,10 @@ function Shell() {
   const billingLock = studyPage && studyPagesLocked({ isAdmin, accessGate, profile });
 
   useEffect(() => {
+    document.getElementById('boot')?.remove();
+  }, []);
+
+  useEffect(() => {
     document.body.classList.toggle('menu-open', menuOpen);
   }, [menuOpen]);
 
