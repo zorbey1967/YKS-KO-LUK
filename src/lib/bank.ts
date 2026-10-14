@@ -10,11 +10,31 @@ async function localBank() {
   return import('../data/bankData');
 }
 
+function packErrorText(e: unknown) {
+  if (e == null) return '';
+  if (typeof e === 'string') return e.trim();
+  if (e instanceof Error) return e.message.trim();
+  if (typeof e === 'object' && 'message' in e) return String((e as { message?: unknown }).message || '').trim();
+  return String(e).trim();
+}
+
 async function invokeBankPack(body: Record<string, unknown>) {
   if (!supabase || !isSupabaseConfigured()) return { error: 'config', data: null as Record<string, unknown> | null };
   const { data, error } = await supabase.functions.invoke('bank-pack', { body });
-  if (error) return { error: String(error.message || error), data: null };
-  return { error: null as string | null, data: (data && typeof data === 'object') ? data as Record<string, unknown> : null };
+  const payload = (data && typeof data === 'object') ? data as Record<string, unknown> : null;
+  if (error) return { error: packErrorText(error) || 'bank-pack çağrısı başarısız', data: payload };
+  if (payload && payload.ok === false) return { error: packErrorText(payload.error) || 'Soru paketi reddedildi.', data: payload };
+  return { error: null as string | null, data: payload };
+}
+
+async function bundledManifestData() {
+  const mod = await localBank();
+  return mod.bundledManifest();
+}
+
+async function bundledLevelData(levelName: string) {
+  const mod = await localBank();
+  return shuffleBank(mod.questionsForLevel(levelName));
 }
 
 export async function loadManifest(): Promise<BankManifest> {
@@ -26,19 +46,19 @@ export async function loadManifest(): Promise<BankManifest> {
       manifestCache = man as BankManifest;
       return manifestCache;
     }
-    throw new Error(String(remote.data?.error || remote.error || 'Soru bankası sunucuda kapalı.'));
-  }
-  try {
-    const res = await fetch('/bank/manifest.json');
-    if (res.ok) {
-      manifestCache = (await res.json()) as BankManifest;
-      return manifestCache;
+    if (remote.error) console.error('[soru-bankasi] manifest', remote.error);
+  } else {
+    try {
+      const res = await fetch('/bank/manifest.json');
+      if (res.ok) {
+        manifestCache = (await res.json()) as BankManifest;
+        return manifestCache;
+      }
+    } catch {
+      /* yerel paket */
     }
-  } catch {
-    /* yerel paket */
   }
-  const mod = await localBank();
-  manifestCache = mod.bundledManifest();
+  manifestCache = await bundledManifestData();
   return manifestCache;
 }
 
@@ -48,26 +68,26 @@ export async function loadLevel(slug: string, levelName: string): Promise<Record
   if (!import.meta.env.DEV) {
     const remote = await invokeBankPack({ action: 'level', slug, level: levelName });
     const pack = remote.data?.questions;
-    if (!pack || typeof pack !== 'object') {
-      throw new Error(String(remote.data?.error || remote.error || 'Soru paketi yetkisiz veya yok.'));
-    }
-    const shuffled = shuffleBank(pack as Record<string, BankQuestion[]>);
-    levelCache.set(cacheKey, shuffled);
-    return shuffled;
-  }
-  try {
-    const res = await fetch(`/bank/${slug}.json`);
-    if (res.ok) {
-      const data = (await res.json()) as Record<string, BankQuestion[]>;
-      const shuffled = shuffleBank(data);
+    if (pack && typeof pack === 'object') {
+      const shuffled = shuffleBank(pack as Record<string, BankQuestion[]>);
       levelCache.set(cacheKey, shuffled);
       return shuffled;
     }
-  } catch {
-    /* yerel */
+    if (remote.error) console.error('[soru-bankasi] level', levelName, remote.error);
+  } else {
+    try {
+      const res = await fetch(`/bank/${slug}.json`);
+      if (res.ok) {
+        const data = (await res.json()) as Record<string, BankQuestion[]>;
+        const shuffled = shuffleBank(data);
+        levelCache.set(cacheKey, shuffled);
+        return shuffled;
+      }
+    } catch {
+      /* yerel */
+    }
   }
-  const mod = await localBank();
-  const bundled = shuffleBank(mod.questionsForLevel(levelName));
+  const bundled = await bundledLevelData(levelName);
   levelCache.set(cacheKey, bundled);
   return bundled;
 }

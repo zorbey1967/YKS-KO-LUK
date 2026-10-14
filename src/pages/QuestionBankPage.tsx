@@ -1,13 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { flattenBank, loadLevel, loadManifest, pickSeries, topicKey } from '../lib/bank';
+import { flattenBank, loadLevel, loadManifest, topicKey } from '../lib/bank';
 import { lastBankTopic, parseBankKey, suggestedBankLevels, takeBankJump, weakBankTopics } from '../lib/practice';
 import { applyQuizResult, MISTAKE_REASONS, setMistakeReason } from '../lib/mistakeBook';
-import { hash32 } from '../lib/util';
 import type { BankManifest, BankQuestion, MistakeReason, TopicProgress } from '../lib/types';
 
 type Mode = 'normal' | 'marked' | 'wrong' | 'quick';
-const SERIES = [10, 20, 30, 50] as const;
 
 function emptyMeta(key: string): TopicProgress {
   return { key, answered: 0, correct: 0, wrong: 0, index: 0, completed: false, answeredIds: [], updatedAt: '' };
@@ -21,6 +19,7 @@ export function QuestionBankPage() {
   const { data, setData, toast } = useApp();
   const [manifest, setManifest] = useState<BankManifest | null>(null);
   const [error, setError] = useState('');
+  const [warn, setWarn] = useState('');
   const [search, setSearch] = useState('');
   const [level, setLevel] = useState<string | null>(null);
   const [subject, setSubject] = useState<string | null>(null);
@@ -31,8 +30,6 @@ export function QuestionBankPage() {
   const [pack, setPack] = useState<Record<string, BankQuestion[]>>({});
   const [special, setSpecial] = useState<BankQuestion[]>([]);
   const [diff, setDiff] = useState<'Hepsi' | 'Zor' | 'Orta' | 'Kolay'>('Hepsi');
-  const [series, setSeries] = useState<number | 'all' | null>(null);
-  const [session, setSession] = useState<BankQuestion[] | null>(null);
   const [done, setDone] = useState(false);
 
   useEffect(() => {
@@ -40,25 +37,43 @@ export function QuestionBankPage() {
       try {
         const m = await loadManifest();
         setManifest(m);
+        const merged: Record<string, BankQuestion[]> = {};
+        const errors: string[] = [];
+        await Promise.all(m.levels.map(async (l) => {
+          try {
+            Object.assign(merged, await loadLevel(l.slug, l.name));
+          } catch (e) {
+            errors.push(`${l.name}: ${e instanceof Error ? e.message : String(e)}`);
+          }
+        }));
+        if (!Object.keys(merged).length) {
+          setError(errors.join(' ') || 'Soru bankası boş geldi. Kaynak yüklenemedi.');
+          return;
+        }
+        setPack(merged);
+        if (errors.length) setWarn(`Bazı seviyeler yüklenemedi: ${errors.join(' ')}`);
         const jump = takeBankJump();
         if (jump?.level) {
-          const dataPack = await loadLevel(m.levels.find((l) => l.name === jump.level)?.slug || '', jump.level);
-          setPack(dataPack);
           setLevel(jump.level);
           setSubject(jump.subject || null);
           setTopic(jump.topic || null);
           setMode(jump.mode === 'wrong' ? 'wrong' : 'normal');
         }
-      } catch {
-        setError('Soru bankası yüklenemedi');
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Soru bankası yüklenemedi');
       }
     })();
   }, []);
 
   async function openLevel(name: string, next?: { subject?: string | null; topic?: string | null }) {
-    const slug = manifest?.levels.find((l) => l.name === name)?.slug || '';
-    setPack(await loadLevel(slug, name));
-    resetNav({ level: name, subject: next?.subject ?? null, topic: next?.topic ?? null });
+    try {
+      const slug = manifest?.levels.find((l) => l.name === name)?.slug || '';
+      const loaded = await loadLevel(slug, name);
+      setPack((prev) => ({ ...prev, ...loaded }));
+      resetNav({ level: name, subject: next?.subject ?? null, topic: next?.topic ?? null });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Seviye yüklenemedi');
+    }
   }
 
   async function ensureAllPack() {
@@ -93,13 +108,14 @@ export function QuestionBankPage() {
   const key = level && subject && topic ? topicKey(level, subject, topic) : '';
   const pool = key ? pack[key] || [] : [];
   const filteredPool = diff === 'Hepsi' ? pool : pool.filter((x) => (x.difficulty || 'Orta') === diff);
+  const meta = key ? (data.qb[key] || emptyMeta(key)) : emptyMeta('');
 
   const list = useMemo(() => {
     if (mode === 'marked') return all.filter((x) => data.qbMarks.includes(x.id)).filter((x) => diff === 'Hepsi' || (x.difficulty || 'Orta') === diff);
     if (mode === 'wrong') return all.filter((x) => (data.questionStats[x.id]?.wrong || 0) > 0).filter((x) => diff === 'Hepsi' || (x.difficulty || 'Orta') === diff);
     if (mode === 'quick') return special;
-    return session || [];
-  }, [mode, all, data.qbMarks, data.questionStats, special, session, diff]);
+    return filteredPool;
+  }, [mode, all, data.qbMarks, data.questionStats, special, filteredPool]);
 
   const current = list[index];
   const selected = answers[index];
@@ -113,18 +129,6 @@ export function QuestionBankPage() {
     setIndex(0);
     setAnswers({});
     setSpecial([]);
-    setSeries(null);
-    setSession(null);
-    setDone(false);
-  }
-
-  function startSeries(n: number | 'all') {
-    const cap = n === 'all' ? filteredPool.length : Math.min(n, filteredPool.length);
-    const picked = pickSeries(filteredPool, cap, hash32(`${key}|${diff}|${n}`));
-    setSeries(n);
-    setSession(picked);
-    setIndex(0);
-    setAnswers({});
     setDone(false);
   }
 
@@ -225,7 +229,7 @@ export function QuestionBankPage() {
       <button className="btn secondary" type="button" onClick={() => { void ensureAllPack().then(() => { setMode('marked'); setIndex(0); setAnswers({}); setDone(false); }); }}>İşaretliler <span className="chip">{data.qbMarks.length}</span></button>
       <button className="btn secondary" type="button" onClick={() => { void ensureAllPack().then(() => { setMode('wrong'); setIndex(0); setAnswers({}); setDone(false); }); }}>Yanlışlarım</button>
       <button className="btn secondary" type="button" onClick={() => void startQuick()}>Hızlı test</button>
-      <select value={diff} onChange={(e) => { setDiff(e.target.value as typeof diff); setIndex(0); setAnswers({}); setSeries(null); setSession(null); setDone(false); }} aria-label="Zorluk">
+      <select value={diff} onChange={(e) => { setDiff(e.target.value as typeof diff); setIndex(0); setAnswers({}); setDone(false); }} aria-label="Zorluk">
         <option>Hepsi</option>
         <option>Kolay</option>
         <option>Orta</option>
@@ -236,6 +240,7 @@ export function QuestionBankPage() {
 
   if (error) return <div className="notice">{error}</div>;
   if (!manifest) return <div className="empty">Soru bankası yükleniyor…</div>;
+  const loadNote = warn ? <div className="notice">{warn}</div> : null;
 
   if (mode !== 'normal') {
     if (!list.length) {
@@ -290,9 +295,11 @@ export function QuestionBankPage() {
 
   if (!level) {
     const groups = [
+      { title: 'İlkokul', items: levels.filter((l) => /^[1-4]\. Sınıf/.test(l.name)) },
+      { title: 'Ortaokul', items: levels.filter((l) => /^[5-8]\. Sınıf/.test(l.name)) },
+      { title: 'Lise', items: levels.filter((l) => /^(9|10|11|12)\. Sınıf/.test(l.name)) },
       { title: 'YKS', items: levels.filter((l) => l.name.startsWith('YKS')) },
       { title: 'KPSS', items: levels.filter((l) => l.name.startsWith('KPSS')) },
-      { title: 'Okul (1–12)', items: levels.filter((l) => /^\d+\. Sınıf/.test(l.name)) },
     ].filter((g) => g.items.length);
     const suggested = suggestedBankLevels(data.grade).filter((name) => (manifest.levels || []).some((l) => l.name === name));
     const recs = weakBankTopics(data, 4);
@@ -300,6 +307,7 @@ export function QuestionBankPage() {
     return (
       <>
         {toolbar}
+        {loadNote}
         <div className="hero">
           <div className="chip">Seviye → ders → konu</div>
           <h2>Soru Bankası</h2>
@@ -381,7 +389,7 @@ export function QuestionBankPage() {
             {subjects.length ? subjects.map((s) => {
               const n = (curriculum[s] || []).reduce((acc, t) => acc + (counts?.[topicKey(level, s, t)] || 0), 0);
               return (
-                <button key={s} className="qb-choice" type="button" onClick={() => { setSubject(s); setTopic(null); setSeries(null); setSession(null); }}>
+                <button key={s} className="qb-choice" type="button" onClick={() => { setSubject(s); setTopic(null); setIndex(0); setAnswers({}); }}>
                   <b>{s}</b>
                   <small>{(curriculum[s] || []).length} konu • {n} soru</small>
                 </button>
@@ -404,11 +412,24 @@ export function QuestionBankPage() {
           <div className="qb-topic-grid">
             {topics.length ? topics.map((t) => {
               const k = topicKey(level, subject, t);
+              const m = data.qb[k];
               const n = pack[k]?.length || counts?.[k] || 0;
+              const p = n ? Math.min(100, Math.round(((m?.answered || 0) / n) * 100)) : 0;
               return (
-                <button key={t} className="qb-topic" type="button" onClick={() => { setTopic(t); setSeries(null); setSession(null); setDone(false); setAnswers({}); setIndex(0); }}>
+                <button key={t} className="qb-topic" type="button" onClick={() => {
+                  setTopic(t);
+                  setAnswers({});
+                  if (m?.completed) {
+                    setDone(true);
+                    setIndex(0);
+                  } else {
+                    setDone(false);
+                    setIndex(diff === 'Hepsi' ? Math.min(m?.index || 0, Math.max(0, n - 1)) : 0);
+                  }
+                }}>
                   <b>{t}</b>
-                  <small>{n} soru</small>
+                  <small>{m?.answered || 0} / {n} • {m?.correct || 0} doğru</small>
+                  <div className="progress" style={{ marginTop: 9 }}><i style={{ width: `${p}%` }} /></div>
                 </button>
               );
             }) : <div className="empty">Bu derste konu yok.</div>}
@@ -427,35 +448,28 @@ export function QuestionBankPage() {
     );
   }
 
-  if (series === null) {
-    return (
-      <>
-        {toolbar}
-        <div className="actions"><button className="btn" type="button" onClick={() => setTopic(null)}>← Konular</button><span className="chip">{level} → {subject} → {topic}</span></div>
-        <div className="card">
-          <h3 style={{ marginTop: 0 }}>{topic}</h3>
-          <p className="muted">Bu konuda {filteredPool.length} soru bulunuyor{diff !== 'Hepsi' ? ` (${diff})` : ''}.</p>
-          <div className="actions">
-            {SERIES.map((n) => (
-              <button key={n} className="btn" type="button" disabled={filteredPool.length < 1} onClick={() => startSeries(n)}>
-                {n} soru{filteredPool.length < n ? ` (${filteredPool.length} var)` : ''}
-              </button>
-            ))}
-            <button className="btn primary" type="button" onClick={() => startSeries('all')}>Tümü ({filteredPool.length})</button>
-          </div>
-        </div>
-      </>
-    );
-  }
-
-  if (done) {
+  if (done || index >= list.length) {
     return (
       <ResultCard
-        stats={sessionStats}
+        stats={{
+          correct: meta.correct,
+          wrong: meta.wrong,
+          blank: Math.max(0, list.length - meta.answered),
+          pct: meta.answered ? Math.round((meta.correct / meta.answered) * 100) : 0,
+        }}
         topic={topic}
         difficulty={diff === 'Hepsi' ? 'Karışık' : diff}
-        onRetry={() => startSeries(series)}
-        onBack={() => { setTopic(null); setSeries(null); setSession(null); setDone(false); }}
+        onRetry={() => {
+          setData((d) => {
+            const qb = { ...d.qb };
+            delete qb[key];
+            return { ...d, qb };
+          });
+          setIndex(0);
+          setAnswers({});
+          setDone(false);
+        }}
+        onBack={() => { setTopic(null); setDone(false); }}
         onWrongs={startTopicWrongs}
       />
     );
@@ -464,6 +478,7 @@ export function QuestionBankPage() {
   return (
     <>
       {toolbar}
+      {loadNote}
       <QuestionCard
         q={current}
         index={index}
@@ -471,13 +486,22 @@ export function QuestionBankPage() {
         selected={selected}
         locked={locked}
         marked={!!current && data.qbMarks.includes(current.id)}
-        onBack={() => { setSeries(null); setSession(null); setDone(false); }}
+        onBack={() => setTopic(null)}
         onChoose={choose}
         onPrev={() => setIndex((i) => Math.max(0, i - 1))}
         onNext={() => {
           if (selected === undefined) return toast('Önce cevabını seç.');
           if (index < list.length - 1) setIndex(index + 1);
-          else setDone(true);
+          else {
+            setData((d) => ({
+              ...d,
+              qb: {
+                ...d.qb,
+                [key]: { ...(d.qb[key] || emptyMeta(key)), completed: true, index: list.length, updatedAt: new Date().toISOString() },
+              },
+            }));
+            setDone(true);
+          }
         }}
         onMark={toggleMark}
         chip={`${level} • ${subject} • ${topic}${current?.kind ? ` • ${current.kind}` : ''}`}

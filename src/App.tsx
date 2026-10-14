@@ -33,7 +33,7 @@ import { studyPagesLocked } from './lib/subscription';
 import type { PageId } from './lib/types';
 
 const BILLING_LOCKED_PAGES: PageId[] = [
-  'questionbank', 'goal', 'schedule', 'tasks', 'plan', 'exams', 'calculator',
+  'goal', 'schedule', 'tasks', 'plan', 'exams', 'calculator',
   'topics', 'questions', 'timer',
 ];
 

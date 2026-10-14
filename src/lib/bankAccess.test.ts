@@ -25,11 +25,13 @@ describe('soru bankası erişim', () => {
     expect(canLoadBankPack({ ...base, entitled: false, isOwner: true })).toBe(true);
   });
 
-  it('üretim istemcisi bankData’yı statik bağlamaz; edge kapısı vardır', () => {
+  it('üretim istemcisi bankData’yı statik bağlamaz; edge kapısı vardır, paket yoksa yerel yedek kullanılır', () => {
     const bank = readFileSync(join(root, 'src/lib/bank.ts'), 'utf8');
     expect(bank).not.toMatch(/^import .*from ['"]\.\.\/data\/bankData['"]/m);
     expect(bank).toContain('import.meta.env.DEV');
     expect(bank).toContain('bank-pack');
+    expect(bank).toContain('bundledManifestData');
+    expect(bank).toContain('bundledLevelData');
     const edge = readFileSync(join(root, 'supabase/functions/bank-pack/index.ts'), 'utf8');
     expect(edge).toContain('studentFeatureOk');
     expect(edge).toContain('Bu özellik öğrenci hesabına özel.');
