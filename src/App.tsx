@@ -26,7 +26,6 @@ import { MeetingPage } from './pages/MeetingPage';
 import { MeetingsPage } from './pages/MeetingsPage';
 import { LibraryPage } from './pages/LibraryPage';
 import { ExamNotifyWatcher } from './components/ExamNotifyWatcher';
-import { OAuthDebugPanel } from './components/OAuthDebugPanel';
 import { FeatureLock } from './components/FeatureLock';
 import { today, uid } from './lib/util';
 import { STUDY_SUBJECTS } from './lib/insights';
@@ -84,7 +83,6 @@ function Shell() {
 
   return (
     <Layout>
-      <OAuthDebugPanel />
       <ErrorBoundary key={page}>
       {billingLock ? <FeatureLock title="Deneme veya üyelik gerekli" /> : null}
       {!billingLock && page === 'home' && <HomePage onNewTask={() => setTaskOpen(true)} />}

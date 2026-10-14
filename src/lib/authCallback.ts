@@ -1,6 +1,5 @@
 import type { Session, SupabaseClient } from '@supabase/supabase-js';
 import { publicAuthError } from './authUi';
-import { sanitizeOAuthError, writeOAuthDebug, yesNo } from './oauthDebug';
 
 export type OAuthCallbackParams = {
   code: string | null;
@@ -50,7 +49,6 @@ let lastAuthEvent = '';
 
 export function noteOAuthAuthEvent(event: string) {
   lastAuthEvent = event;
-  writeOAuthDebug({ authEvent: event });
 }
 
 export function oauthExchangeInFlight() {
@@ -111,20 +109,6 @@ export function formatOAuthExchangeError(err: unknown) {
   return raw || mapped || 'Google oturumu kurulamadı.';
 }
 
-export function formatOAuthDebugLine(debug: OAuthDebug) {
-  return [
-    `code=${debug.codePresent ? 'var' : 'yok'}`,
-    `exchange=${debug.exchangeStarted ? 'başladı' : 'yok'}`,
-    `exchange.error=${debug.exchangeError || 'yok'}`,
-    `exchange.session=${debug.exchangeSession ? 'var' : 'yok'}`,
-    `getSession.error=${debug.getSessionError || 'yok'}`,
-    `getSession.session=${debug.getSession ? 'var' : 'yok'}`,
-    `auth event=${debug.authEvent || 'yok'}`,
-    `user=${debug.user ? 'var' : 'yok'}`,
-    debug.reused ? 'reused=1' : '',
-  ].filter(Boolean).join(' ');
-}
-
 type ExchangeClient = {
   auth: {
     exchangeCodeForSession: (code: string) => PromiseLike<{
@@ -135,45 +119,26 @@ type ExchangeClient = {
   };
 };
 
-function persistExchangeDebug(params: OAuthCallbackParams, debug: OAuthDebug, extra: { step: string; exchange: '' | 'START' | 'SUCCESS' | 'ERROR' }) {
-  writeOAuthDebug({
-    step: extra.step,
-    code: yesNo(params.code),
-    state: yesNo(params.state),
-    exchange: extra.exchange,
-    exchangeError: sanitizeOAuthError(debug.exchangeError || ''),
-    exchangeSession: yesNo(debug.exchangeSession),
-    getSession: yesNo(debug.getSession),
-    getSessionError: sanitizeOAuthError(debug.getSessionError || ''),
-    authEvent: lastAuthEvent || debug.authEvent,
-    user: yesNo(debug.user),
-  });
-}
-
 export async function completeOAuthCode(client: ExchangeClient, params: OAuthCallbackParams): Promise<OAuthConsumeResult> {
   const debug = emptyDebug();
   debug.codePresent = Boolean(params.code);
   debug.codeLength = params.code ? params.code.length : 0;
   debug.authEvent = lastAuthEvent;
-  persistExchangeDebug(params, debug, { step: 'callback_seen', exchange: '' });
   if (!params.code && !params.error) return { handled: false, message: '', session: null, debug };
   if (params.error) {
     debug.exchangeError = params.errorDescription || params.error;
-    persistExchangeDebug(params, debug, { step: 'provider_error', exchange: 'ERROR' });
     return {
       handled: true,
-      message: `${formatOAuthExchangeError(new Error(debug.exchangeError))} ${formatOAuthDebugLine(debug)}`,
+      message: formatOAuthExchangeError(new Error(debug.exchangeError)),
       session: null,
       debug,
     };
   }
   debug.exchangeStarted = true;
-  persistExchangeDebug(params, debug, { step: 'exchange_start', exchange: 'START' });
   const { data, error } = await client.auth.exchangeCodeForSession(String(params.code));
   debug.exchangeError = error?.message || null;
   debug.exchangeSession = Boolean(data?.session);
   debug.exchangeUser = Boolean(data?.session?.user || data?.user);
-  persistExchangeDebug(params, debug, { step: error ? 'exchange_error' : 'exchange_done', exchange: error ? 'ERROR' : 'START' });
   let stored: Session | null = data?.session || null;
   if (client.auth.getSession) {
     try {
@@ -187,12 +152,10 @@ export async function completeOAuthCode(client: ExchangeClient, params: OAuthCal
   }
   debug.user = Boolean(stored?.user);
   debug.authEvent = lastAuthEvent;
-  const exchangePhase = error ? 'ERROR' : stored?.user ? 'SUCCESS' : 'ERROR';
-  persistExchangeDebug(params, debug, { step: stored?.user ? 'session_ok' : 'session_missing', exchange: exchangePhase });
   if (error) {
     return {
       handled: true,
-      message: `${formatOAuthExchangeError(error)} ${formatOAuthDebugLine(debug)}`,
+      message: formatOAuthExchangeError(error),
       session: stored,
       debug,
     };
@@ -200,14 +163,14 @@ export async function completeOAuthCode(client: ExchangeClient, params: OAuthCal
   if (!stored?.user) {
     return {
       handled: true,
-      message: `${formatOAuthExchangeError(new Error('data.session yok'))} ${formatOAuthDebugLine(debug)}`,
+      message: formatOAuthExchangeError(new Error('data.session yok')),
       session: null,
       debug,
     };
   }
   return {
     handled: true,
-    message: `Google ile giriş başarılı. ${formatOAuthDebugLine(debug)}`,
+    message: 'Google ile giriş başarılı.',
     session: stored,
     debug,
   };
@@ -248,14 +211,8 @@ export async function consumeOAuthRedirect(client: SupabaseClient | null): Promi
   if (!params.code && !params.error) {
     return { handled: false, message: '', session: null, debug: emptyDebug() };
   }
-  writeOAuthDebug({
-    step: 'callback_url',
-    code: yesNo(params.code),
-    state: yesNo(params.state),
-  });
   if (!client) {
     openAccountHashKeepQuery();
-    writeOAuthDebug({ step: 'no_client', finalRoute: `${location.pathname}${location.search}${location.hash}` });
     return {
       handled: true,
       message: 'Google girişi bu ortamda yapılandırılmamış. E-posta ile devam et.',
@@ -266,11 +223,6 @@ export async function consumeOAuthRedirect(client: SupabaseClient | null): Promi
   const result = await consumeOAuthParams(client, params);
   if (result.session?.user) stripOAuthParamsFromUrl(true);
   else openAccountHashKeepQuery();
-  writeOAuthDebug({
-    step: result.session?.user ? 'routed_account' : 'routed_account_failed',
-    user: yesNo(result.session?.user),
-    finalRoute: `${location.pathname}${location.search}${location.hash}`,
-  });
   return result;
 }
 

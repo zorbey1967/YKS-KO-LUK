@@ -42,8 +42,7 @@ describe('Google OAuth dönüşü', () => {
     }, { code: 'pkce-code', state: 'st', error: null, errorDescription: null });
     expect(ok.handled).toBe(true);
     expect(ok.message).toMatch(/başarılı/);
-    expect(ok.message).toMatch(/exchange\.session=var/);
-    expect(ok.message).toMatch(/code=var/);
+    expect(ok.message).not.toMatch(/exchange\.session|code=var|getSession|auth event|finalRoute/);
     expect(ok.debug.exchangeStarted).toBe(true);
     expect(ok.session?.user).toBeTruthy();
 
