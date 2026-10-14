@@ -11,7 +11,7 @@ import { getPersonDisplayName } from '../lib/displayName';
 import { parseAccountStatus, fetchMyCoach, pushStudentData } from '../lib/cloudPlatform';
 import { mergeAppData } from '../lib/syncMerge';
 import { resolveAccessGate, type AccessGate } from '../lib/accessGate';
-import { consumeOAuthRedirect, noteOAuthAuthEvent, oauthConsumeBusy, urlHasOAuthCallback } from '../lib/authCallback';
+import { consumeOAuthRedirect, noteOAuthAuthEvent, oauthExchangeInFlight, urlHasOAuthCallback } from '../lib/authCallback';
 
 type Ctx = {
   page: PageId;
@@ -328,7 +328,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
       noteOAuthAuthEvent(event);
       if (event === 'TOKEN_REFRESHED') return;
-      if (event === 'INITIAL_SESSION' && !session && (oauthPending || oauthConsumeBusy())) return;
+      if (event === 'INITIAL_SESSION' && !session && (oauthPending || oauthExchangeInFlight())) return;
       const u = session?.user || null;
       userRef.current = u;
       setUser(u);

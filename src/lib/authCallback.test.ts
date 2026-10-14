@@ -8,6 +8,7 @@ describe('Google OAuth dönüşü', () => {
   it('code query’de kalır; hash rotasına taşınmaz', () => {
     expect(readOAuthCallback('?code=abc&state=1', '#/home')).toEqual({
       code: 'abc',
+      state: '1',
       error: null,
       errorDescription: null,
     });
@@ -38,7 +39,7 @@ describe('Google OAuth dönüşü', () => {
           error: null,
         }),
       },
-    }, { code: 'pkce-code', error: null, errorDescription: null });
+    }, { code: 'pkce-code', state: 'st', error: null, errorDescription: null });
     expect(ok.handled).toBe(true);
     expect(ok.message).toMatch(/başarılı/);
     expect(ok.message).toMatch(/exchange\.session=var/);
@@ -53,7 +54,7 @@ describe('Google OAuth dönüşü', () => {
           error: { message: 'invalid request: both auth code and code verifier should be non-empty' },
         }),
       },
-    }, { code: 'pkce-code', error: null, errorDescription: null });
+    }, { code: 'pkce-code', state: 'st', error: null, errorDescription: null });
     expect(fail.session).toBeNull();
     expect(fail.message).toMatch(/both auth code and code verifier/);
     expect(fail.debug.exchangeError).toMatch(/code verifier/);
@@ -72,12 +73,16 @@ describe('Google OAuth dönüşü', () => {
       },
     };
     const [first, second] = await Promise.all([
-      consumeOAuthParams(client, { code: 'once', error: null, errorDescription: null }),
-      consumeOAuthParams(client, { code: 'once', error: null, errorDescription: null }),
+      consumeOAuthParams(client, { code: 'once', state: 's', error: null, errorDescription: null }),
+      consumeOAuthParams(client, { code: 'once', state: 's', error: null, errorDescription: null }),
     ]);
     expect(first.debug.getSession).toBe(true);
     expect(second.debug.reused || first.debug.reused).toBe(true);
     expect(n).toBe(1);
+
+    const third = await consumeOAuthParams(client, { code: 'other', state: 's2', error: null, errorDescription: null });
+    expect(n).toBe(2);
+    expect(third.debug.reused).toBe(false);
   });
 });
 

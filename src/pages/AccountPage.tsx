@@ -50,6 +50,14 @@ export function AccountPage() {
   }, []);
 
   useEffect(() => {
+    const onShow = (e: PageTransitionEvent) => {
+      if (e.persisted) setBusy(false);
+    };
+    window.addEventListener('pageshow', onShow);
+    return () => window.removeEventListener('pageshow', onShow);
+  }, []);
+
+  useEffect(() => {
     if (profile?.name) {
       const parts = splitPersonName(profile.name);
       setFirstName(parts.firstName);
@@ -201,9 +209,11 @@ export function AccountPage() {
     setBusy(true);
     setAuthMsg('Google’a yönlendiriliyorsun…');
     try {
-      await withTimeout(beginGoogleSignIn(supabase, window.location.origin), 25000);
+      await withTimeout(beginGoogleSignIn(supabase, window.location.origin), 12000);
+      setAuthMsg('Google hesabını seç. Bu sayfa yönlendirmeden sonra kendiliğinden kapanır.');
     } catch (e) {
       setAuthMsg(publicAuthError(e));
+    } finally {
       setBusy(false);
     }
   }

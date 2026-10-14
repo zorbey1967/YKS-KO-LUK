@@ -24,18 +24,19 @@ describe('Google OAuth', () => {
 
   it('signInWithOAuth google ve production redirectTo kullanır', async () => {
     let called: unknown;
+    const href = 'https://naiakscryafhvcghjmzx.supabase.co/auth/v1/authorize?provider=google&redirect_to=https%3A%2F%2Fe-kocluk.vercel.app%2F&code_challenge=abc&code_challenge_method=s256&skip_http_redirect=true';
     const client = {
       auth: {
         signInWithOAuth: async (args: unknown) => {
           called = args;
-          return { data: { url: 'https://naiakscryafhvcghjmzx.supabase.co/auth/v1/authorize?provider=google' }, error: null };
+          return { data: { url: href }, error: null };
         },
       },
     };
     await beginGoogleSignIn(client, 'https://e-kocluk.vercel.app');
     expect(called).toMatchObject({
       provider: 'google',
-      options: { redirectTo: 'https://e-kocluk.vercel.app/', skipBrowserRedirect: false },
+      options: { redirectTo: 'https://e-kocluk.vercel.app/', skipBrowserRedirect: true },
     });
   });
 });
