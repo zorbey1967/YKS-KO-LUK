@@ -308,8 +308,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     window.addEventListener('hashchange', onHash);
     void (async () => {
       if (supabase) {
-        const oauth = await consumeOAuthRedirect(supabase);
+        const oauth = await withTimeout(consumeOAuthRedirect(supabase), 20000);
         if (oauth.message) setAuthMsg(oauth.message);
+        if (oauth.handled) {
+          setPage('account');
+          if (oauth.session?.user) {
+            userRef.current = oauth.session.user;
+            setUser(oauth.session.user);
+          }
+        }
       }
       await refreshAuth();
     })();

@@ -12,7 +12,7 @@ import { emailLooksValid, normalizeEmailInput, passwordPolicyError, publicAuthEr
 import { authEmailRedirectTo } from '../lib/authRedirect';
 import { fullPersonName, validatePersonName } from '../lib/personName';
 import { accessMessage } from '../lib/accessGate';
-import { googleOAuthOptions } from '../lib/googleOAuth';
+import { beginGoogleSignIn } from '../lib/googleOAuth';
 import { displayMembershipName } from '../lib/subscription';
 import { GRADES } from '../lib/stage';
 import { TRACKS } from '../lib/goal';
@@ -201,14 +201,8 @@ export function AccountPage() {
     setBusy(true);
     setAuthMsg('Google’a yönlendiriliyorsun…');
     try {
-      const spec = googleOAuthOptions(window.location.origin);
-      const { error } = await withTimeout(supabase.auth.signInWithOAuth({
-        provider: spec.provider,
-        options: spec.options,
-      }), 25000);
-      if (error) throw error;
+      await withTimeout(beginGoogleSignIn(supabase, window.location.origin), 25000);
     } catch (e) {
-      if (document.visibilityState === 'hidden') return;
       setAuthMsg(publicAuthError(e));
       setBusy(false);
     }

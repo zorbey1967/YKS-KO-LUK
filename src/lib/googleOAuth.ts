@@ -28,4 +28,34 @@ export function googleSignInBlockedReason() {
   return 'Google girişi bu ortamda yapılandırılmamış. E-posta ile devam et. Otomatik hesap birleştirme kapalıdır.';
 }
 
+export function googleAuthorizeFailureMessage(status: number, bodyText: string) {
+  if (status === 400 && /provider is not enabled|Unsupported provider/i.test(bodyText)) {
+    return googleSignInBlockedReason();
+  }
+  return null;
+}
+
+type GoogleOAuthClient = {
+  auth: {
+    signInWithOAuth: (args: {
+      provider: 'google';
+      options: {
+        redirectTo: string;
+        queryParams?: { prompt: string };
+        skipBrowserRedirect: boolean;
+      };
+    }) => PromiseLike<{ data: { url?: string | null } | null; error: { message: string } | null }>;
+  };
+};
+
+/** Authorize URL’si önceden fetch edilmez (PKCE verifier tarayıcıda kalır). */
+export async function beginGoogleSignIn(client: GoogleOAuthClient, origin?: string) {
+  const spec = googleOAuthOptions(origin);
+  const { error } = await client.auth.signInWithOAuth({
+    provider: spec.provider,
+    options: spec.options,
+  });
+  if (error) throw new Error(error.message);
+}
+
 export { authEmailRedirectTo };

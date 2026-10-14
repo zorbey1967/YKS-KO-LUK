@@ -1,4 +1,4 @@
-import type { SupabaseClient } from '@supabase/supabase-js';
+import type { Session, SupabaseClient } from '@supabase/supabase-js';
 import { publicAuthError } from './authUi';
 
 export function readOAuthCallback(search: string, hash: string) {
@@ -18,7 +18,8 @@ function oauthSearchParams() {
   return readOAuthCallback(location.search, location.hash);
 }
 
-export function stripOAuthParamsFromUrl() {
+/** Query’deki PKCE code hash rotasına taşınmaz. Callback sonrası hesap sayfası. */
+export function stripOAuthParamsFromUrl(openAccount = false) {
   const url = new URL(location.href);
   ['code', 'state', 'error', 'error_description', 'error_code'].forEach((k) => url.searchParams.delete(k));
   if (url.hash.includes('?')) {
@@ -28,28 +29,58 @@ export function stripOAuthParamsFromUrl() {
     const next = hp.toString();
     url.hash = next ? `${path}?${next}` : path;
   }
+  if (openAccount) url.hash = '/account';
   history.replaceState(history.state, '', `${url.pathname}${url.search}${url.hash}`);
 }
 
-/** PKCE `?code=` hash rotasına taşınmaz; oturum kurulunca query temizlenir. */
+export function formatOAuthExchangeError(err: unknown) {
+  const raw = err instanceof Error ? err.message : String((err as { message?: string })?.message || err || '');
+  const mapped = publicAuthError(err instanceof Error ? err : new Error(raw));
+  if (raw && mapped && mapped !== raw) return `${mapped} (${raw})`;
+  return raw || mapped || 'Google oturumu kurulamadı.';
+}
+
+type ExchangeClient = {
+  auth: {
+    exchangeCodeForSession: (code: string) => PromiseLike<{
+      data: { session: Session | null };
+      error: { message: string } | null;
+    }>;
+  };
+};
+
+export async function completeOAuthCode(client: ExchangeClient, params: ReturnType<typeof readOAuthCallback>) {
+  if (!params.code && !params.error) return { handled: false as const, message: '', session: null as Session | null };
+  if (params.error) {
+    return {
+      handled: true as const,
+      message: formatOAuthExchangeError(new Error(params.errorDescription || params.error)),
+      session: null as Session | null,
+    };
+  }
+  const { data, error } = await client.auth.exchangeCodeForSession(String(params.code));
+  if (error) {
+    return { handled: true as const, message: formatOAuthExchangeError(error), session: null as Session | null };
+  }
+  if (!data.session?.user) {
+    return {
+      handled: true as const,
+      message: formatOAuthExchangeError(new Error('data.session yok')),
+      session: null as Session | null,
+    };
+  }
+  return { handled: true as const, message: 'Google ile giriş başarılı.', session: data.session };
+}
+
+/** PKCE `?code=` hash’e kopyalanmaz. Kod bir kez exchange edilir (detectSessionInUrl kapalı). */
 export async function consumeOAuthRedirect(client: SupabaseClient | null) {
   const params = oauthSearchParams();
-  if (!params.code && !params.error) return { handled: false, message: '' };
+  if (!params.code && !params.error) return { handled: false, message: '', session: null as Session | null };
   if (!client) {
-    stripOAuthParamsFromUrl();
-    return { handled: true, message: 'Google girişi bu ortamda yapılandırılmamış. E-posta ile devam et.' };
+    stripOAuthParamsFromUrl(true);
+    return { handled: true, message: 'Google girişi bu ortamda yapılandırılmamış. E-posta ile devam et.', session: null };
   }
-  if (params.error) {
-    stripOAuthParamsFromUrl();
-    return { handled: true, message: publicAuthError(new Error(params.errorDescription || params.error)) };
-  }
-  const { data: existing } = await client.auth.getSession();
-  if (existing.session?.user) {
-    stripOAuthParamsFromUrl();
-    return { handled: true, message: 'Google ile giriş başarılı.' };
-  }
-  const { error } = await client.auth.exchangeCodeForSession(String(params.code));
-  stripOAuthParamsFromUrl();
-  if (error) return { handled: true, message: publicAuthError(error) };
-  return { handled: true, message: 'Google ile giriş başarılı.' };
+  const result = await completeOAuthCode(client, params);
+  stripOAuthParamsFromUrl(true);
+  return result;
 }
