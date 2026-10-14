@@ -2,10 +2,12 @@ import type { PageId, Profile } from './types';
 
 export type AccessGate =
   | 'ok'
+  | 'boot'
   | 'guest'
   | 'unverified'
   | 'pending'
   | 'rejected'
+  | 'suspended'
   | 'coach_pending'
   | 'coach_rejected';
 
@@ -17,12 +19,15 @@ export function resolveAccessGate(input: {
   user: { email_confirmed_at?: string | null } | null | undefined;
   profile: Profile | null;
   isAdmin: boolean;
+  authReady?: boolean;
 }): AccessGate {
   const { user, profile, isAdmin } = input;
+  if (input.authReady === false) return 'boot';
   if (!user) return 'guest';
+  if (profile?.account_status === 'pasif' && !isAdmin) return 'suspended';
   if (isAdmin) return 'ok';
   if (profile?.role === 'coach' && profile.account_status !== 'pending' && profile.account_status !== 'rejected') {
-    if (profile.account_status === 'pasif') return 'rejected';
+    if (profile.account_status === 'pasif') return 'suspended';
     return 'ok';
   }
   if (!isEmailConfirmed(user)) return 'unverified';
@@ -54,11 +59,15 @@ export function accessMessage(gate: AccessGate) {
   if (gate === 'coach_rejected') {
     return 'Koç başvurunuz kabul edilmedi.';
   }
+  if (gate === 'suspended') {
+    return 'Bu hesap askıya alındı. Yönetici yeniden etkinleştirene kadar giriş ve korunan işlemler kapalıdır.';
+  }
   return '';
 }
 
 export function pagesAllowedForGate(gate: AccessGate): PageId[] | null {
-  if (gate === 'ok' || gate === 'guest') return null;
+  if (gate === 'ok' || gate === 'boot') return null;
+  if (gate === 'guest') return ['account', 'coaches'];
   if (gate === 'coach_pending' || gate === 'coach_rejected') return ['account', 'settings', 'coaches'];
   return ['account', 'settings'];
 }
@@ -71,6 +80,7 @@ export function coercePageForAccess(page: PageId, gate: AccessGate): PageId {
 
 export function landingPageForGate(gate: AccessGate, role?: string | null): PageId {
   if (gate === 'ok') return role === 'coach' ? 'coaches' : 'home';
+  if (gate === 'boot') return 'home';
   if (gate === 'coach_pending' || gate === 'coach_rejected') return 'coaches';
   return 'account';
 }

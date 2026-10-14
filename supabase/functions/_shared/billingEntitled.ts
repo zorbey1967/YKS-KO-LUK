@@ -27,3 +27,18 @@ export function billingOk(b: BillingGate, now = Date.now()) {
   }
   return { entitled: false, tier: "none" as const };
 }
+
+/** Zorro / sınav tarama: koç rolü öğrenci özelliğini açmaz. Sahip ayrı RPC. */
+export function studentFeatureOk(b: BillingGate, now = Date.now()) {
+  if (b.role === "coach") return { entitled: false, tier: "none" as const };
+  return billingOk(b, now);
+}
+
+/** exam-scan / analiz: Pro görür, çalıştırmaz. Premium veya açık deneme. */
+export function examAnalyticsAllowed(
+  privileged: boolean,
+  bill: { entitled: boolean; tier: string },
+) {
+  if (privileged) return true;
+  return bill.entitled && (bill.tier === "premium" || bill.tier === "trial");
+}

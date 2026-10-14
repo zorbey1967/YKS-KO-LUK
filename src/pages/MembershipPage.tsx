@@ -11,6 +11,7 @@ import {
   type PlanId,
 } from '../lib/plans';
 import { billingFromProfile, displayMembershipName, entitledPlan, trialDaysLeft } from '../lib/subscription';
+import { startTopPlanTrial } from '../lib/cloudPlatform';
 
 function fmtDate(iso: string | null) {
   if (!iso) return '—';
@@ -20,7 +21,7 @@ function fmtDate(iso: string | null) {
 }
 
 export function MembershipPage() {
-  const { profile, toast, go, user } = useApp();
+  const { profile, toast, go, user, refreshAuth, isAdmin } = useApp();
   const snap = billingFromProfile(profile);
   const days = trialDaysLeft(snap);
   const tier = entitledPlan(snap);
@@ -28,7 +29,8 @@ export function MembershipPage() {
   const [payNote, setPayNote] = useState('');
   const [pays, setPays] = useState<{ rows: PaymentRow[]; available: boolean }>({ rows: [], available: false });
   const [cancelBusy, setCancelBusy] = useState(false);
-  const planName = displayMembershipName(profile);
+  const [trialBusy, setTrialBusy] = useState(false);
+  const planName = displayMembershipName(profile, Date.now(), isAdmin);
   const trialActive = Boolean(user) && tier === 'trial';
   const student = Boolean(user) && profile?.role !== 'coach' && profile?.role !== 'admin';
 
@@ -55,6 +57,25 @@ export function MembershipPage() {
       toast('Ödeme sayfası açılamadı. Üyelik değişmedi.');
     } finally {
       setBusy(null);
+    }
+  }
+
+  async function startTrial() {
+    if (!user) {
+      toast('Deneme için giriş gerekli.');
+      go('account');
+      return;
+    }
+    if (!confirm('14 günlük Premium denemeyi başlatmak istiyor musun? Ücret alınmaz. Aynı hesaba ikinci deneme verilmez.')) return;
+    setTrialBusy(true);
+    setPayNote('');
+    try {
+      const res = await startTopPlanTrial();
+      setPayNote(res.message);
+      toast(res.ok ? res.message : res.message);
+      if (res.ok) await refreshAuth();
+    } finally {
+      setTrialBusy(false);
     }
   }
 
@@ -134,13 +155,32 @@ export function MembershipPage() {
         })}
       </div>
 
+      {isAdmin ? (
+        <div className="card" style={{ marginTop: 16 }}>
+          <p className="muted" style={{ margin: 0 }}>Yönetici hesabında plan satın alman gerekmez; özellikler sunucu yetkisiyle açıktır.</p>
+        </div>
+      ) : null}
+
       <div className="card" style={{ marginTop: 16 }}>
-        <div className="section-title"><h3>14 günlük deneme</h3><span>{TRIAL_DAYS} gün</span></div>
-        <p className="muted" style={{ margin: 0 }}>
-          Kalıcı ücretsiz plan yok. Deneme tarihleri yalnızca sunucuda yazılır; aynı hesaba ikinci deneme verilmez.
-          {trialActive && days ? ` Denemen: ${days} gün kaldı.` : ''}
-          {!snap.schemaReady || snap.status === 'legacy' ? ' Sunucuda deneme kaydı yok; aktif deneme gösterilmiyor.' : ''}
+        <div className="section-title"><h3>14 günlük ücretsiz Premium deneme</h3><span>{TRIAL_DAYS} gün</span></div>
+        <p className="muted">
+          En üst plan (Premium) özellikleri 14 gün açılır. Başlangıç ve bitiş sunucuda yazılır. Ücret alınmaz.
+          Aynı hesap ikinci kez deneme alamaz.
+          {trialActive && days ? ` Kalan: ${days} gün.` : ''}
         </p>
+        {(snap.status === 'expired' && profile?.trial_started_at) || (snap.status !== 'trialing' && snap.status !== 'active' && profile?.trial_started_at && snap.trialEndsAt) ? (
+          <p className="notice">Bu hesap denemeyi kullandı. Devam için Pro veya Premium satın al.</p>
+        ) : null}
+        <div className="actions">
+          <button
+            className="btn primary"
+            type="button"
+            disabled={trialBusy || !user || !student || trialActive || snap.status === 'active' || isAdmin}
+            onClick={() => void startTrial()}
+          >
+            {trialBusy ? 'Başlatılıyor…' : trialActive ? `${days} gün kaldı` : '14 günlük ücretsiz denemeyi başlat'}
+          </button>
+        </div>
       </div>
 
       {payNote ? <p className="notice" style={{ marginTop: 16 }}>{payNote}</p> : null}

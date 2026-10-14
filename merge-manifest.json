@@ -1,0 +1,2993 @@
+{
+  "applied": true,
+  "writesBank": true,
+  "writesPackJson": true,
+  "qpnUsesRevisionOverlay": true,
+  "qpnRevisedIds": [
+    "qpn-tyt-sy-07",
+    "qpn-tyt-fn-01",
+    "qpn-s1-go-13",
+    "qpn-s1-go-19",
+    "qpn-s1-sy-r5",
+    "qpn-s1-sy-r10"
+  ],
+  "mainPackSha256": "734e471add09e0af5d80fb9149793dc10000ee21a61896bbd81302ba6ea3dbd2",
+  "starting84Count": 84,
+  "starting84": [
+    "qf-n002",
+    "qf-n004",
+    "qf-1-tr-mi",
+    "qf-n005",
+    "qf-2-mul-6-4",
+    "qf-n006",
+    "qf-n007",
+    "qf-n008",
+    "qf-n010",
+    "qf-3-frac-half",
+    "qf-n011",
+    "qf-n012",
+    "qf-n013",
+    "qf-4-fen-kuvvet",
+    "qf-n018",
+    "qf-n019",
+    "qf-n020",
+    "qf-n021",
+    "qf-n024",
+    "qf-5-frac-eq",
+    "qf-n025",
+    "qf-n026",
+    "qf-n027",
+    "qf-n028",
+    "qf-n032",
+    "qf-6-int-neg",
+    "qf-n033",
+    "qf-n034",
+    "qf-n035",
+    "qf-n036",
+    "qf-7-work",
+    "qf-n040",
+    "qf-n041",
+    "qf-n042",
+    "qf-n043",
+    "qf-8-exp",
+    "qf-n048",
+    "qf-n050",
+    "qf-n054",
+    "qf-n055",
+    "qf-n056",
+    "qf-n057",
+    "qf-10-fn",
+    "qf-n059",
+    "qf-n060",
+    "qf-tyt-gcd",
+    "qf-n061",
+    "qf-n062",
+    "qf-tyt-lin",
+    "qf-n063",
+    "qf-tyt-sqrt",
+    "qf-n064",
+    "qf-n065",
+    "qf-n066",
+    "qf-kpss-pct",
+    "qf-n067",
+    "qf-kpss-num",
+    "qf-n068",
+    "qf-n069",
+    "qf-n071",
+    "qf-n072",
+    "qf-n075",
+    "qf-n076",
+    "qf-n077",
+    "qf-n078",
+    "qf-n079",
+    "qf-n080",
+    "qf-n083",
+    "qf-n086",
+    "qf-n087",
+    "qf-n088",
+    "qf-n089",
+    "qf-n090",
+    "qf-n091",
+    "qf-n092",
+    "qf-n093",
+    "qf-n094",
+    "qfp-tyt-fn-05",
+    "qfp-ayt-fn-05",
+    "qfp-ayt-fn-06",
+    "qfp-s1-ol-02",
+    "qpn-tyt-sy-07",
+    "qpn-tyt-sy-08",
+    "qpn-s1-sy-ob"
+  ],
+  "collisions": [
+    {
+      "filler_id": "cv-16e53184",
+      "contenders": [
+        "qf-1-add-7-5",
+        "qfp-s1-ad-01",
+        "qpn-s1-ad-cm"
+      ],
+      "winner": "qpn-s1-ad-cm",
+      "excluded": [
+        "qf-1-add-7-5",
+        "qfp-s1-ad-01"
+      ],
+      "reason": "kilitli kazanan; source_ok(math machine_ok); curriculum_ok; structure_ok; duplicate_ok; özgünlük=2; paket=QPN_REVISION"
+    },
+    {
+      "filler_id": "cv-17e53317",
+      "contenders": [
+        "qf-n001",
+        "qpn-s1-ad-ms"
+      ],
+      "winner": "qpn-s1-ad-ms",
+      "excluded": [
+        "qf-n001"
+      ],
+      "reason": "kilitli kazanan; source_ok(math machine_ok); curriculum_ok; structure_ok; duplicate_ok; özgünlük=5; paket=QPN_REVISION"
+    },
+    {
+      "filler_id": "cv-83b39fda",
+      "contenders": [
+        "qf-n003",
+        "qfp-s1-sb-01"
+      ],
+      "winner": "qfp-s1-sb-01",
+      "excluded": [
+        "qf-n003"
+      ],
+      "reason": "kilitli kazanan; source_ok(math machine_ok); curriculum_ok; structure_ok; duplicate_ok; özgünlük=2; paket=QFP"
+    },
+    {
+      "filler_id": "vm-abs-2",
+      "contenders": [
+        "qf-n074",
+        "qfp-tyt-sy-01",
+        "qpn-tyt-sy-01"
+      ],
+      "winner": "qpn-tyt-sy-01",
+      "excluded": [
+        "qf-n074",
+        "qfp-tyt-sy-01"
+      ],
+      "reason": "kilitli kazanan; source_ok(math machine_ok); curriculum_ok; structure_ok; duplicate_ok; özgünlük=2; paket=QPN_REVISION"
+    },
+    {
+      "filler_id": "cv-ec0f4721",
+      "contenders": [
+        "qf-n084",
+        "qfp-s1-sy-01",
+        "qpn-s1-sy-r5"
+      ],
+      "winner": "qpn-s1-sy-r5",
+      "excluded": [
+        "qf-n084",
+        "qfp-s1-sy-01"
+      ],
+      "reason": "kilitli kazanan; source_ok(math machine_ok); curriculum_ok; structure_ok; duplicate_ok; özgünlük=5; paket=QPN_REVISION"
+    },
+    {
+      "filler_id": "vm-fn-1--5-2",
+      "contenders": [
+        "qf-n100",
+        "qfp-tyt-fn-01",
+        "qpn-tyt-fn-01"
+      ],
+      "winner": "qpn-tyt-fn-01",
+      "excluded": [
+        "qf-n100",
+        "qfp-tyt-fn-01"
+      ],
+      "reason": "kilitli kazanan; source_ok(math machine_ok); curriculum_ok; structure_ok; duplicate_ok; özgünlük=5; paket=QPN_REVISION"
+    },
+    {
+      "filler_id": "vm-abs-3",
+      "contenders": [
+        "qfp-tyt-sy-02",
+        "qpn-tyt-sy-02"
+      ],
+      "winner": "qpn-tyt-sy-02",
+      "excluded": [
+        "qfp-tyt-sy-02"
+      ],
+      "reason": "kilitli kazanan; source_ok(math machine_ok); curriculum_ok; structure_ok; duplicate_ok; özgünlük=2; paket=QPN_REVISION"
+    },
+    {
+      "filler_id": "vm-abs-4",
+      "contenders": [
+        "qfp-tyt-sy-03",
+        "qpn-tyt-sy-03"
+      ],
+      "winner": "qpn-tyt-sy-03",
+      "excluded": [
+        "qfp-tyt-sy-03"
+      ],
+      "reason": "kilitli kazanan; source_ok(math machine_ok); curriculum_ok; structure_ok; duplicate_ok; özgünlük=2; paket=QPN_REVISION"
+    },
+    {
+      "filler_id": "vm-abs-5",
+      "contenders": [
+        "qfp-tyt-sy-04",
+        "qpn-tyt-sy-04"
+      ],
+      "winner": "qfp-tyt-sy-04",
+      "excluded": [
+        "qpn-tyt-sy-04"
+      ],
+      "reason": "kilitli kazanan; source_ok(math machine_ok); curriculum_ok; structure_ok; duplicate_ok; özgünlük=2; paket=QFP"
+    },
+    {
+      "filler_id": "vm-abs-6",
+      "contenders": [
+        "qfp-tyt-sy-05",
+        "qpn-tyt-sy-05"
+      ],
+      "winner": "qpn-tyt-sy-05",
+      "excluded": [
+        "qfp-tyt-sy-05"
+      ],
+      "reason": "kilitli kazanan; source_ok(math machine_ok); curriculum_ok; structure_ok; duplicate_ok; özgünlük=2; paket=QPN_REVISION"
+    },
+    {
+      "filler_id": "vm-abs-7",
+      "contenders": [
+        "qfp-tyt-sy-06",
+        "qpn-tyt-sy-06"
+      ],
+      "winner": "qpn-tyt-sy-06",
+      "excluded": [
+        "qfp-tyt-sy-06"
+      ],
+      "reason": "kilitli kazanan; source_ok(math machine_ok); curriculum_ok; structure_ok; duplicate_ok; özgünlük=2; paket=QPN_REVISION"
+    },
+    {
+      "filler_id": "vm-fn-1--4-3",
+      "contenders": [
+        "qfp-tyt-fn-02",
+        "qpn-tyt-fn-02"
+      ],
+      "winner": "qpn-tyt-fn-02",
+      "excluded": [
+        "qfp-tyt-fn-02"
+      ],
+      "reason": "kilitli kazanan; source_ok(math machine_ok); curriculum_ok; structure_ok; duplicate_ok; özgünlük=5; paket=QPN_REVISION"
+    },
+    {
+      "filler_id": "vm-fn-1--3-4",
+      "contenders": [
+        "qfp-tyt-fn-03",
+        "qpn-tyt-fn-03"
+      ],
+      "winner": "qfp-tyt-fn-03",
+      "excluded": [
+        "qpn-tyt-fn-03"
+      ],
+      "reason": "kilitli kazanan; source_ok(math machine_ok); curriculum_ok; structure_ok; duplicate_ok; özgünlük=5; paket=QFP"
+    },
+    {
+      "filler_id": "vm-fn-1--2-5",
+      "contenders": [
+        "qfp-tyt-fn-04",
+        "qpn-tyt-fn-04"
+      ],
+      "winner": "qpn-tyt-fn-04",
+      "excluded": [
+        "qfp-tyt-fn-04"
+      ],
+      "reason": "kilitli kazanan; source_ok(math machine_ok); curriculum_ok; structure_ok; duplicate_ok; özgünlük=5; paket=QPN_REVISION"
+    },
+    {
+      "filler_id": "ay-vm-fn-1--5-2-0",
+      "contenders": [
+        "qfp-ayt-fn-01",
+        "qpn-ayt-fn-01"
+      ],
+      "winner": "qpn-ayt-fn-01",
+      "excluded": [
+        "qfp-ayt-fn-01"
+      ],
+      "reason": "kilitli kazanan; source_ok(math machine_ok); curriculum_ok; structure_ok; duplicate_ok; özgünlük=5; paket=QPN_REVISION"
+    },
+    {
+      "filler_id": "ay-vm-fn-1--4-3-1",
+      "contenders": [
+        "qfp-ayt-fn-02",
+        "qpn-ayt-fn-02"
+      ],
+      "winner": "qpn-ayt-fn-02",
+      "excluded": [
+        "qfp-ayt-fn-02"
+      ],
+      "reason": "kilitli kazanan; source_ok(math machine_ok); curriculum_ok; structure_ok; duplicate_ok; özgünlük=2; paket=QPN_REVISION"
+    },
+    {
+      "filler_id": "ay-vm-fn-1--3-4-2",
+      "contenders": [
+        "qfp-ayt-fn-03",
+        "qpn-ayt-fn-03"
+      ],
+      "winner": "qfp-ayt-fn-03",
+      "excluded": [
+        "qpn-ayt-fn-03"
+      ],
+      "reason": "kilitli kazanan; source_ok(math machine_ok); curriculum_ok; structure_ok; duplicate_ok; özgünlük=5; paket=QFP"
+    },
+    {
+      "filler_id": "ay-vm-fn-1--2-5-3",
+      "contenders": [
+        "qfp-ayt-fn-04",
+        "qpn-ayt-fn-04"
+      ],
+      "winner": "qpn-ayt-fn-04",
+      "excluded": [
+        "qfp-ayt-fn-04"
+      ],
+      "reason": "kilitli kazanan; source_ok(math machine_ok); curriculum_ok; structure_ok; duplicate_ok; özgünlük=2; paket=QPN_REVISION"
+    },
+    {
+      "filler_id": "cv-236c514e",
+      "contenders": [
+        "qfp-s1-sz-01",
+        "qpn-s1-sz-11"
+      ],
+      "winner": null,
+      "excluded": [
+        "qfp-s1-sz-01",
+        "qpn-s1-sz-11"
+      ],
+      "reason": "Kilit: otomatik seçilemez (nsv / insan / kapsam)."
+    },
+    {
+      "filler_id": "cv-7f21640e",
+      "contenders": [
+        "qfp-s1-go-01",
+        "qpn-s1-go-13"
+      ],
+      "winner": null,
+      "excluded": [
+        "qfp-s1-go-01",
+        "qpn-s1-go-13"
+      ],
+      "reason": "Kilit: otomatik seçilemez (nsv / insan / kapsam)."
+    },
+    {
+      "filler_id": "cv-802165a1",
+      "contenders": [
+        "qfp-s1-go-02",
+        "qpn-s1-go-19"
+      ],
+      "winner": null,
+      "excluded": [
+        "qfp-s1-go-02",
+        "qpn-s1-go-19"
+      ],
+      "reason": "Kilit: otomatik seçilemez (nsv / insan / kapsam)."
+    },
+    {
+      "filler_id": "cv-5020af23",
+      "contenders": [
+        "qfp-s1-km-01",
+        "qpn-s1-km-15"
+      ],
+      "winner": null,
+      "excluded": [
+        "qfp-s1-km-01",
+        "qpn-s1-km-15"
+      ],
+      "reason": "Kilit: otomatik seçilemez (nsv / insan / kapsam)."
+    },
+    {
+      "filler_id": "cv-eb0f458e",
+      "contenders": [
+        "qfp-s1-sy-02",
+        "qpn-s1-sy-r10"
+      ],
+      "winner": "qpn-s1-sy-r10",
+      "excluded": [
+        "qfp-s1-sy-02"
+      ],
+      "reason": "kilitli kazanan; source_ok(math machine_ok); curriculum_ok; structure_ok; duplicate_ok; özgünlük=5; paket=QPN_REVISION"
+    },
+    {
+      "filler_id": "cv-d4fa352a",
+      "contenders": [
+        "qfp-s1-geo-01",
+        "qpn-s1-geo-cs"
+      ],
+      "winner": "qpn-s1-geo-cs",
+      "excluded": [
+        "qfp-s1-geo-01"
+      ],
+      "reason": "kilitli kazanan; source_ok(math machine_ok); curriculum_ok; structure_ok; duplicate_ok; özgünlük=5; paket=QPN_REVISION"
+    },
+    {
+      "filler_id": "cv-d5fa36bd",
+      "contenders": [
+        "qfp-s1-geo-02",
+        "qpn-s1-geo-or"
+      ],
+      "winner": "qpn-s1-geo-or",
+      "excluded": [
+        "qfp-s1-geo-02"
+      ],
+      "reason": "kilitli kazanan; source_ok(math machine_ok); curriculum_ok; structure_ok; duplicate_ok; özgünlük=5; paket=QPN_REVISION"
+    },
+    {
+      "filler_id": "cv-9b25363b",
+      "contenders": [
+        "qfp-s1-ol-01",
+        "qpn-s1-ol-ns"
+      ],
+      "winner": "qpn-s1-ol-ns",
+      "excluded": [
+        "qfp-s1-ol-01"
+      ],
+      "reason": "kilitli kazanan; source_ok(math machine_ok); curriculum_ok; structure_ok; duplicate_ok; özgünlük=2; paket=QPN_REVISION"
+    }
+  ],
+  "replacements": [
+    {
+      "quality_id": "qf-n002",
+      "target_filler_id": "cv-18e534aa",
+      "level": "1. Sınıf",
+      "subject": "Matematik",
+      "topic": "Toplama",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-n004",
+      "target_filler_id": "cv-84b3a16d",
+      "level": "1. Sınıf",
+      "subject": "Matematik",
+      "topic": "Çıkarma",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-1-tr-mi",
+      "target_filler_id": "cv-2881a41f",
+      "level": "1. Sınıf",
+      "subject": "Türkçe",
+      "topic": "Okuma yazma",
+      "status": "source_verified",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-n005",
+      "target_filler_id": "cv-2781a28c",
+      "level": "1. Sınıf",
+      "subject": "Türkçe",
+      "topic": "Okuma yazma",
+      "status": "source_verified",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-2-mul-6-4",
+      "target_filler_id": "cv-2912b1b8",
+      "level": "2. Sınıf",
+      "subject": "Matematik",
+      "topic": "Çarpma girişi",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-n006",
+      "target_filler_id": "cv-2a12b34b",
+      "level": "2. Sınıf",
+      "subject": "Matematik",
+      "topic": "Çarpma girişi",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-n007",
+      "target_filler_id": "cv-2b12b4de",
+      "level": "2. Sınıf",
+      "subject": "Matematik",
+      "topic": "Çarpma girişi",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-n008",
+      "target_filler_id": "cv-c54254a1",
+      "level": "2. Sınıf",
+      "subject": "Matematik",
+      "topic": "Problemler",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-n010",
+      "target_filler_id": "cv-d57c94fa",
+      "level": "2. Sınıf",
+      "subject": "Türkçe",
+      "topic": "Yazım",
+      "status": "source_verified",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-3-frac-half",
+      "target_filler_id": "cv-ba634ffb",
+      "level": "3. Sınıf",
+      "subject": "Matematik",
+      "topic": "Kesir girişi",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-n011",
+      "target_filler_id": "cv-b9634e68",
+      "level": "3. Sınıf",
+      "subject": "Matematik",
+      "topic": "Kesir girişi",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-n012",
+      "target_filler_id": "cv-c061e927",
+      "level": "3. Sınıf",
+      "subject": "Matematik",
+      "topic": "Çarpma-bölme",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-n013",
+      "target_filler_id": "cv-bf61e794",
+      "level": "3. Sınıf",
+      "subject": "Matematik",
+      "topic": "Çarpma-bölme",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-4-fen-kuvvet",
+      "target_filler_id": "cv-672f3090",
+      "level": "4. Sınıf",
+      "subject": "Fen",
+      "topic": "Kuvvet",
+      "status": "source_verified",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-n018",
+      "target_filler_id": "cv-682f3223",
+      "level": "4. Sınıf",
+      "subject": "Fen",
+      "topic": "Kuvvet",
+      "status": "source_verified",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-n019",
+      "target_filler_id": "cv-973c6c70",
+      "level": "4. Sınıf",
+      "subject": "Matematik",
+      "topic": "Kesirler",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-n020",
+      "target_filler_id": "cv-983c6e03",
+      "level": "4. Sınıf",
+      "subject": "Matematik",
+      "topic": "Kesirler",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-n021",
+      "target_filler_id": "cv-aa8a8555",
+      "level": "4. Sınıf",
+      "subject": "Matematik",
+      "topic": "Doğal sayılar",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-n024",
+      "target_filler_id": "cv-f2880f78",
+      "level": "4. Sınıf",
+      "subject": "Türkçe",
+      "topic": "Yazım-noktalama",
+      "status": "source_verified",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-5-frac-eq",
+      "target_filler_id": "cv-7ba11a5f",
+      "level": "5. Sınıf",
+      "subject": "Matematik",
+      "topic": "Kesirler",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-n025",
+      "target_filler_id": "cv-7aa118cc",
+      "level": "5. Sınıf",
+      "subject": "Matematik",
+      "topic": "Kesirler",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-n026",
+      "target_filler_id": "cv-7da11d85",
+      "level": "5. Sınıf",
+      "subject": "Matematik",
+      "topic": "Kesirler",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-n027",
+      "target_filler_id": "cv-b367c569",
+      "level": "5. Sınıf",
+      "subject": "Fen",
+      "topic": "Kuvvetin ölçülmesi",
+      "status": "source_verified",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-n028",
+      "target_filler_id": "cv-b267c3d6",
+      "level": "5. Sınıf",
+      "subject": "Fen",
+      "topic": "Kuvvetin ölçülmesi",
+      "status": "source_verified",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-n032",
+      "target_filler_id": "cv-fa9209f0",
+      "level": "5. Sınıf",
+      "subject": "Türkçe",
+      "topic": "Yazım",
+      "status": "source_verified",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-6-int-neg",
+      "target_filler_id": "cv-7224a4f6",
+      "level": "6. Sınıf",
+      "subject": "Matematik",
+      "topic": "Tam sayılar",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-n033",
+      "target_filler_id": "cv-7324a689",
+      "level": "6. Sınıf",
+      "subject": "Matematik",
+      "topic": "Tam sayılar",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-n034",
+      "target_filler_id": "cv-7024a1d0",
+      "level": "6. Sınıf",
+      "subject": "Matematik",
+      "topic": "Tam sayılar",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-n035",
+      "target_filler_id": "cv-7124a363",
+      "level": "6. Sınıf",
+      "subject": "Matematik",
+      "topic": "Tam sayılar",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-n036",
+      "target_filler_id": "cv-75846f8",
+      "level": "6. Sınıf",
+      "subject": "Matematik",
+      "topic": "Çarpanlar katlar",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-7-work",
+      "target_filler_id": "cv-3b2c28ac",
+      "level": "7. Sınıf",
+      "subject": "Matematik",
+      "topic": "Oran-orantı",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-n040",
+      "target_filler_id": "cv-3c2c2a3f",
+      "level": "7. Sınıf",
+      "subject": "Matematik",
+      "topic": "Oran-orantı",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-n041",
+      "target_filler_id": "cv-a082a851",
+      "level": "7. Sınıf",
+      "subject": "Matematik",
+      "topic": "Yüzdeler",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-n042",
+      "target_filler_id": "cv-9f82a6be",
+      "level": "7. Sınıf",
+      "subject": "Matematik",
+      "topic": "Yüzdeler",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-n043",
+      "target_filler_id": "cv-febec29c",
+      "level": "7. Sınıf",
+      "subject": "Matematik",
+      "topic": "Eşitlik-denklem",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-8-exp",
+      "target_filler_id": "vm-pow-2-2-2-8. -6",
+      "level": "8. Sınıf",
+      "subject": "Matematik",
+      "topic": "Üslü ifadeler",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-n048",
+      "target_filler_id": "vm-pow-3-2-2-8. -36",
+      "level": "8. Sınıf",
+      "subject": "Matematik",
+      "topic": "Üslü ifadeler",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-n050",
+      "target_filler_id": "vm-sqrt-4",
+      "level": "8. Sınıf",
+      "subject": "Matematik",
+      "topic": "Kareköklü",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-n054",
+      "target_filler_id": "cv-6699124",
+      "level": "8. Sınıf",
+      "subject": "Türkçe",
+      "topic": "Yazım-noktalama",
+      "status": "source_verified",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-n055",
+      "target_filler_id": "cv-bffe0bb4",
+      "level": "9. Sınıf",
+      "subject": "Matematik",
+      "topic": "Üslü İfadeler",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-n056",
+      "target_filler_id": "cv-4ff76023",
+      "level": "9. Sınıf",
+      "subject": "Matematik",
+      "topic": "Denklemler",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-n057",
+      "target_filler_id": "cv-984685ae",
+      "level": "9. Sınıf",
+      "subject": "Matematik",
+      "topic": "Kümeler",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-10-fn",
+      "target_filler_id": "cv-d4d8a88b",
+      "level": "10. Sınıf",
+      "subject": "Matematik",
+      "topic": "Fonksiyonlar",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-n059",
+      "target_filler_id": "cv-d3d8a6f8",
+      "level": "10. Sınıf",
+      "subject": "Matematik",
+      "topic": "Fonksiyonlar",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-n060",
+      "target_filler_id": "cv-356a5835",
+      "level": "10. Sınıf",
+      "subject": "Matematik",
+      "topic": "Polinomlar",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-tyt-gcd",
+      "target_filler_id": "vm-gcd-6-12-0",
+      "level": "YKS TYT",
+      "subject": "Matematik",
+      "topic": "Temel kavramlar",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-n061",
+      "target_filler_id": "vm-gcd-6-18-1",
+      "level": "YKS TYT",
+      "subject": "Matematik",
+      "topic": "Temel kavramlar",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-n062",
+      "target_filler_id": "vm-gcd-6-24-2",
+      "level": "YKS TYT",
+      "subject": "Matematik",
+      "topic": "Temel kavramlar",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-tyt-lin",
+      "target_filler_id": "vm-lin-2--1-6",
+      "level": "YKS TYT",
+      "subject": "Matematik",
+      "topic": "Denklemler",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-n063",
+      "target_filler_id": "vm-lin-2-1-7",
+      "level": "YKS TYT",
+      "subject": "Matematik",
+      "topic": "Denklemler",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-tyt-sqrt",
+      "target_filler_id": "vm-pow-2-2-2-YKS-6",
+      "level": "YKS TYT",
+      "subject": "Matematik",
+      "topic": "Üslü ve köklü sayılar",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-n064",
+      "target_filler_id": "vm-pow-3-2-2-YKS-36",
+      "level": "YKS TYT",
+      "subject": "Matematik",
+      "topic": "Üslü ve köklü sayılar",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-n065",
+      "target_filler_id": "vm-pct-10-40-0",
+      "level": "YKS TYT",
+      "subject": "Matematik",
+      "topic": "Problemler",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-n066",
+      "target_filler_id": "cv-91d63fa",
+      "level": "YKS TYT",
+      "subject": "Matematik",
+      "topic": "Kümeler",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-kpss-pct",
+      "target_filler_id": "vm-pct-10-60-1",
+      "level": "KPSS Genel Yetenek",
+      "subject": "Matematik",
+      "topic": "Yüzde-faiz",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-n067",
+      "target_filler_id": "vm-pct-10-80-2",
+      "level": "KPSS Genel Yetenek",
+      "subject": "Matematik",
+      "topic": "Yüzde-faiz",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-kpss-num",
+      "target_filler_id": "vm-pct-10-120-3",
+      "level": "KPSS Genel Yetenek",
+      "subject": "Matematik",
+      "topic": "Sayı problemleri",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-n068",
+      "target_filler_id": "vm-pct-10-200-4",
+      "level": "KPSS Genel Yetenek",
+      "subject": "Matematik",
+      "topic": "Sayı problemleri",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-n069",
+      "target_filler_id": "cv-7bcde8b3",
+      "level": "KPSS Genel Yetenek",
+      "subject": "Matematik",
+      "topic": "Oran-orantı",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-n071",
+      "target_filler_id": "cv-59be1684",
+      "level": "KPSS Genel Yetenek",
+      "subject": "Türkçe",
+      "topic": "Yazım-noktalama",
+      "status": "source_verified",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-n072",
+      "target_filler_id": "cv-715cd763",
+      "level": "YKS TYT",
+      "subject": "Türkçe",
+      "topic": "Yazım ve noktalama",
+      "status": "source_verified",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-n075",
+      "target_filler_id": "vm-gcd-6-30-3",
+      "level": "YKS TYT",
+      "subject": "Matematik",
+      "topic": "Bölünebilme",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-n076",
+      "target_filler_id": "8p-vm-fact-2-0",
+      "level": "8. Sınıf",
+      "subject": "Matematik",
+      "topic": "Olasılık",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-n077",
+      "target_filler_id": "8p-vm-fact-3-1",
+      "level": "8. Sınıf",
+      "subject": "Matematik",
+      "topic": "Olasılık",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-n078",
+      "target_filler_id": "cv-6dbd357d",
+      "level": "4. Sınıf",
+      "subject": "Matematik",
+      "topic": "Geometri",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-n079",
+      "target_filler_id": "cv-6cbd33ea",
+      "level": "4. Sınıf",
+      "subject": "Matematik",
+      "topic": "Geometri",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-n080",
+      "target_filler_id": "cv-f362051f",
+      "level": "7. Sınıf",
+      "subject": "Matematik",
+      "topic": "Doğrular ve açılar",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-n083",
+      "target_filler_id": "cv-8045fa6e",
+      "level": "5. Sınıf",
+      "subject": "Fen",
+      "topic": "Işık",
+      "status": "source_verified",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-n086",
+      "target_filler_id": "cv-b6638eca",
+      "level": "2. Sınıf",
+      "subject": "Matematik",
+      "topic": "Saat",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-n087",
+      "target_filler_id": "cv-252effed",
+      "level": "KPSS Genel Yetenek",
+      "subject": "Matematik",
+      "topic": "Temel kavramlar",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-n088",
+      "target_filler_id": "cv-7b486f1a",
+      "level": "KPSS Genel Yetenek",
+      "subject": "Matematik",
+      "topic": "İşlem",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-n089",
+      "target_filler_id": "vm-md-2",
+      "level": "YKS TYT",
+      "subject": "Matematik",
+      "topic": "Mutlak değer",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-n090",
+      "target_filler_id": "cv-c027bd91",
+      "level": "9. Sınıf",
+      "subject": "Matematik",
+      "topic": "Köklü İfadeler",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-n091",
+      "target_filler_id": "cv-fca9ab0f",
+      "level": "6. Sınıf",
+      "subject": "Matematik",
+      "topic": "Ondalık",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-n092",
+      "target_filler_id": "cv-cebf020c",
+      "level": "7. Sınıf",
+      "subject": "Matematik",
+      "topic": "Rasyonel sayılar",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-n093",
+      "target_filler_id": "vm-gcd-6-36-4",
+      "level": "8. Sınıf",
+      "subject": "Matematik",
+      "topic": "Çarpanlar katlar",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qf-n094",
+      "target_filler_id": "cv-a09757a2",
+      "level": "5. Sınıf",
+      "subject": "Matematik",
+      "topic": "İşlemler",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qfp-tyt-fn-05",
+      "target_filler_id": "vm-fn-1-0-7",
+      "level": "YKS TYT",
+      "subject": "Matematik",
+      "topic": "Fonksiyon",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qfp-ayt-fn-05",
+      "target_filler_id": "ay-vm-fn-1--1-6-4",
+      "level": "YKS AYT",
+      "subject": "Matematik",
+      "topic": "Fonksiyonlar",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qfp-ayt-fn-06",
+      "target_filler_id": "ay-vm-fn-1-0-7-5",
+      "level": "YKS AYT",
+      "subject": "Matematik",
+      "topic": "Fonksiyonlar",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qfp-s1-ol-02",
+      "target_filler_id": "cv-9a2534a8",
+      "level": "1. Sınıf",
+      "subject": "Matematik",
+      "topic": "Ölçme",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qpn-tyt-sy-07",
+      "target_filler_id": "vm-abs-15",
+      "level": "YKS TYT",
+      "subject": "Matematik",
+      "topic": "Sayılar",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qpn-tyt-sy-08",
+      "target_filler_id": "vm-abs-16",
+      "level": "YKS TYT",
+      "subject": "Matematik",
+      "topic": "Sayılar",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qpn-s1-sy-ob",
+      "target_filler_id": "cv-ef0f4bda",
+      "level": "1. Sınıf",
+      "subject": "Matematik",
+      "topic": "Sayılar 1-20",
+      "status": "machine_ok",
+      "reason": "Başlangıç 84: çakışmasız sıralı replace + tüm kapılar."
+    },
+    {
+      "quality_id": "qpn-s1-ad-cm",
+      "target_filler_id": "cv-16e53184",
+      "level": "1. Sınıf",
+      "subject": "Matematik",
+      "topic": "Toplama",
+      "status": "machine_ok",
+      "reason": "Çakışma çözümü cv-16e53184: kilitli kazanan; source_ok(math machine_ok); curriculum_ok; structure_ok; duplicate_ok; özgünlük=2; paket=QPN_REVISION"
+    },
+    {
+      "quality_id": "qpn-s1-ad-ms",
+      "target_filler_id": "cv-17e53317",
+      "level": "1. Sınıf",
+      "subject": "Matematik",
+      "topic": "Toplama",
+      "status": "machine_ok",
+      "reason": "Çakışma çözümü cv-17e53317: kilitli kazanan; source_ok(math machine_ok); curriculum_ok; structure_ok; duplicate_ok; özgünlük=5; paket=QPN_REVISION"
+    },
+    {
+      "quality_id": "qfp-s1-sb-01",
+      "target_filler_id": "cv-83b39fda",
+      "level": "1. Sınıf",
+      "subject": "Matematik",
+      "topic": "Çıkarma",
+      "status": "machine_ok",
+      "reason": "Çakışma çözümü cv-83b39fda: kilitli kazanan; source_ok(math machine_ok); curriculum_ok; structure_ok; duplicate_ok; özgünlük=2; paket=QFP"
+    },
+    {
+      "quality_id": "qpn-tyt-sy-01",
+      "target_filler_id": "vm-abs-2",
+      "level": "YKS TYT",
+      "subject": "Matematik",
+      "topic": "Sayılar",
+      "status": "machine_ok",
+      "reason": "Çakışma çözümü vm-abs-2: kilitli kazanan; source_ok(math machine_ok); curriculum_ok; structure_ok; duplicate_ok; özgünlük=2; paket=QPN_REVISION"
+    },
+    {
+      "quality_id": "qpn-s1-sy-r5",
+      "target_filler_id": "cv-ec0f4721",
+      "level": "1. Sınıf",
+      "subject": "Matematik",
+      "topic": "Sayılar 1-20",
+      "status": "machine_ok",
+      "reason": "Çakışma çözümü cv-ec0f4721: kilitli kazanan; source_ok(math machine_ok); curriculum_ok; structure_ok; duplicate_ok; özgünlük=5; paket=QPN_REVISION"
+    },
+    {
+      "quality_id": "qpn-tyt-fn-01",
+      "target_filler_id": "vm-fn-1--5-2",
+      "level": "YKS TYT",
+      "subject": "Matematik",
+      "topic": "Fonksiyon",
+      "status": "machine_ok",
+      "reason": "Çakışma çözümü vm-fn-1--5-2: kilitli kazanan; source_ok(math machine_ok); curriculum_ok; structure_ok; duplicate_ok; özgünlük=5; paket=QPN_REVISION"
+    },
+    {
+      "quality_id": "qpn-tyt-sy-02",
+      "target_filler_id": "vm-abs-3",
+      "level": "YKS TYT",
+      "subject": "Matematik",
+      "topic": "Sayılar",
+      "status": "machine_ok",
+      "reason": "Çakışma çözümü vm-abs-3: kilitli kazanan; source_ok(math machine_ok); curriculum_ok; structure_ok; duplicate_ok; özgünlük=2; paket=QPN_REVISION"
+    },
+    {
+      "quality_id": "qpn-tyt-sy-03",
+      "target_filler_id": "vm-abs-4",
+      "level": "YKS TYT",
+      "subject": "Matematik",
+      "topic": "Sayılar",
+      "status": "machine_ok",
+      "reason": "Çakışma çözümü vm-abs-4: kilitli kazanan; source_ok(math machine_ok); curriculum_ok; structure_ok; duplicate_ok; özgünlük=2; paket=QPN_REVISION"
+    },
+    {
+      "quality_id": "qfp-tyt-sy-04",
+      "target_filler_id": "vm-abs-5",
+      "level": "YKS TYT",
+      "subject": "Matematik",
+      "topic": "Sayılar",
+      "status": "machine_ok",
+      "reason": "Çakışma çözümü vm-abs-5: kilitli kazanan; source_ok(math machine_ok); curriculum_ok; structure_ok; duplicate_ok; özgünlük=2; paket=QFP"
+    },
+    {
+      "quality_id": "qpn-tyt-sy-05",
+      "target_filler_id": "vm-abs-6",
+      "level": "YKS TYT",
+      "subject": "Matematik",
+      "topic": "Sayılar",
+      "status": "machine_ok",
+      "reason": "Çakışma çözümü vm-abs-6: kilitli kazanan; source_ok(math machine_ok); curriculum_ok; structure_ok; duplicate_ok; özgünlük=2; paket=QPN_REVISION"
+    },
+    {
+      "quality_id": "qpn-tyt-sy-06",
+      "target_filler_id": "vm-abs-7",
+      "level": "YKS TYT",
+      "subject": "Matematik",
+      "topic": "Sayılar",
+      "status": "machine_ok",
+      "reason": "Çakışma çözümü vm-abs-7: kilitli kazanan; source_ok(math machine_ok); curriculum_ok; structure_ok; duplicate_ok; özgünlük=2; paket=QPN_REVISION"
+    },
+    {
+      "quality_id": "qpn-tyt-fn-02",
+      "target_filler_id": "vm-fn-1--4-3",
+      "level": "YKS TYT",
+      "subject": "Matematik",
+      "topic": "Fonksiyon",
+      "status": "machine_ok",
+      "reason": "Çakışma çözümü vm-fn-1--4-3: kilitli kazanan; source_ok(math machine_ok); curriculum_ok; structure_ok; duplicate_ok; özgünlük=5; paket=QPN_REVISION"
+    },
+    {
+      "quality_id": "qfp-tyt-fn-03",
+      "target_filler_id": "vm-fn-1--3-4",
+      "level": "YKS TYT",
+      "subject": "Matematik",
+      "topic": "Fonksiyon",
+      "status": "machine_ok",
+      "reason": "Çakışma çözümü vm-fn-1--3-4: kilitli kazanan; source_ok(math machine_ok); curriculum_ok; structure_ok; duplicate_ok; özgünlük=5; paket=QFP"
+    },
+    {
+      "quality_id": "qpn-tyt-fn-04",
+      "target_filler_id": "vm-fn-1--2-5",
+      "level": "YKS TYT",
+      "subject": "Matematik",
+      "topic": "Fonksiyon",
+      "status": "machine_ok",
+      "reason": "Çakışma çözümü vm-fn-1--2-5: kilitli kazanan; source_ok(math machine_ok); curriculum_ok; structure_ok; duplicate_ok; özgünlük=5; paket=QPN_REVISION"
+    },
+    {
+      "quality_id": "qpn-ayt-fn-01",
+      "target_filler_id": "ay-vm-fn-1--5-2-0",
+      "level": "YKS AYT",
+      "subject": "Matematik",
+      "topic": "Fonksiyonlar",
+      "status": "machine_ok",
+      "reason": "Çakışma çözümü ay-vm-fn-1--5-2-0: kilitli kazanan; source_ok(math machine_ok); curriculum_ok; structure_ok; duplicate_ok; özgünlük=5; paket=QPN_REVISION"
+    },
+    {
+      "quality_id": "qpn-ayt-fn-02",
+      "target_filler_id": "ay-vm-fn-1--4-3-1",
+      "level": "YKS AYT",
+      "subject": "Matematik",
+      "topic": "Fonksiyonlar",
+      "status": "machine_ok",
+      "reason": "Çakışma çözümü ay-vm-fn-1--4-3-1: kilitli kazanan; source_ok(math machine_ok); curriculum_ok; structure_ok; duplicate_ok; özgünlük=2; paket=QPN_REVISION"
+    },
+    {
+      "quality_id": "qfp-ayt-fn-03",
+      "target_filler_id": "ay-vm-fn-1--3-4-2",
+      "level": "YKS AYT",
+      "subject": "Matematik",
+      "topic": "Fonksiyonlar",
+      "status": "machine_ok",
+      "reason": "Çakışma çözümü ay-vm-fn-1--3-4-2: kilitli kazanan; source_ok(math machine_ok); curriculum_ok; structure_ok; duplicate_ok; özgünlük=5; paket=QFP"
+    },
+    {
+      "quality_id": "qpn-ayt-fn-04",
+      "target_filler_id": "ay-vm-fn-1--2-5-3",
+      "level": "YKS AYT",
+      "subject": "Matematik",
+      "topic": "Fonksiyonlar",
+      "status": "machine_ok",
+      "reason": "Çakışma çözümü ay-vm-fn-1--2-5-3: kilitli kazanan; source_ok(math machine_ok); curriculum_ok; structure_ok; duplicate_ok; özgünlük=2; paket=QPN_REVISION"
+    },
+    {
+      "quality_id": "qpn-s1-sy-r10",
+      "target_filler_id": "cv-eb0f458e",
+      "level": "1. Sınıf",
+      "subject": "Matematik",
+      "topic": "Sayılar 1-20",
+      "status": "machine_ok",
+      "reason": "Çakışma çözümü cv-eb0f458e: kilitli kazanan; source_ok(math machine_ok); curriculum_ok; structure_ok; duplicate_ok; özgünlük=5; paket=QPN_REVISION"
+    },
+    {
+      "quality_id": "qpn-s1-geo-cs",
+      "target_filler_id": "cv-d4fa352a",
+      "level": "1. Sınıf",
+      "subject": "Matematik",
+      "topic": "Geometrik şekiller",
+      "status": "machine_ok",
+      "reason": "Çakışma çözümü cv-d4fa352a: kilitli kazanan; source_ok(math machine_ok); curriculum_ok; structure_ok; duplicate_ok; özgünlük=5; paket=QPN_REVISION"
+    },
+    {
+      "quality_id": "qpn-s1-geo-or",
+      "target_filler_id": "cv-d5fa36bd",
+      "level": "1. Sınıf",
+      "subject": "Matematik",
+      "topic": "Geometrik şekiller",
+      "status": "machine_ok",
+      "reason": "Çakışma çözümü cv-d5fa36bd: kilitli kazanan; source_ok(math machine_ok); curriculum_ok; structure_ok; duplicate_ok; özgünlük=5; paket=QPN_REVISION"
+    },
+    {
+      "quality_id": "qpn-s1-ol-ns",
+      "target_filler_id": "cv-9b25363b",
+      "level": "1. Sınıf",
+      "subject": "Matematik",
+      "topic": "Ölçme",
+      "status": "machine_ok",
+      "reason": "Çakışma çözümü cv-9b25363b: kilitli kazanan; source_ok(math machine_ok); curriculum_ok; structure_ok; duplicate_ok; özgünlük=2; paket=QPN_REVISION"
+    }
+  ],
+  "excluded": [
+    {
+      "quality_id": "qf-1-add-7-5",
+      "pack": "QUALITY_FIX_PACK",
+      "topic": "1. Sınıf|Matematik|Toplama",
+      "status": "machine_ok",
+      "reason": "çakışma kaybeden; kazanan qpn-s1-ad-cm"
+    },
+    {
+      "quality_id": "qf-n001",
+      "pack": "QUALITY_FIX_PACK",
+      "topic": "1. Sınıf|Matematik|Toplama",
+      "status": "machine_ok",
+      "reason": "çakışma kaybeden; kazanan qpn-s1-ad-ms"
+    },
+    {
+      "quality_id": "qf-n003",
+      "pack": "QUALITY_FIX_PACK",
+      "topic": "1. Sınıf|Matematik|Çıkarma",
+      "status": "machine_ok",
+      "reason": "çakışma kaybeden; kazanan qfp-s1-sb-01"
+    },
+    {
+      "quality_id": "qf-2-tr-ana",
+      "pack": "QUALITY_FIX_PACK",
+      "topic": "2. Sınıf|Türkçe|Okuduğunu anlama",
+      "status": "needs_source_verification",
+      "reason": "needs_source_verification"
+    },
+    {
+      "quality_id": "qf-n009",
+      "pack": "QUALITY_FIX_PACK",
+      "topic": "2. Sınıf|Türkçe|Yazım",
+      "status": "needs_source_verification",
+      "reason": "needs_source_verification"
+    },
+    {
+      "quality_id": "qf-n014",
+      "pack": "QUALITY_FIX_PACK",
+      "topic": "3. Sınıf|Türkçe|Paragraf",
+      "status": "needs_source_verification",
+      "reason": "needs_source_verification"
+    },
+    {
+      "quality_id": "qf-n015",
+      "pack": "QUALITY_FIX_PACK",
+      "topic": "3. Sınıf|Türkçe|Paragraf",
+      "status": "needs_source_verification",
+      "reason": "needs_source_verification"
+    },
+    {
+      "quality_id": "qf-n016",
+      "pack": "QUALITY_FIX_PACK",
+      "topic": "3. Sınıf|Türkçe|Paragraf",
+      "status": "needs_source_verification",
+      "reason": "needs_source_verification"
+    },
+    {
+      "quality_id": "qf-n017",
+      "pack": "QUALITY_FIX_PACK",
+      "topic": "3. Sınıf|Türkçe|Paragraf",
+      "status": "needs_source_verification",
+      "reason": "needs_source_verification"
+    },
+    {
+      "quality_id": "qf-4-tr-goz",
+      "pack": "QUALITY_FIX_PACK",
+      "topic": "4. Sınıf|Türkçe|Paragraf",
+      "status": "needs_source_verification",
+      "reason": "needs_source_verification"
+    },
+    {
+      "quality_id": "qf-n022",
+      "pack": "QUALITY_FIX_PACK",
+      "topic": "4. Sınıf|Türkçe|Paragraf",
+      "status": "needs_source_verification",
+      "reason": "needs_source_verification"
+    },
+    {
+      "quality_id": "qf-n023",
+      "pack": "QUALITY_FIX_PACK",
+      "topic": "4. Sınıf|Türkçe|Paragraf",
+      "status": "needs_source_verification",
+      "reason": "needs_source_verification"
+    },
+    {
+      "quality_id": "qf-n029",
+      "pack": "QUALITY_FIX_PACK",
+      "topic": "5. Sınıf|Türkçe|Sözcükte anlam",
+      "status": "needs_source_verification",
+      "reason": "needs_source_verification"
+    },
+    {
+      "quality_id": "qf-n030",
+      "pack": "QUALITY_FIX_PACK",
+      "topic": "5. Sınıf|Türkçe|Sözcükte anlam",
+      "status": "needs_source_verification",
+      "reason": "needs_source_verification"
+    },
+    {
+      "quality_id": "qf-n031",
+      "pack": "QUALITY_FIX_PACK",
+      "topic": "5. Sınıf|Türkçe|Paragraf",
+      "status": "needs_source_verification",
+      "reason": "needs_source_verification"
+    },
+    {
+      "quality_id": "qf-6-fen-isi",
+      "pack": "QUALITY_FIX_PACK",
+      "topic": "6. Sınıf|Fen|Madde ve ısı",
+      "status": "needs_source_verification",
+      "reason": "needs_source_verification"
+    },
+    {
+      "quality_id": "qf-n037",
+      "pack": "QUALITY_FIX_PACK",
+      "topic": "6. Sınıf|Fen|Madde ve ısı",
+      "status": "needs_source_verification",
+      "reason": "needs_source_verification"
+    },
+    {
+      "quality_id": "qf-n038",
+      "pack": "QUALITY_FIX_PACK",
+      "topic": "6. Sınıf|Sosyal|İpek Yolu",
+      "status": "needs_human",
+      "reason": "needs_human"
+    },
+    {
+      "quality_id": "qf-n039",
+      "pack": "QUALITY_FIX_PACK",
+      "topic": "6. Sınıf|Türkçe|Paragraf",
+      "status": "needs_source_verification",
+      "reason": "needs_source_verification"
+    },
+    {
+      "quality_id": "qf-n044",
+      "pack": "QUALITY_FIX_PACK",
+      "topic": "7. Sınıf|Fen|Hücre ve mitoz",
+      "status": "needs_source_verification",
+      "reason": "needs_source_verification"
+    },
+    {
+      "quality_id": "qf-n045",
+      "pack": "QUALITY_FIX_PACK",
+      "topic": "7. Sınıf|Fen|Hücre ve mitoz",
+      "status": "needs_source_verification",
+      "reason": "needs_source_verification"
+    },
+    {
+      "quality_id": "qf-n046",
+      "pack": "QUALITY_FIX_PACK",
+      "topic": "7. Sınıf|Türkçe|Paragraf",
+      "status": "needs_source_verification",
+      "reason": "needs_source_verification"
+    },
+    {
+      "quality_id": "qf-n047",
+      "pack": "QUALITY_FIX_PACK",
+      "topic": "7. Sınıf|Türkçe|Anlatım bozukluğu",
+      "status": "needs_source_verification",
+      "reason": "needs_source_verification"
+    },
+    {
+      "quality_id": "qf-n049",
+      "pack": "QUALITY_FIX_PACK",
+      "topic": "8. Sınıf|Matematik|Üslü ifadeler",
+      "status": "machine_ok",
+      "reason": "no_action (konuda yeterli gerçek soru / filler yok)"
+    },
+    {
+      "quality_id": "qf-8-fen-p",
+      "pack": "QUALITY_FIX_PACK",
+      "topic": "8. Sınıf|Fen|Basınç",
+      "status": "needs_source_verification",
+      "reason": "needs_source_verification"
+    },
+    {
+      "quality_id": "qf-n051",
+      "pack": "QUALITY_FIX_PACK",
+      "topic": "8. Sınıf|Fen|Basınç",
+      "status": "needs_source_verification",
+      "reason": "needs_source_verification"
+    },
+    {
+      "quality_id": "qf-8-ink-mm",
+      "pack": "QUALITY_FIX_PACK",
+      "topic": "8. Sınıf|İnkılap Tarihi|Millî mücadele",
+      "status": "needs_human",
+      "reason": "needs_human"
+    },
+    {
+      "quality_id": "qf-n052",
+      "pack": "QUALITY_FIX_PACK",
+      "topic": "8. Sınıf|İnkılap Tarihi|Millî mücadele",
+      "status": "needs_source_verification",
+      "reason": "needs_source_verification"
+    },
+    {
+      "quality_id": "qf-n053",
+      "pack": "QUALITY_FIX_PACK",
+      "topic": "8. Sınıf|Türkçe|Paragraf",
+      "status": "needs_source_verification",
+      "reason": "needs_source_verification"
+    },
+    {
+      "quality_id": "qf-n058",
+      "pack": "QUALITY_FIX_PACK",
+      "topic": "9. Sınıf|Fizik|Hareket ve Kuvvet",
+      "status": "needs_source_verification",
+      "reason": "needs_source_verification"
+    },
+    {
+      "quality_id": "qf-n070",
+      "pack": "QUALITY_FIX_PACK",
+      "topic": "KPSS Genel Yetenek|Türkçe|Paragraf",
+      "status": "needs_source_verification",
+      "reason": "needs_source_verification"
+    },
+    {
+      "quality_id": "qf-n073",
+      "pack": "QUALITY_FIX_PACK",
+      "topic": "YKS TYT|Türkçe|Paragraf",
+      "status": "needs_source_verification",
+      "reason": "needs_source_verification"
+    },
+    {
+      "quality_id": "qf-n074",
+      "pack": "QUALITY_FIX_PACK",
+      "topic": "YKS TYT|Matematik|Sayılar",
+      "status": "machine_ok",
+      "reason": "çakışma kaybeden; kazanan qpn-tyt-sy-01"
+    },
+    {
+      "quality_id": "qf-n081",
+      "pack": "QUALITY_FIX_PACK",
+      "topic": "3. Sınıf|Fen|Beş duyu",
+      "status": "needs_source_verification",
+      "reason": "needs_source_verification"
+    },
+    {
+      "quality_id": "qf-n082",
+      "pack": "QUALITY_FIX_PACK",
+      "topic": "3. Sınıf|Fen|Madde",
+      "status": "needs_source_verification",
+      "reason": "needs_source_verification"
+    },
+    {
+      "quality_id": "qf-n084",
+      "pack": "QUALITY_FIX_PACK",
+      "topic": "1. Sınıf|Matematik|Sayılar 1-20",
+      "status": "machine_ok",
+      "reason": "çakışma kaybeden; kazanan qpn-s1-sy-r5"
+    },
+    {
+      "quality_id": "qf-n085",
+      "pack": "QUALITY_FIX_PACK",
+      "topic": "1. Sınıf|Hayat Bilgisi|Sağlığımız",
+      "status": "needs_source_verification",
+      "reason": "needs_source_verification"
+    },
+    {
+      "quality_id": "qf-n095",
+      "pack": "QUALITY_FIX_PACK",
+      "topic": "YKS TYT|Türkçe|Sözcükte anlam",
+      "status": "needs_source_verification",
+      "reason": "needs_source_verification"
+    },
+    {
+      "quality_id": "qf-n096",
+      "pack": "QUALITY_FIX_PACK",
+      "topic": "6. Sınıf|Türkçe|Yazım",
+      "status": "needs_source_verification",
+      "reason": "needs_source_verification"
+    },
+    {
+      "quality_id": "qf-n097",
+      "pack": "QUALITY_FIX_PACK",
+      "topic": "4. Sınıf|Fen|Vücudumuz",
+      "status": "needs_source_verification",
+      "reason": "needs_source_verification"
+    },
+    {
+      "quality_id": "qf-n098",
+      "pack": "QUALITY_FIX_PACK",
+      "topic": "7. Sınıf|Fen|Kuvvet ve enerji",
+      "status": "needs_source_verification",
+      "reason": "needs_source_verification"
+    },
+    {
+      "quality_id": "qf-n099",
+      "pack": "QUALITY_FIX_PACK",
+      "topic": "8. Sınıf|Fen|Basit makineler",
+      "status": "needs_source_verification",
+      "reason": "needs_source_verification"
+    },
+    {
+      "quality_id": "qf-n100",
+      "pack": "QUALITY_FIX_PACK",
+      "topic": "YKS TYT|Matematik|Fonksiyon",
+      "status": "machine_ok",
+      "reason": "çakışma kaybeden; kazanan qpn-tyt-fn-01"
+    },
+    {
+      "quality_id": "qfp-tyt-sy-01",
+      "pack": "QFP",
+      "topic": "YKS TYT|Matematik|Sayılar",
+      "status": "machine_ok",
+      "reason": "çakışma kaybeden; kazanan qpn-tyt-sy-01"
+    },
+    {
+      "quality_id": "qfp-tyt-sy-02",
+      "pack": "QFP",
+      "topic": "YKS TYT|Matematik|Sayılar",
+      "status": "machine_ok",
+      "reason": "çakışma kaybeden; kazanan qpn-tyt-sy-02"
+    },
+    {
+      "quality_id": "qfp-tyt-sy-03",
+      "pack": "QFP",
+      "topic": "YKS TYT|Matematik|Sayılar",
+      "status": "machine_ok",
+      "reason": "çakışma kaybeden; kazanan qpn-tyt-sy-03"
+    },
+    {
+      "quality_id": "qfp-tyt-sy-05",
+      "pack": "QFP",
+      "topic": "YKS TYT|Matematik|Sayılar",
+      "status": "machine_ok",
+      "reason": "çakışma kaybeden; kazanan qpn-tyt-sy-05"
+    },
+    {
+      "quality_id": "qfp-tyt-sy-06",
+      "pack": "QFP",
+      "topic": "YKS TYT|Matematik|Sayılar",
+      "status": "machine_ok",
+      "reason": "çakışma kaybeden; kazanan qpn-tyt-sy-06"
+    },
+    {
+      "quality_id": "qfp-tyt-fn-01",
+      "pack": "QFP",
+      "topic": "YKS TYT|Matematik|Fonksiyon",
+      "status": "machine_ok",
+      "reason": "çakışma kaybeden; kazanan qpn-tyt-fn-01"
+    },
+    {
+      "quality_id": "qfp-tyt-fn-02",
+      "pack": "QFP",
+      "topic": "YKS TYT|Matematik|Fonksiyon",
+      "status": "machine_ok",
+      "reason": "çakışma kaybeden; kazanan qpn-tyt-fn-02"
+    },
+    {
+      "quality_id": "qfp-tyt-fn-04",
+      "pack": "QFP",
+      "topic": "YKS TYT|Matematik|Fonksiyon",
+      "status": "machine_ok",
+      "reason": "çakışma kaybeden; kazanan qpn-tyt-fn-04"
+    },
+    {
+      "quality_id": "qfp-ayt-fn-01",
+      "pack": "QFP",
+      "topic": "YKS AYT|Matematik|Fonksiyonlar",
+      "status": "machine_ok",
+      "reason": "çakışma kaybeden; kazanan qpn-ayt-fn-01"
+    },
+    {
+      "quality_id": "qfp-ayt-fn-02",
+      "pack": "QFP",
+      "topic": "YKS AYT|Matematik|Fonksiyonlar",
+      "status": "machine_ok",
+      "reason": "çakışma kaybeden; kazanan qpn-ayt-fn-02"
+    },
+    {
+      "quality_id": "qfp-ayt-fn-04",
+      "pack": "QFP",
+      "topic": "YKS AYT|Matematik|Fonksiyonlar",
+      "status": "machine_ok",
+      "reason": "çakışma kaybeden; kazanan qpn-ayt-fn-04"
+    },
+    {
+      "quality_id": "qfp-s1-sz-01",
+      "pack": "QFP",
+      "topic": "1. Sınıf|Türkçe|Sözcük dağarcığı",
+      "status": "needs_source_verification",
+      "reason": "needs_source_verification"
+    },
+    {
+      "quality_id": "qfp-s1-sz-02",
+      "pack": "QFP",
+      "topic": "1. Sınıf|Türkçe|Sözcük dağarcığı",
+      "status": "needs_source_verification",
+      "reason": "needs_source_verification"
+    },
+    {
+      "quality_id": "qfp-s1-go-01",
+      "pack": "QFP",
+      "topic": "1. Sınıf|Türkçe|Görsel okuma",
+      "status": "needs_source_verification",
+      "reason": "needs_source_verification"
+    },
+    {
+      "quality_id": "qfp-s1-go-02",
+      "pack": "QFP",
+      "topic": "1. Sınıf|Türkçe|Görsel okuma",
+      "status": "needs_source_verification",
+      "reason": "needs_source_verification"
+    },
+    {
+      "quality_id": "qfp-s1-km-01",
+      "pack": "QFP",
+      "topic": "1. Sınıf|Türkçe|Kısa metin",
+      "status": "needs_source_verification",
+      "reason": "needs_source_verification"
+    },
+    {
+      "quality_id": "qfp-s1-km-02",
+      "pack": "QFP",
+      "topic": "1. Sınıf|Türkçe|Kısa metin",
+      "status": "needs_source_verification",
+      "reason": "needs_source_verification"
+    },
+    {
+      "quality_id": "qfp-s1-sy-01",
+      "pack": "QFP",
+      "topic": "1. Sınıf|Matematik|Sayılar 1-20",
+      "status": "machine_ok",
+      "reason": "çakışma kaybeden; kazanan qpn-s1-sy-r5"
+    },
+    {
+      "quality_id": "qfp-s1-sy-02",
+      "pack": "QFP",
+      "topic": "1. Sınıf|Matematik|Sayılar 1-20",
+      "status": "machine_ok",
+      "reason": "çakışma kaybeden; kazanan qpn-s1-sy-r10"
+    },
+    {
+      "quality_id": "qfp-s1-ad-01",
+      "pack": "QFP",
+      "topic": "1. Sınıf|Matematik|Toplama",
+      "status": "machine_ok",
+      "reason": "çakışma kaybeden; kazanan qpn-s1-ad-cm"
+    },
+    {
+      "quality_id": "qfp-s1-geo-01",
+      "pack": "QFP",
+      "topic": "1. Sınıf|Matematik|Geometrik şekiller",
+      "status": "machine_ok",
+      "reason": "çakışma kaybeden; kazanan qpn-s1-geo-cs"
+    },
+    {
+      "quality_id": "qfp-s1-geo-02",
+      "pack": "QFP",
+      "topic": "1. Sınıf|Matematik|Geometrik şekiller",
+      "status": "machine_ok",
+      "reason": "çakışma kaybeden; kazanan qpn-s1-geo-or"
+    },
+    {
+      "quality_id": "qfp-s1-ol-01",
+      "pack": "QFP",
+      "topic": "1. Sınıf|Matematik|Ölçme",
+      "status": "machine_ok",
+      "reason": "curriculum_block"
+    },
+    {
+      "quality_id": "qpn-tyt-sy-04",
+      "pack": "QPN_REVISION",
+      "topic": "YKS TYT|Matematik|Sayılar",
+      "status": "machine_ok",
+      "reason": "çakışma kaybeden; kazanan qfp-tyt-sy-04"
+    },
+    {
+      "quality_id": "qpn-tyt-fn-03",
+      "pack": "QPN_REVISION",
+      "topic": "YKS TYT|Matematik|Fonksiyon",
+      "status": "machine_ok",
+      "reason": "çakışma kaybeden; kazanan qfp-tyt-fn-03"
+    },
+    {
+      "quality_id": "qpn-ayt-fn-03",
+      "pack": "QPN_REVISION",
+      "topic": "YKS AYT|Matematik|Fonksiyonlar",
+      "status": "machine_ok",
+      "reason": "çakışma kaybeden; kazanan qfp-ayt-fn-03"
+    },
+    {
+      "quality_id": "qpn-s1-sz-11",
+      "pack": "QPN_REVISION",
+      "topic": "1. Sınıf|Türkçe|Sözcük dağarcığı",
+      "status": "needs_source_verification",
+      "reason": "needs_source_verification"
+    },
+    {
+      "quality_id": "qpn-s1-go-13",
+      "pack": "QPN_REVISION",
+      "topic": "1. Sınıf|Türkçe|Görsel okuma",
+      "status": "needs_source_verification",
+      "reason": "needs_source_verification"
+    },
+    {
+      "quality_id": "qpn-s1-km-15",
+      "pack": "QPN_REVISION",
+      "topic": "1. Sınıf|Türkçe|Kısa metin",
+      "status": "needs_source_verification",
+      "reason": "needs_source_verification"
+    },
+    {
+      "quality_id": "qpn-s1-go-19",
+      "pack": "QPN_REVISION",
+      "topic": "1. Sınıf|Türkçe|Görsel okuma",
+      "status": "needs_source_verification",
+      "reason": "needs_source_verification"
+    }
+  ],
+  "source_pending": [
+    "qf-2-tr-ana",
+    "qf-n009",
+    "qf-n014",
+    "qf-n015",
+    "qf-n016",
+    "qf-n017",
+    "qf-4-tr-goz",
+    "qf-n022",
+    "qf-n023",
+    "qf-n029",
+    "qf-n030",
+    "qf-n031",
+    "qf-6-fen-isi",
+    "qf-n037",
+    "qf-n039",
+    "qf-n044",
+    "qf-n045",
+    "qf-n046",
+    "qf-n047",
+    "qf-8-fen-p",
+    "qf-n051",
+    "qf-n052",
+    "qf-n053",
+    "qf-n058",
+    "qf-n070",
+    "qf-n073",
+    "qf-n081",
+    "qf-n082",
+    "qf-n085",
+    "qf-n095",
+    "qf-n096",
+    "qf-n097",
+    "qf-n098",
+    "qf-n099",
+    "qfp-s1-sz-01",
+    "qfp-s1-sz-02",
+    "qfp-s1-go-01",
+    "qfp-s1-go-02",
+    "qfp-s1-km-01",
+    "qfp-s1-km-02",
+    "qpn-s1-sz-11",
+    "qpn-s1-go-13",
+    "qpn-s1-km-15",
+    "qpn-s1-go-19"
+  ],
+  "human_pending": [
+    "qf-n038",
+    "qf-8-ink-mm"
+  ],
+  "replacementCount": 106,
+  "projectedQuestions": 7007,
+  "projectedFillerDelta": -106,
+  "verification": {
+    "applied": false,
+    "writesBank": false,
+    "uniqueFillers": 106,
+    "uniqueEqualsCount": true,
+    "blockedInReplacements": [],
+    "missingFillers": [],
+    "targetsNotFiller": [],
+    "topicMismatch": [],
+    "lockedWinnersHonored": true,
+    "addCount": 0
+  },
+  "bankDiff": {
+    "writesBank": false,
+    "applied": false,
+    "addCount": 0,
+    "replaceCount": 106,
+    "uniqueFillerAssignments": 106,
+    "questionsBefore": 7007,
+    "questionsAfter": 7007,
+    "fillerBefore": 5643,
+    "fillerAfter": 5537,
+    "topicsTouchedCount": 58,
+    "topicsTouched": [
+      "1. Sınıf|Matematik|Geometrik şekiller",
+      "1. Sınıf|Matematik|Sayılar 1-20",
+      "1. Sınıf|Matematik|Toplama",
+      "1. Sınıf|Matematik|Çıkarma",
+      "1. Sınıf|Matematik|Ölçme",
+      "1. Sınıf|Türkçe|Okuma yazma",
+      "10. Sınıf|Matematik|Fonksiyonlar",
+      "10. Sınıf|Matematik|Polinomlar",
+      "2. Sınıf|Matematik|Problemler",
+      "2. Sınıf|Matematik|Saat",
+      "2. Sınıf|Matematik|Çarpma girişi",
+      "2. Sınıf|Türkçe|Yazım",
+      "3. Sınıf|Matematik|Kesir girişi",
+      "3. Sınıf|Matematik|Çarpma-bölme",
+      "4. Sınıf|Fen|Kuvvet",
+      "4. Sınıf|Matematik|Doğal sayılar",
+      "4. Sınıf|Matematik|Geometri",
+      "4. Sınıf|Matematik|Kesirler",
+      "4. Sınıf|Türkçe|Yazım-noktalama",
+      "5. Sınıf|Fen|Işık",
+      "5. Sınıf|Fen|Kuvvetin ölçülmesi",
+      "5. Sınıf|Matematik|Kesirler",
+      "5. Sınıf|Matematik|İşlemler",
+      "5. Sınıf|Türkçe|Yazım",
+      "6. Sınıf|Matematik|Ondalık",
+      "6. Sınıf|Matematik|Tam sayılar",
+      "6. Sınıf|Matematik|Çarpanlar katlar",
+      "7. Sınıf|Matematik|Doğrular ve açılar",
+      "7. Sınıf|Matematik|Eşitlik-denklem",
+      "7. Sınıf|Matematik|Oran-orantı",
+      "7. Sınıf|Matematik|Rasyonel sayılar",
+      "7. Sınıf|Matematik|Yüzdeler",
+      "8. Sınıf|Matematik|Kareköklü",
+      "8. Sınıf|Matematik|Olasılık",
+      "8. Sınıf|Matematik|Çarpanlar katlar",
+      "8. Sınıf|Matematik|Üslü ifadeler",
+      "8. Sınıf|Türkçe|Yazım-noktalama",
+      "9. Sınıf|Matematik|Denklemler",
+      "9. Sınıf|Matematik|Köklü İfadeler",
+      "9. Sınıf|Matematik|Kümeler",
+      "9. Sınıf|Matematik|Üslü İfadeler",
+      "KPSS Genel Yetenek|Matematik|Oran-orantı",
+      "KPSS Genel Yetenek|Matematik|Sayı problemleri",
+      "KPSS Genel Yetenek|Matematik|Temel kavramlar",
+      "KPSS Genel Yetenek|Matematik|Yüzde-faiz",
+      "KPSS Genel Yetenek|Matematik|İşlem",
+      "KPSS Genel Yetenek|Türkçe|Yazım-noktalama",
+      "YKS AYT|Matematik|Fonksiyonlar",
+      "YKS TYT|Matematik|Bölünebilme",
+      "YKS TYT|Matematik|Denklemler",
+      "YKS TYT|Matematik|Fonksiyon",
+      "YKS TYT|Matematik|Kümeler",
+      "YKS TYT|Matematik|Mutlak değer",
+      "YKS TYT|Matematik|Problemler",
+      "YKS TYT|Matematik|Sayılar",
+      "YKS TYT|Matematik|Temel kavramlar",
+      "YKS TYT|Matematik|Üslü ve köklü sayılar",
+      "YKS TYT|Türkçe|Yazım ve noktalama"
+    ],
+    "missingFillers": [],
+    "targetsNotFiller": [],
+    "topicMismatch": [],
+    "operations": [
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-n002",
+        "target_filler_id": "cv-18e534aa",
+        "topic": "1. Sınıf|Matematik|Toplama",
+        "dropStemPrefix": "6 + 4 işleminin sonucu kaçtır? (Toplama) — Toplama (3)",
+        "addStemPrefix": "8 + 8 işleminin sonucu kaçtır?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-n004",
+        "target_filler_id": "cv-84b3a16d",
+        "topic": "1. Sınıf|Matematik|Çıkarma",
+        "dropStemPrefix": "13 − 7 işleminin sonucu kaçtır? — Çıkarma (2)",
+        "addStemPrefix": "11 − 4 işleminin sonucu kaçtır?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-1-tr-mi",
+        "target_filler_id": "cv-2881a41f",
+        "topic": "1. Sınıf|Türkçe|Okuma yazma",
+        "dropStemPrefix": "“Okuma yazma” konusunda hangisi metnin bütününden çıkarılır? — Okuma yaz",
+        "addStemPrefix": "Soru eki hangisinde doğru yazılmıştır?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-n005",
+        "target_filler_id": "cv-2781a28c",
+        "topic": "1. Sınıf|Türkçe|Okuma yazma",
+        "dropStemPrefix": "Aşağıdakilerden hangisi yardımcı düşünceye örnektir? — Okuma yazma (2)",
+        "addStemPrefix": "Hangisi büyük harfle başlamalıdır?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-2-mul-6-4",
+        "target_filler_id": "cv-2912b1b8",
+        "topic": "2. Sınıf|Matematik|Çarpma girişi",
+        "dropStemPrefix": "5 × 3 işleminin sonucu kaçtır? — Çarpma girişi (1)",
+        "addStemPrefix": "6 × 4 işleminin sonucu kaçtır?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-n006",
+        "target_filler_id": "cv-2a12b34b",
+        "topic": "2. Sınıf|Matematik|Çarpma girişi",
+        "dropStemPrefix": "10 × 3 işleminin sonucu kaçtır? — Çarpma girişi (2)",
+        "addStemPrefix": "5 × 7 işleminin sonucu kaçtır?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-n007",
+        "target_filler_id": "cv-2b12b4de",
+        "topic": "2. Sınıf|Matematik|Çarpma girişi",
+        "dropStemPrefix": "12 × 3 işleminin sonucu kaçtır? — Çarpma girişi (3)",
+        "addStemPrefix": "9 × 3 işleminin sonucu kaçtır?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-n008",
+        "target_filler_id": "cv-c54254a1",
+        "topic": "2. Sınıf|Matematik|Problemler",
+        "dropStemPrefix": "“Problemler” konusunda kavram haritasının asıl yararı hangisidir? — Prob",
+        "addStemPrefix": "Bir kutuda 4 sıra, her sırada 5 kalem vardır. Toplam kaç kalem vardır?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-n010",
+        "target_filler_id": "cv-d57c94fa",
+        "topic": "2. Sınıf|Türkçe|Yazım",
+        "dropStemPrefix": "Aşağıdakilerden hangisi yardımcı düşünceye örnektir? — Yazım (2)",
+        "addStemPrefix": "Bağlaç “de/da” hangisinde doğru yazılmıştır?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-3-frac-half",
+        "target_filler_id": "cv-ba634ffb",
+        "topic": "3. Sınıf|Matematik|Kesir girişi",
+        "dropStemPrefix": "11/22 kesri sadeleştirilince hangisine eşittir? — Kesir girişi (1)",
+        "addStemPrefix": "1/4 + 3/4 işleminin sonucu kaçtır?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-n011",
+        "target_filler_id": "cv-b9634e68",
+        "topic": "3. Sınıf|Matematik|Kesir girişi",
+        "dropStemPrefix": "1/11 + 1/11 kaçtır? — Kesir girişi (2)",
+        "addStemPrefix": "2/5 + 1/5 işleminin sonucu kaçtır?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-n012",
+        "target_filler_id": "cv-c061e927",
+        "topic": "3. Sınıf|Matematik|Çarpma-bölme",
+        "dropStemPrefix": "11 × 3 işleminin sonucu kaçtır? — Çarpma-bölme (1)",
+        "addStemPrefix": "36 ÷ 6 işleminin sonucu kaçtır?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-n013",
+        "target_filler_id": "cv-bf61e794",
+        "topic": "3. Sınıf|Matematik|Çarpma-bölme",
+        "dropStemPrefix": "7 × 3 işleminin sonucu kaçtır? — Çarpma-bölme (2)",
+        "addStemPrefix": "8 × 6 işleminin sonucu kaçtır?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-4-fen-kuvvet",
+        "target_filler_id": "cv-672f3090",
+        "topic": "4. Sınıf|Fen|Kuvvet",
+        "dropStemPrefix": "Kuvvet bağlamında bilimsel bilgi hangisine dayanır? — Kuvvet (1)",
+        "addStemPrefix": "Cisimlerin hareketini veya şeklini değiştirebilen etkiye ne denir?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-n018",
+        "target_filler_id": "cv-682f3223",
+        "topic": "4. Sınıf|Fen|Kuvvet",
+        "dropStemPrefix": "Bir büyüklüğün birimi değişince hangisi değişmez? — Kuvvet (2)",
+        "addStemPrefix": "Mıknatısın demir tozlarını çekmesi hangi kuvvet türüne örnektir?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-n019",
+        "target_filler_id": "cv-973c6c70",
+        "topic": "4. Sınıf|Matematik|Kesirler",
+        "dropStemPrefix": "10/20 kesri sadeleştirilince hangisine eşittir? — Kesirler (1)",
+        "addStemPrefix": "1/2 ile 2/4 için hangisi doğrudur?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-n020",
+        "target_filler_id": "cv-983c6e03",
+        "topic": "4. Sınıf|Matematik|Kesirler",
+        "dropStemPrefix": "1/11 + 1/11 kaçtır? — Kesirler (2)",
+        "addStemPrefix": "3/8 + 1/8 işleminin sonucu kaçtır?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-n021",
+        "target_filler_id": "cv-aa8a8555",
+        "topic": "4. Sınıf|Matematik|Doğal sayılar",
+        "dropStemPrefix": "12 + 2 işleminin sonucu kaçtır? (Doğal sayılar) — Doğal sayılar (1)",
+        "addStemPrefix": "247 sayısında onlar basamağındaki rakam hangisidir?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-n024",
+        "target_filler_id": "cv-f2880f78",
+        "topic": "4. Sınıf|Türkçe|Yazım-noktalama",
+        "dropStemPrefix": "“Yazım-noktalama” konusunda hangisi metnin bütününden çıkarılır? — Yazım",
+        "addStemPrefix": "Soru cümlesinin sonuna hangi noktalama gelir?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-5-frac-eq",
+        "target_filler_id": "cv-7ba11a5f",
+        "topic": "5. Sınıf|Matematik|Kesirler",
+        "dropStemPrefix": "7/14 kesri sadeleştirilince hangisine eşittir? — Kesirler (1)",
+        "addStemPrefix": "3/6 kesri sadeleştirilince hangisine eşittir?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-n025",
+        "target_filler_id": "cv-7aa118cc",
+        "topic": "5. Sınıf|Matematik|Kesirler",
+        "dropStemPrefix": "1/6 + 1/6 kaçtır? — Kesirler (2)",
+        "addStemPrefix": "2/3 − 1/3 işleminin sonucu kaçtır?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-n026",
+        "target_filler_id": "cv-7da11d85",
+        "topic": "5. Sınıf|Matematik|Kesirler",
+        "dropStemPrefix": "7/14 kesri sadeleştirilince hangisine eşittir? — Kesirler (3)",
+        "addStemPrefix": "4/10 kesrinin ondalık gösterimi hangisidir?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-n027",
+        "target_filler_id": "cv-b367c569",
+        "topic": "5. Sınıf|Fen|Kuvvetin ölçülmesi",
+        "dropStemPrefix": "Kuvvetin ölçülmesi bağlamında bilimsel bilgi hangisine dayanır? — Kuvvet",
+        "addStemPrefix": "Kuvvetin uluslararası birimi hangisidir?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-n028",
+        "target_filler_id": "cv-b267c3d6",
+        "topic": "5. Sınıf|Fen|Kuvvetin ölçülmesi",
+        "dropStemPrefix": "Bir büyüklüğün birimi değişince hangisi değişmez? — Kuvvetin ölçülmesi (",
+        "addStemPrefix": "Dinamometre neyi ölçmek için kullanılır?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-n032",
+        "target_filler_id": "cv-fa9209f0",
+        "topic": "5. Sınıf|Türkçe|Yazım",
+        "dropStemPrefix": "“Yazım” konusunda hangisi metnin bütününden çıkarılır? — Yazım (1)",
+        "addStemPrefix": "“ki” bağlacı hangisinde ayrı yazılmalıdır?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-6-int-neg",
+        "target_filler_id": "cv-7224a4f6",
+        "topic": "6. Sınıf|Matematik|Tam sayılar",
+        "dropStemPrefix": "“Tam sayılar” konusunda kavram haritasının asıl yararı hangisidir? — Tam",
+        "addStemPrefix": "−5 + 8 işleminin sonucu kaçtır?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-n033",
+        "target_filler_id": "cv-7324a689",
+        "topic": "6. Sınıf|Matematik|Tam sayılar",
+        "dropStemPrefix": "Bu konuda çalışırken en verimli adım hangisidir? — Tam sayılar (2)",
+        "addStemPrefix": "(−2) · (−3) işleminin sonucu kaçtır?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-n034",
+        "target_filler_id": "cv-7024a1d0",
+        "topic": "6. Sınıf|Matematik|Tam sayılar",
+        "dropStemPrefix": "Hangisi kalıcı öğrenmeye daha yakındır? — Tam sayılar (3)",
+        "addStemPrefix": "−12 + (−7) işleminin sonucu kaçtır?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-n035",
+        "target_filler_id": "cv-7124a363",
+        "topic": "6. Sınıf|Matematik|Tam sayılar",
+        "dropStemPrefix": "“Tam sayılar” konusunda kavram haritasının asıl yararı hangisidir? — Tam",
+        "addStemPrefix": "|−9| değeri kaçtır?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-n036",
+        "target_filler_id": "cv-75846f8",
+        "topic": "6. Sınıf|Matematik|Çarpanlar katlar",
+        "dropStemPrefix": "“Çarpanlar katlar” konusunda kavram haritasının asıl yararı hangisidir? ",
+        "addStemPrefix": "12 ile 18’in en büyük ortak böleni kaçtır?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-7-work",
+        "target_filler_id": "cv-3b2c28ac",
+        "topic": "7. Sınıf|Matematik|Oran-orantı",
+        "dropStemPrefix": "“Oran-orantı” konusunda kavram haritasının asıl yararı hangisidir? — Ora",
+        "addStemPrefix": "4 işçi bir işi 12 günde bitirir. Aynı tempoda 6 işçi kaç günde bitirir?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-n040",
+        "target_filler_id": "cv-3c2c2a3f",
+        "topic": "7. Sınıf|Matematik|Oran-orantı",
+        "dropStemPrefix": "Bu konuda çalışırken en verimli adım hangisidir? — Oran-orantı (2)",
+        "addStemPrefix": "3 işçinin 12 günde bitirdiği işi 6 işçi aynı tempoda kaç günde biter?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-n041",
+        "target_filler_id": "cv-a082a851",
+        "topic": "7. Sınıf|Matematik|Yüzdeler",
+        "dropStemPrefix": "90 sayısının %10’u kaçtır? — Yüzdeler (1)",
+        "addStemPrefix": "40 sayısının %25’i kaçtır?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-n042",
+        "target_filler_id": "cv-9f82a6be",
+        "topic": "7. Sınıf|Matematik|Yüzdeler",
+        "dropStemPrefix": "80 sayısının %10’u kaçtır? — Yüzdeler (2)",
+        "addStemPrefix": "Bir ürünün %20’si 14 ise ürünün tamamı kaçtır?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-n043",
+        "target_filler_id": "cv-febec29c",
+        "topic": "7. Sınıf|Matematik|Eşitlik-denklem",
+        "dropStemPrefix": "x + 5 = 7 denkleminde x kaçtır? — Eşitlik-denklem (1)",
+        "addStemPrefix": "2x + 4 = 10 denkleminde x kaçtır?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-8-exp",
+        "target_filler_id": "vm-pow-2-2-2-8. -6",
+        "topic": "8. Sınıf|Matematik|Üslü ifadeler",
+        "dropStemPrefix": "2^2 · 2^2 işleminin sonucu hangisidir?",
+        "addStemPrefix": "2³ · 2² işleminin sonucu kaçtır?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-n048",
+        "target_filler_id": "vm-pow-3-2-2-8. -36",
+        "topic": "8. Sınıf|Matematik|Üslü ifadeler",
+        "dropStemPrefix": "3^2 · 3^2 işleminin sonucu hangisidir?",
+        "addStemPrefix": "3⁴ değeri kaçtır?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-n050",
+        "target_filler_id": "vm-sqrt-4",
+        "topic": "8. Sınıf|Matematik|Kareköklü",
+        "dropStemPrefix": "√4 değeri kaçtır?",
+        "addStemPrefix": "√81 değeri kaçtır?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-n054",
+        "target_filler_id": "cv-6699124",
+        "topic": "8. Sınıf|Türkçe|Yazım-noktalama",
+        "dropStemPrefix": "“Yazım-noktalama” konusunda hangisi metnin bütününden çıkarılır? — Yazım",
+        "addStemPrefix": "“İstanbul’a gidecek misiniz” cümlesinin sonuna hangisi gelmelidir?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-n055",
+        "target_filler_id": "cv-bffe0bb4",
+        "topic": "9. Sınıf|Matematik|Üslü İfadeler",
+        "dropStemPrefix": "9² değeri kaçtır? — Üslü İfadeler (1)",
+        "addStemPrefix": "2⁻³ değeri hangisine eşittir?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-n056",
+        "target_filler_id": "cv-4ff76023",
+        "topic": "9. Sınıf|Matematik|Denklemler",
+        "dropStemPrefix": "x + 12 = 14 denkleminde x kaçtır? — Denklemler (1)",
+        "addStemPrefix": "3x − 5 = 10 denkleminde x kaçtır?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-n057",
+        "target_filler_id": "cv-984685ae",
+        "topic": "9. Sınıf|Matematik|Kümeler",
+        "dropStemPrefix": "“Kümeler” konusunda kavram haritasının asıl yararı hangisidir? — Kümeler",
+        "addStemPrefix": "P⊂Q ve y∈P ise hangisi kesinlikle doğrudur?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-10-fn",
+        "target_filler_id": "cv-d4d8a88b",
+        "topic": "10. Sınıf|Matematik|Fonksiyonlar",
+        "dropStemPrefix": "f(x)=x+2 için f(9) kaçtır? — Fonksiyonlar (1)",
+        "addStemPrefix": "f(x)=2x−3 ve f(a)=7 ise a kaçtır?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-n059",
+        "target_filler_id": "cv-d3d8a6f8",
+        "topic": "10. Sınıf|Matematik|Fonksiyonlar",
+        "dropStemPrefix": "f(x)=x+7 için f(11) kaçtır? — Fonksiyonlar (2)",
+        "addStemPrefix": "f(x)=3x−1 ve f(a)=8 ise a kaçtır?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-n060",
+        "target_filler_id": "cv-356a5835",
+        "topic": "10. Sınıf|Matematik|Polinomlar",
+        "dropStemPrefix": "“Polinomlar” konusunda kavram haritasının asıl yararı hangisidir? — Poli",
+        "addStemPrefix": "(x+2)(x+3) çarpımında sabit terim kaçtır?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-tyt-gcd",
+        "target_filler_id": "vm-gcd-6-12-0",
+        "topic": "YKS TYT|Matematik|Temel kavramlar",
+        "dropStemPrefix": "6 ve 12 sayılarının EBOB’u kaçtır?",
+        "addStemPrefix": "20 ile 30’un en büyük ortak böleni kaçtır?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-n061",
+        "target_filler_id": "vm-gcd-6-18-1",
+        "topic": "YKS TYT|Matematik|Temel kavramlar",
+        "dropStemPrefix": "6 ve 18 sayılarının EBOB’u kaçtır?",
+        "addStemPrefix": "12 ve 18 sayılarının EKOK’u kaçtır?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-n062",
+        "target_filler_id": "vm-gcd-6-24-2",
+        "topic": "YKS TYT|Matematik|Temel kavramlar",
+        "dropStemPrefix": "6 ve 24 sayılarının EBOB’u kaçtır?",
+        "addStemPrefix": "15 ve 25 sayılarının EBOB’u kaçtır?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-tyt-lin",
+        "target_filler_id": "vm-lin-2--1-6",
+        "topic": "YKS TYT|Matematik|Denklemler",
+        "dropStemPrefix": "2x + 6 = 4 denkleminde x kaçtır?",
+        "addStemPrefix": "2x + 6 = 14 denkleminde x kaçtır?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-n063",
+        "target_filler_id": "vm-lin-2-1-7",
+        "topic": "YKS TYT|Matematik|Denklemler",
+        "dropStemPrefix": "2x + 7 = 9 denkleminde x kaçtır?",
+        "addStemPrefix": "5x − 3 = 2x + 9 denkleminde x kaçtır?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-tyt-sqrt",
+        "target_filler_id": "vm-pow-2-2-2-YKS-6",
+        "topic": "YKS TYT|Matematik|Üslü ve köklü sayılar",
+        "dropStemPrefix": "2^2 · 2^2 işleminin sonucu hangisidir?",
+        "addStemPrefix": "√45 ifadesinin sadeleştirilmiş hali hangisidir?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-n064",
+        "target_filler_id": "vm-pow-3-2-2-YKS-36",
+        "topic": "YKS TYT|Matematik|Üslü ve köklü sayılar",
+        "dropStemPrefix": "3^2 · 3^2 işleminin sonucu hangisidir?",
+        "addStemPrefix": "√50 sadeleştirilmiş hali hangisidir?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-n065",
+        "target_filler_id": "vm-pct-10-40-0",
+        "topic": "YKS TYT|Matematik|Problemler",
+        "dropStemPrefix": "Bir sayının %10’si 4 ise sayı kaçtır?",
+        "addStemPrefix": "Bir sayının %20’si 8 ise sayı kaçtır?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-n066",
+        "target_filler_id": "cv-91d63fa",
+        "topic": "YKS TYT|Matematik|Kümeler",
+        "dropStemPrefix": "“Kümeler” konusunda kavram haritasının asıl yararı hangisidir? — Kümeler",
+        "addStemPrefix": "A={1,2,3} ve B={3,4} ise A∩B hangisidir?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-kpss-pct",
+        "target_filler_id": "vm-pct-10-60-1",
+        "topic": "KPSS Genel Yetenek|Matematik|Yüzde-faiz",
+        "dropStemPrefix": "Bir sayının %10’si 6 ise sayı kaçtır?",
+        "addStemPrefix": "80 sayısının %20’si kaçtır?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-n067",
+        "target_filler_id": "vm-pct-10-80-2",
+        "topic": "KPSS Genel Yetenek|Matematik|Yüzde-faiz",
+        "dropStemPrefix": "Bir sayının %10’si 8 ise sayı kaçtır?",
+        "addStemPrefix": "200 sayısının %15’i kaçtır?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-kpss-num",
+        "target_filler_id": "vm-pct-10-120-3",
+        "topic": "KPSS Genel Yetenek|Matematik|Sayı problemleri",
+        "dropStemPrefix": "Bir sayının %10’si 12 ise sayı kaçtır?",
+        "addStemPrefix": "Bir sayının 3 katının 5 eksiği 16 ise sayı kaçtır?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-n068",
+        "target_filler_id": "vm-pct-10-200-4",
+        "topic": "KPSS Genel Yetenek|Matematik|Sayı problemleri",
+        "dropStemPrefix": "Bir sayının %10’si 20 ise sayı kaçtır?",
+        "addStemPrefix": "Bir sayının 4 katının 2 fazlası 30 ise sayı kaçtır?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-n069",
+        "target_filler_id": "cv-7bcde8b3",
+        "topic": "KPSS Genel Yetenek|Matematik|Oran-orantı",
+        "dropStemPrefix": "“Oran-orantı” konusunda kavram haritasının asıl yararı hangisidir? — Ora",
+        "addStemPrefix": "2/5 = x/20 eşitliğinde x kaçtır?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-n071",
+        "target_filler_id": "cv-59be1684",
+        "topic": "KPSS Genel Yetenek|Türkçe|Yazım-noktalama",
+        "dropStemPrefix": "“Yazım-noktalama” konusunda hangisi metnin bütününden çıkarılır? — Yazım",
+        "addStemPrefix": "“mi” soru eki hangisinde yanlıştır?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-n072",
+        "target_filler_id": "cv-715cd763",
+        "topic": "YKS TYT|Türkçe|Yazım ve noktalama",
+        "dropStemPrefix": "“Yazım ve noktalama” konusunda hangisi metnin bütününden çıkarılır? — Ya",
+        "addStemPrefix": "Bağlaç “de/da” hangisinde yanlış yazılmıştır?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-n075",
+        "target_filler_id": "vm-gcd-6-30-3",
+        "topic": "YKS TYT|Matematik|Bölünebilme",
+        "dropStemPrefix": "6 ve 30 sayılarının EBOB’u kaçtır?",
+        "addStemPrefix": "Bir sayı 2 ve 9 ile bölünüyorsa 18 ile de bölünür çünkü 2 ile 9 araların",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-n076",
+        "target_filler_id": "8p-vm-fact-2-0",
+        "topic": "8. Sınıf|Matematik|Olasılık",
+        "dropStemPrefix": "2 farklı nesnenin sıralanma sayısı kaçtır?",
+        "addStemPrefix": "Hilesiz bir zarın 2 gelme olasılığı nedir?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-n077",
+        "target_filler_id": "8p-vm-fact-3-1",
+        "topic": "8. Sınıf|Matematik|Olasılık",
+        "dropStemPrefix": "3 farklı nesnenin sıralanma sayısı kaçtır?",
+        "addStemPrefix": "3 farklı kitabın sıralanma sayısı kaçtır?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-n078",
+        "target_filler_id": "cv-6dbd357d",
+        "topic": "4. Sınıf|Matematik|Geometri",
+        "dropStemPrefix": "“Geometri” konusunda kavram haritasının asıl yararı hangisidir? — Geomet",
+        "addStemPrefix": "Karenin bir iç açısı kaç derecedir?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-n079",
+        "target_filler_id": "cv-6cbd33ea",
+        "topic": "4. Sınıf|Matematik|Geometri",
+        "dropStemPrefix": "Bu konuda çalışırken en verimli adım hangisidir? — Geometri (2)",
+        "addStemPrefix": "Bir üçgende iki iç açı 40° ve 70° ise üçüncü açı kaç derecedir?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-n080",
+        "target_filler_id": "cv-f362051f",
+        "topic": "7. Sınıf|Matematik|Doğrular ve açılar",
+        "dropStemPrefix": "Bir üçgende iki iç açı 50° ve 30° ise üçüncü açı kaçtır? — Doğrular ve a",
+        "addStemPrefix": "Bir doğru üzerinde komşu açılar toplamı kaç derecedir?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-n083",
+        "target_filler_id": "cv-8045fa6e",
+        "topic": "5. Sınıf|Fen|Işık",
+        "dropStemPrefix": "Işık bağlamında bilimsel bilgi hangisine dayanır? — Işık (1)",
+        "addStemPrefix": "Işığın saydam olmayan bir cismin arkasında karanlık bölge oluşturması ha",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-n086",
+        "target_filler_id": "cv-b6638eca",
+        "topic": "2. Sınıf|Matematik|Saat",
+        "dropStemPrefix": "“Saat” konusunda kavram haritasının asıl yararı hangisidir? — Saat (1)",
+        "addStemPrefix": "Saat 3:00 iken akrep hangi sayıyı gösterir?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-n087",
+        "target_filler_id": "cv-252effed",
+        "topic": "KPSS Genel Yetenek|Matematik|Temel kavramlar",
+        "dropStemPrefix": "“Temel kavramlar” konusunda kavram haritasının asıl yararı hangisidir? —",
+        "addStemPrefix": "7 ile 9’un çarpımı kaçtır?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-n088",
+        "target_filler_id": "cv-7b486f1a",
+        "topic": "KPSS Genel Yetenek|Matematik|İşlem",
+        "dropStemPrefix": "11 × 3 işleminin sonucu kaçtır? — İşlem (1)",
+        "addStemPrefix": "20 − 4 × 3 işleminin sonucu kaçtır? (işlem önceliği)",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-n089",
+        "target_filler_id": "vm-md-2",
+        "topic": "YKS TYT|Matematik|Mutlak değer",
+        "dropStemPrefix": "|2 − 6| + |−2| işleminin sonucu kaçtır?",
+        "addStemPrefix": "|3 − 10| değeri kaçtır?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-n090",
+        "target_filler_id": "cv-c027bd91",
+        "topic": "9. Sınıf|Matematik|Köklü İfadeler",
+        "dropStemPrefix": "12² değeri kaçtır? — Köklü İfadeler (1)",
+        "addStemPrefix": "√16 + √9 işleminin sonucu kaçtır?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-n091",
+        "target_filler_id": "cv-fca9ab0f",
+        "topic": "6. Sınıf|Matematik|Ondalık",
+        "dropStemPrefix": "“Ondalık” konusunda kavram haritasının asıl yararı hangisidir? — Ondalık",
+        "addStemPrefix": "0,3 + 0,4 işleminin sonucu kaçtır?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-n092",
+        "target_filler_id": "cv-cebf020c",
+        "topic": "7. Sınıf|Matematik|Rasyonel sayılar",
+        "dropStemPrefix": "“Rasyonel sayılar” konusunda kavram haritasının asıl yararı hangisidir? ",
+        "addStemPrefix": "−1/2 + 3/2 işleminin sonucu kaçtır?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-n093",
+        "target_filler_id": "vm-gcd-6-36-4",
+        "topic": "8. Sınıf|Matematik|Çarpanlar katlar",
+        "dropStemPrefix": "6 ve 36 sayılarının EBOB’u kaçtır?",
+        "addStemPrefix": "24 sayısının pozitif tam sayı bölenlerinden biri olmayan hangisidir?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qf-n094",
+        "target_filler_id": "cv-a09757a2",
+        "topic": "5. Sınıf|Matematik|İşlemler",
+        "dropStemPrefix": "8 × 3 işleminin sonucu kaçtır? — İşlemler (1)",
+        "addStemPrefix": "100 − 25 × 2 işleminin sonucu kaçtır?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qfp-tyt-fn-05",
+        "target_filler_id": "vm-fn-1-0-7",
+        "topic": "YKS TYT|Matematik|Fonksiyon",
+        "dropStemPrefix": "f(x)=1x + 0 ise f(7) kaçtır?",
+        "addStemPrefix": "Aşağıdaki bağıntılardan hangisi bir fonksiyon değildir?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qfp-ayt-fn-05",
+        "target_filler_id": "ay-vm-fn-1--1-6-4",
+        "topic": "YKS AYT|Matematik|Fonksiyonlar",
+        "dropStemPrefix": "f(x)=1x − 1 ise f(6) kaçtır?",
+        "addStemPrefix": "(f ∘ g)⁻¹ hangisine eşittir? (tersler varsa)",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qfp-ayt-fn-06",
+        "target_filler_id": "ay-vm-fn-1-0-7-5",
+        "topic": "YKS AYT|Matematik|Fonksiyonlar",
+        "dropStemPrefix": "f(x)=1x + 0 ise f(7) kaçtır?",
+        "addStemPrefix": "f(x)=x³ + x için hangisi doğrudur?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qfp-s1-ol-02",
+        "target_filler_id": "cv-9a2534a8",
+        "topic": "1. Sınıf|Matematik|Ölçme",
+        "dropStemPrefix": "Bu konuda çalışırken en verimli adım hangisidir? — Ölçme (2)",
+        "addStemPrefix": "Bir ip 3 karış, diğeri 5 karıştır. Hangisi daha uzundur?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qpn-tyt-sy-07",
+        "target_filler_id": "vm-abs-15",
+        "topic": "YKS TYT|Matematik|Sayılar",
+        "dropStemPrefix": "|−15| − |12 − 15| işleminin sonucu kaçtır?",
+        "addStemPrefix": "Kenarı 8 cm olan kare karolar ile kenarı 12 cm olan kare karolar kullanı",
+        "qpnOverlay": true
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qpn-tyt-sy-08",
+        "target_filler_id": "vm-abs-16",
+        "topic": "YKS TYT|Matematik|Sayılar",
+        "dropStemPrefix": "|−16| − |13 − 16| işleminin sonucu kaçtır?",
+        "addStemPrefix": "3⁸ / 3⁵ işleminin sonucu kaçtır?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qpn-s1-sy-ob",
+        "target_filler_id": "cv-ef0f4bda",
+        "topic": "1. Sınıf|Matematik|Sayılar 1-20",
+        "dropStemPrefix": "11 + 5 işleminin sonucu kaçtır? (Sayılar 1-20) — Sayılar 1-20 (6)",
+        "addStemPrefix": "Bir grup nesne 1 onluk ve 6 birlik olarak gösteriliyor. Bu nesnelerin sa",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qpn-s1-ad-cm",
+        "target_filler_id": "cv-16e53184",
+        "topic": "1. Sınıf|Matematik|Toplama",
+        "dropStemPrefix": "12 + 2 işleminin sonucu kaçtır? (Toplama) — Toplama (1)",
+        "addStemPrefix": "6 + 9 ile 9 + 6 işlemleri için hangisi doğrudur?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qpn-s1-ad-ms",
+        "target_filler_id": "cv-17e53317",
+        "topic": "1. Sınıf|Matematik|Toplama",
+        "dropStemPrefix": "8 + 7 işleminin sonucu kaçtır? (Toplama) — Toplama (2)",
+        "addStemPrefix": "Ece’nin 9 şekeri vardı. Ablası birkaç şeker verdi. Şimdi 15 şekeri var. ",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qfp-s1-sb-01",
+        "target_filler_id": "cv-83b39fda",
+        "topic": "1. Sınıf|Matematik|Çıkarma",
+        "dropStemPrefix": "15 − 9 işleminin sonucu kaçtır? — Çıkarma (1)",
+        "addStemPrefix": "Ayşe’nin 10 elması vardı, 4’ünü yedi. Kaç elması kaldı?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qpn-tyt-sy-01",
+        "target_filler_id": "vm-abs-2",
+        "topic": "YKS TYT|Matematik|Sayılar",
+        "dropStemPrefix": "|−2| − |-1 − 2| işleminin sonucu kaçtır?",
+        "addStemPrefix": "√12 + √27 ifadesinin sadeleştirilmiş değeri hangisidir?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qpn-s1-sy-r5",
+        "target_filler_id": "cv-ec0f4721",
+        "topic": "1. Sınıf|Matematik|Sayılar 1-20",
+        "dropStemPrefix": "6 + 2 işleminin sonucu kaçtır? (Sayılar 1-20) — Sayılar 1-20 (1)",
+        "addStemPrefix": "Beşer ritmik saymada 5, 10, 15, ___ dizisinde boşluğa hangisi gelir?",
+        "qpnOverlay": true
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qpn-tyt-fn-01",
+        "target_filler_id": "vm-fn-1--5-2",
+        "topic": "YKS TYT|Matematik|Fonksiyon",
+        "dropStemPrefix": "f(x)=1x − 5 ise f(2) kaçtır?",
+        "addStemPrefix": "f değer tablosu: x=0 iken f(x)=1; x=4 iken f(x)=−5. f(4) − f(0) kaçtır?",
+        "qpnOverlay": true
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qpn-tyt-sy-02",
+        "target_filler_id": "vm-abs-3",
+        "topic": "YKS TYT|Matematik|Sayılar",
+        "dropStemPrefix": "|−3| − |0 − 3| işleminin sonucu kaçtır?",
+        "addStemPrefix": "√8 · √18 çarpımının değeri kaçtır?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qpn-tyt-sy-03",
+        "target_filler_id": "vm-abs-4",
+        "topic": "YKS TYT|Matematik|Sayılar",
+        "dropStemPrefix": "|−4| − |1 − 4| işleminin sonucu kaçtır?",
+        "addStemPrefix": "3,6 × 10⁻⁴ sayısı hangisine eşittir?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qfp-tyt-sy-04",
+        "target_filler_id": "vm-abs-5",
+        "topic": "YKS TYT|Matematik|Sayılar",
+        "dropStemPrefix": "|−5| − |2 − 5| işleminin sonucu kaçtır?",
+        "addStemPrefix": "47’nin 5 ile bölümünden kalan kaçtır?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qpn-tyt-sy-05",
+        "target_filler_id": "vm-abs-6",
+        "topic": "YKS TYT|Matematik|Sayılar",
+        "dropStemPrefix": "|−6| − |3 − 6| işleminin sonucu kaçtır?",
+        "addStemPrefix": "120 liralık bir ürün %15 indirimle satılıyor. Satış fiyatı kaç liradır?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qpn-tyt-sy-06",
+        "target_filler_id": "vm-abs-7",
+        "topic": "YKS TYT|Matematik|Sayılar",
+        "dropStemPrefix": "|−7| − |4 − 7| işleminin sonucu kaçtır?",
+        "addStemPrefix": "24 cm ve 36 cm uzunluğundaki iki şerit, eşit uzunlukta en büyük parçalar",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qpn-tyt-fn-02",
+        "target_filler_id": "vm-fn-1--4-3",
+        "topic": "YKS TYT|Matematik|Fonksiyon",
+        "dropStemPrefix": "f(x)=1x − 4 ise f(3) kaçtır?",
+        "addStemPrefix": "f(x)=(x − 1)/(x² − 4) gerçek sayılarda tanımlı olmak üzere tanım kümesi ",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qfp-tyt-fn-03",
+        "target_filler_id": "vm-fn-1--3-4",
+        "topic": "YKS TYT|Matematik|Fonksiyon",
+        "dropStemPrefix": "f(x)=1x − 3 ise f(4) kaçtır?",
+        "addStemPrefix": "Tanım kümesi {0, 1, 2} ve f(x)=x+1 ise görüntü kümesi hangisidir?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qpn-tyt-fn-04",
+        "target_filler_id": "vm-fn-1--2-5",
+        "topic": "YKS TYT|Matematik|Fonksiyon",
+        "dropStemPrefix": "f(x)=1x − 2 ise f(5) kaçtır?",
+        "addStemPrefix": "f:{−1, 0, 2} → ℝ, f(x)=4 − x² olmak üzere görüntü kümesi hangisidir?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qpn-ayt-fn-01",
+        "target_filler_id": "ay-vm-fn-1--5-2-0",
+        "topic": "YKS AYT|Matematik|Fonksiyonlar",
+        "dropStemPrefix": "f(x)=1x − 5 ise f(2) kaçtır?",
+        "addStemPrefix": "f:ℝ → ℝ, f(x)=x² − 4x + 7 fonksiyonunun görüntü kümesi hangisidir?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qpn-ayt-fn-02",
+        "target_filler_id": "ay-vm-fn-1--4-3-1",
+        "topic": "YKS AYT|Matematik|Fonksiyonlar",
+        "dropStemPrefix": "f(x)=1x − 4 ise f(3) kaçtır?",
+        "addStemPrefix": "f:[0, ∞) → [0, ∞), f(x)=x² olsun. f⁻¹(25) kaçtır?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qfp-ayt-fn-03",
+        "target_filler_id": "ay-vm-fn-1--3-4-2",
+        "topic": "YKS AYT|Matematik|Fonksiyonlar",
+        "dropStemPrefix": "f(x)=1x − 3 ise f(4) kaçtır?",
+        "addStemPrefix": "f(x)=√(x − 1) fonksiyonunun gerçek sayılarda tanım kümesi hangisidir?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qpn-ayt-fn-04",
+        "target_filler_id": "ay-vm-fn-1--2-5-3",
+        "topic": "YKS AYT|Matematik|Fonksiyonlar",
+        "dropStemPrefix": "f(x)=1x − 2 ise f(5) kaçtır?",
+        "addStemPrefix": "f tek fonksiyon ve f(5)=−2 ise f(−5)+f(5) kaçtır?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qpn-s1-sy-r10",
+        "target_filler_id": "cv-eb0f458e",
+        "topic": "1. Sınıf|Matematik|Sayılar 1-20",
+        "dropStemPrefix": "8 + 7 işleminin sonucu kaçtır? (Sayılar 1-20) — Sayılar 1-20 (2)",
+        "addStemPrefix": "Onar ritmik saymada 10’dan hemen sonra hangi sayı gelir?",
+        "qpnOverlay": true
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qpn-s1-geo-cs",
+        "target_filler_id": "cv-d4fa352a",
+        "topic": "1. Sınıf|Matematik|Geometrik şekiller",
+        "dropStemPrefix": "“Geometrik şekiller” konusunda kavram haritasının asıl yararı hangisidir",
+        "addStemPrefix": "Pinpon topu ile kapalı bir kutu karşılaştırıldığında pinpon topu için ha",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qpn-s1-geo-or",
+        "target_filler_id": "cv-d5fa36bd",
+        "topic": "1. Sınıf|Matematik|Geometrik şekiller",
+        "dropStemPrefix": "Bu konuda çalışırken en verimli adım hangisidir? — Geometrik şekiller (2",
+        "addStemPrefix": "Örüntü: kare, üçgen, kare, üçgen, kare, ___ Boşluğa hangisi gelir?",
+        "qpnOverlay": false
+      },
+      {
+        "action": "replace_filler",
+        "quality_id": "qpn-s1-ol-ns",
+        "target_filler_id": "cv-9b25363b",
+        "topic": "1. Sınıf|Matematik|Ölçme",
+        "dropStemPrefix": "“Ölçme” konusunda kavram haritasının asıl yararı hangisidir? — Ölçme (1)",
+        "addStemPrefix": "Kısa bir kalemin boyunu aralıksız birimlerle ölçmek için hangisi daha uy",
+        "qpnOverlay": false
+      }
+    ]
+  }
+}

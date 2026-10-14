@@ -3,7 +3,7 @@ import { normalizeData } from './storage';
 import { parsePushResult } from './syncMerge';
 import { coachStudyBrief, type CoachStudyBrief } from './coachBrief';
 import type { AppointmentStatus, CoachAccount, CoachAppointment, CoachDesk, CoachHomework, CoachStatus, CoachStudent, CoachTrack, HumanCoach } from './coaches';
-import { asCancelReason, COACH_TRACKS, emptyDesk } from './coaches';
+import { asCancelDecision, asCancelReason, COACH_TRACKS, emptyDesk } from './coaches';
 import { getCoachDisplayName, getPersonDisplayName } from './displayName';
 import { SESSION_REQUIRED, SUPABASE_UNAVAILABLE, publicCloudError, requireUserSession, supabase, withTimeout } from './supabase';
 
@@ -420,6 +420,8 @@ export async function fetchCoachDesk(coachId: string): Promise<CoachDesk | null>
       minutes: Number(r.minutes) || 40,
       status: asAppt(r.status),
       cancelReason: asCancelReason(r.cancel_reason),
+      cancelRequestedAt: r.cancel_requested_at ? String(r.cancel_requested_at) : null,
+      cancelDecision: asCancelDecision(r.cancel_decision),
       startsAt: r.starts_at ? String(r.starts_at) : null,
     })),
   };
@@ -470,6 +472,38 @@ export async function requestAppointment(availabilityId: string): Promise<{ ok: 
     const row = data as { id?: string } | null;
     if (!row?.id) return { ok: false, error: 'Talep oluşmadı. Müsaitlik şeması yok olabilir.' };
     return { ok: true, id: String(row.id) };
+  } catch (e) {
+    return { ok: false, error: rpcUserMessage(e) };
+  }
+}
+
+export async function requestCancelApprovedAppointment(apptId: string): Promise<{ ok: true; duplicate: boolean; message: string } | { ok: false; error: string }> {
+  if (!supabase || !apptId) return { ok: false, error: 'Randevu yok.' };
+  try {
+    const { data, error } = await withTimeout(supabase.rpc('request_cancel_approved_appointment', { p_id: apptId }));
+    if (error) throw error;
+    const row = data as { duplicate?: boolean; status?: string } | null;
+    const duplicate = Boolean(row?.duplicate);
+    return {
+      ok: true,
+      duplicate,
+      message: duplicate ? 'İptal talebi zaten açık.' : 'İptal talebi gönderildi. Koç veya yönetici onaylamadan randevu düşmez.',
+    };
+  } catch (e) {
+    return { ok: false, error: rpcUserMessage(e) };
+  }
+}
+
+export async function decideApprovedAppointmentCancel(apptId: string, accept: boolean): Promise<{ ok: true; message: string } | { ok: false; error: string }> {
+  if (!supabase || !apptId) return { ok: false, error: 'Randevu yok.' };
+  try {
+    const { data, error } = await withTimeout(supabase.rpc('decide_approved_appointment_cancel', { p_id: apptId, p_accept: accept }));
+    if (error) throw error;
+    const row = data as { status?: string; decision?: string } | null;
+    return {
+      ok: true,
+      message: row?.status === 'iptal' ? 'Onaylı randevu iptal edildi. Kayıt silinmedi.' : 'İptal talebi reddedildi. Randevu onaylı kaldı.',
+    };
   } catch (e) {
     return { ok: false, error: rpcUserMessage(e) };
   }
@@ -607,14 +641,28 @@ export async function adminPatchCoach(id: string, patch: { name?: string; track?
   }
 }
 
-export async function adminSetAccountStatus(id: string, status: AccountStatus): Promise<boolean> {
-  if (!supabase || !isUuid(id)) return false;
+export async function adminSetAccountStatus(
+  id: string,
+  status: AccountStatus,
+): Promise<{ ok: boolean; error: string }> {
+  if (!supabase || !isUuid(id)) return { ok: false, error: 'Geçersiz hesap.' };
+  if (status !== 'active' && status !== 'pasif') return { ok: false, error: 'Geçersiz durum.' };
   try {
-    const { error } = await withTimeout(supabase.from('profiles').update({ account_status: status }).eq('id', id));
-    if (error) throw error;
-    return true;
-  } catch {
-    return false;
+    const { data, error } = await withTimeout(supabase.functions.invoke('admin-account-status', {
+      body: { user_id: id, status },
+    }));
+    const body = (data && typeof data === 'object') ? data as Record<string, unknown> : {};
+    if (error) {
+      const msg = String(error.message || '');
+      if (/not found|404|failed to send/i.test(msg)) {
+        return { ok: false, error: 'Askıya alma servisi henüz yayınlanmadı. 029 ve admin-account-status uygulanmalı.' };
+      }
+      return { ok: false, error: publicCloudError(error) };
+    }
+    if (body.ok === true) return { ok: true, error: '' };
+    return { ok: false, error: String(body.error || 'Hesap güncellenemedi.') };
+  } catch (e) {
+    return { ok: false, error: publicCloudError(e) };
   }
 }
 
@@ -844,6 +892,8 @@ export async function fetchAdminBundle(): Promise<CloudAdminBundle | null> {
       status: asAppt(r.status),
       coachName: nameOf(String(r.coach_id)),
       cancelReason: asCancelReason(r.cancel_reason),
+      cancelRequestedAt: r.cancel_requested_at ? String(r.cancel_requested_at) : null,
+      cancelDecision: asCancelDecision(r.cancel_decision),
       startsAt: r.starts_at ? String(r.starts_at) : null,
     }));
     for (const a of cloudAppts) {
@@ -905,4 +955,177 @@ export async function fetchAdminBundle(): Promise<CloudAdminBundle | null> {
     if (isMissingRelation(e)) return null;
     return null;
   }
+}
+
+export type TrialStartResult = {
+  ok: boolean;
+  status: string;
+  message: string;
+  trialStartedAt: string | null;
+  trialEndsAt: string | null;
+};
+
+export async function startTopPlanTrial(): Promise<TrialStartResult> {
+  const session = await requireUserSession();
+  if (!session.ok) return { ok: false, status: 'auth', message: session.error, trialStartedAt: null, trialEndsAt: null };
+  if (!supabase) return { ok: false, status: 'config', message: SUPABASE_UNAVAILABLE, trialStartedAt: null, trialEndsAt: null };
+  try {
+    const { data, error } = await withTimeout(supabase.rpc('start_top_plan_trial'));
+    if (error) {
+      const msg = String(error.message || '');
+      if (/could not find|does not exist|üyelik şeması/i.test(msg)) {
+        return { ok: false, status: 'schema', message: '14 günlük deneme henüz sunucuya işlenmedi (030). Üyelik değişmedi.', trialStartedAt: null, trialEndsAt: null };
+      }
+      return { ok: false, status: 'error', message: rpcUserMessage(error), trialStartedAt: null, trialEndsAt: null };
+    }
+    const rec = (data && typeof data === 'object') ? data as Record<string, unknown> : {};
+    return {
+      ok: rec.ok === true,
+      status: String(rec.status || ''),
+      message: String(rec.message || 'Deneme kaydı alınamadı.'),
+      trialStartedAt: rec.trial_started_at ? String(rec.trial_started_at) : null,
+      trialEndsAt: rec.trial_ends_at ? String(rec.trial_ends_at) : null,
+    };
+  } catch (e) {
+    return { ok: false, status: 'error', message: publicCloudError(e), trialStartedAt: null, trialEndsAt: null };
+  }
+}
+
+export async function fetchStudentWeekPlan(studentId: string) {
+  if (!supabase || !isUuid(studentId)) return null;
+  try {
+    const { data, error } = await withTimeout(
+      supabase.from('student_week_plans').select('*').eq('student_id', studentId).maybeSingle(),
+    );
+    if (error) throw error;
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+export async function saveStudentWeekPlan(input: {
+  studentId: string;
+  days: unknown;
+  weekHours: number;
+  notes: string;
+  lock: 'self' | 'coach';
+}): Promise<{ ok: boolean; error: string }> {
+  const session = await requireUserSession();
+  if (!session.ok) return { ok: false, error: session.error };
+  if (!supabase) return { ok: false, error: SUPABASE_UNAVAILABLE };
+  try {
+    const { error } = await withTimeout(supabase.rpc('upsert_student_week_plan', {
+      p_student: input.studentId,
+      p_days: input.days,
+      p_week_hours: input.weekHours,
+      p_notes: input.notes,
+      p_lock: input.lock,
+    }));
+    if (error) {
+      const msg = String(error.message || '');
+      if (/could not find|does not exist/i.test(msg)) {
+        return { ok: false, error: 'Haftalık program tablosu henüz yok (030). Kayıt yazılmadı.' };
+      }
+      return { ok: false, error: rpcUserMessage(error) };
+    }
+    return { ok: true, error: '' };
+  } catch (e) {
+    return { ok: false, error: publicCloudError(e) };
+  }
+}
+
+export async function saveExamReport(row: {
+  examId: string;
+  examName: string;
+  correct: number;
+  wrong: number;
+  blank: number;
+  net: number;
+  topics: unknown;
+  verifiedKey: boolean;
+}): Promise<{ ok: boolean; error: string }> {
+  const session = await requireUserSession();
+  if (!session.ok) return { ok: false, error: session.error };
+  if (!supabase) return { ok: false, error: SUPABASE_UNAVAILABLE };
+  const uid = (await supabase.auth.getUser()).data.user?.id;
+  if (!uid) return { ok: false, error: SESSION_REQUIRED };
+  try {
+    const { error } = await withTimeout(supabase.from('exam_reports').insert({
+      user_id: uid,
+      exam_id: row.examId,
+      exam_name: row.examName,
+      correct: row.correct,
+      wrong: row.wrong,
+      blank: row.blank,
+      net: row.net,
+      topics: row.topics,
+    }));
+    if (error) {
+      if (/does not exist|schema cache/i.test(error.message)) {
+        return { ok: false, error: 'Analiz kaydı tablosu henüz yok (030). Sonuç ekranda kaldı, sunucuya yazılmadı.' };
+      }
+      return { ok: false, error: publicCloudError(error) };
+    }
+    return { ok: true, error: '' };
+  } catch (e) {
+    return { ok: false, error: publicCloudError(e) };
+  }
+}
+
+export async function listMyExamReports() {
+  if (!supabase) return [];
+  try {
+    const { data, error } = await withTimeout(
+      supabase.from('exam_reports').select('id,exam_id,exam_name,correct,wrong,blank,net,verified_key,created_at').order('created_at', { ascending: false }).limit(20),
+    );
+    if (error) throw error;
+    return data || [];
+  } catch {
+    return [];
+  }
+}
+
+export async function uploadExamScan(file: File): Promise<{ path: string } | { error: string }> {
+  const session = await requireUserSession();
+  if (!session.ok) return { error: session.error };
+  if (!supabase) return { error: SUPABASE_UNAVAILABLE };
+  const uid = (await supabase.auth.getUser()).data.user?.id;
+  if (!uid) return { error: SESSION_REQUIRED };
+  const buf = new Uint8Array(await file.arrayBuffer());
+  const { examScanFileError, examScanPathOwned } = await import('./examScanQuota');
+  const kindErr = examScanFileError(file.type, buf);
+  if (kindErr) return { error: kindErr };
+  const binary = Array.from(buf, (b) => String.fromCharCode(b)).join('');
+  const { data, error } = await supabase.functions.invoke('exam-upload', {
+    body: { contentType: file.type || 'application/octet-stream', base64: btoa(binary) },
+  });
+  const body = (data && typeof data === 'object') ? data as { ok?: boolean; path?: string; error?: string } : {};
+  if (error) {
+    const msg = String(error.message || '');
+    if (/not found|404|failed to send/i.test(msg)) {
+      return { error: 'Sınav yükleme servisi yayınlanmadı. Dosya kovaya yazılmadı.' };
+    }
+    return { error: publicCloudError(error) };
+  }
+  if (body.ok !== true || !body.path) {
+    return { error: String(body.error || 'Yükleme reddedildi.') };
+  }
+  if (!examScanPathOwned(uid, body.path)) return { error: 'Dosya yolu geçersiz' };
+  return { path: body.path };
+}
+
+export async function requestExamScan(path: string): Promise<{ ok: boolean; error: string; marks?: unknown; warning?: string }> {
+  if (!supabase) return { ok: false, error: SUPABASE_UNAVAILABLE };
+  const { data, error } = await supabase.functions.invoke('exam-scan', { body: { path } });
+  const body = (data && typeof data === 'object') ? data as Record<string, unknown> : {};
+  if (error) {
+    const msg = String(error.message || '');
+    if (/not found|404|failed to send/i.test(msg)) {
+      return { ok: false, error: 'Görsel analiz servisi yayınlanmadı. İşaretler uydurulmadı.' };
+    }
+    return { ok: false, error: publicCloudError(error) };
+  }
+  if (body.ok !== true) return { ok: false, error: String(body.error || 'Görsel okunamadı.') };
+  return { ok: true, error: '', marks: body.marks, warning: body.warning ? String(body.warning) : undefined };
 }

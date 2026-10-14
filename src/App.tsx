@@ -23,6 +23,8 @@ import { AccountPage } from './pages/AccountPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { AdminGate, AdminPage } from './pages/AdminPage';
 import { MeetingPage } from './pages/MeetingPage';
+import { MeetingsPage } from './pages/MeetingsPage';
+import { LibraryPage } from './pages/LibraryPage';
 import { ExamNotifyWatcher } from './components/ExamNotifyWatcher';
 import { FeatureLock } from './components/FeatureLock';
 import { today, uid } from './lib/util';
@@ -32,7 +34,7 @@ import type { PageId } from './lib/types';
 
 const BILLING_LOCKED_PAGES: PageId[] = [
   'questionbank', 'goal', 'schedule', 'tasks', 'plan', 'exams', 'calculator',
-  'topics', 'questions', 'timer', 'analytics',
+  'topics', 'questions', 'timer',
 ];
 
 export default function App() {
@@ -82,6 +84,9 @@ function Shell() {
       {!billingLock && page === 'home' && <HomePage onNewTask={() => setTaskOpen(true)} />}
       {!billingLock && page === 'questionbank' && <QuestionBankPage />}
       {page === 'coaches' && <CoachesPage />}
+      {page === 'meetings' && <MeetingsPage />}
+      {page === 'library' && <LibraryPage />}
+      {page === 'analytics' && <AnalyticsPage />}
       {!billingLock && page === 'goal' && <GoalPage />}
       {!billingLock && page === 'schedule' && <SchedulePage />}
       {!billingLock && page === 'tasks' && <TasksPage onNewTask={() => setTaskOpen(true)} />}
@@ -92,7 +97,6 @@ function Shell() {
       {!billingLock && page === 'questions' && <QuestionsPage />}
       {page === 'calendar' && <CalendarPage />}
       {!billingLock && page === 'timer' && <TimerPage />}
-      {!billingLock && page === 'analytics' && <AnalyticsPage />}
       {page === 'membership' && <MembershipPage />}
       {page === 'account' && <AccountPage />}
       {page === 'settings' && <SettingsPage />}

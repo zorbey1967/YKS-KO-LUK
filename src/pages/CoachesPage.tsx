@@ -16,31 +16,32 @@ import {
   type CoachTrack,
   type HumanCoach,
 } from '../lib/coaches';
-import { addCoachSlot, assignCoachHomework, closeCoachSlot, fetchActiveCoaches, fetchCoachDesk, fetchCoachStudentBrief, fetchLinkedStudents, fetchMyCoach, listMySlots, listOpenSlots, requestAppointment, respondAppointment, runAppointmentJobs, setCoachHomeworkDone, type LinkedStudentRow } from '../lib/cloudPlatform';
+import { addCoachSlot, assignCoachHomework, closeCoachSlot, decideApprovedAppointmentCancel, fetchActiveCoaches, fetchCoachDesk, fetchCoachStudentBrief, fetchLinkedStudents, fetchMyCoach, fetchStudentWeekPlan, listMySlots, listOpenSlots, requestAppointment, requestCancelApprovedAppointment, respondAppointment, runAppointmentJobs, saveStudentWeekPlan, setCoachHomeworkDone, type LinkedStudentRow } from '../lib/cloudPlatform';
 import { CoachStudyBriefView } from '../components/CoachStudyBrief';
 import type { CoachStudyBrief } from '../lib/coachBrief';
 import { istanbulToday, istanbulWallIso, listMyAppointments, nextBookSlot, splitAppointmentsBySlot, type MyAppointment } from '../lib/meeting';
-import { SESSION_REQUIRED, SUPABASE_UNAVAILABLE, supabase, withTimeout } from '../lib/supabase';
+import { SESSION_REQUIRED, supabase } from '../lib/supabase';
 import { today } from '../lib/util';
 import { MeetingJoinButton } from '../components/MeetingJoinButton';
+import { canDecideApprovedCancel, canRequestApprovedCancel } from '../lib/appointmentCancelPolicy';
 import { CoachZorroAssist } from '../components/CoachZorroAssist';
 import { getCoachDisplayName, getPersonDisplayName } from '../lib/displayName';
-import { emailLooksValid, normalizeEmailInput, passwordPolicyError, publicAuthError } from '../lib/authUi';
+import { coachesAudience, coachesView } from '../lib/coachesView';
+import { WeekPlanEditor } from '../components/WeekPlanEditor';
+import { emptyWeekPlan, type WeekPlan } from '../lib/weekPlan';
+import type { ScheduleDay } from '../lib/types';
 
-type PanelTab = 'ozet' | 'ogrenci' | 'odev' | 'para' | 'randevu' | 'musait';
+type PanelTab = 'ozet' | 'ogrenci' | 'odev' | 'para' | 'randevu' | 'musait' | 'oda';
 
 const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
 const MINS = Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, '0'));
 
 export function CoachesPage() {
-  const { toast, go, user, profile } = useApp();
+  const { toast, go, user, profile, isAdmin } = useApp();
   const [session, setSession] = useState<CoachSession | null>(null);
   const [desk, setDesk] = useState<CoachDesk>(() => emptyDesk());
   const [tab, setTab] = useState<PanelTab>('ozet');
   const [track, setTrack] = useState<CoachTrack | 'Tümü'>('Tümü');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [authMsg, setAuthMsg] = useState('');
   const [hwStudent, setHwStudent] = useState('');
   const [hwTitle, setHwTitle] = useState('');
   const [hwDue, setHwDue] = useState(today());
@@ -67,7 +68,11 @@ export function CoachesPage() {
   const [briefId, setBriefId] = useState('');
   const [brief, setBrief] = useState<CoachStudyBrief | null>(null);
   const [briefErr, setBriefErr] = useState('');
-  const coachUx = profile?.role === 'coach';
+  const [planStudent, setPlanStudent] = useState('');
+  const [week, setWeek] = useState<WeekPlan>(() => emptyWeekPlan());
+  const [weekBusy, setWeekBusy] = useState(false);
+  const coachUx = profile?.role === 'coach' || isAdmin;
+  const view = coachesView(coachesAudience({ signedIn: Boolean(user), role: profile?.role, isAdmin }));
 
   useEffect(() => {
     const apply = () => {
@@ -243,58 +248,6 @@ export function CoachesPage() {
     [allAppts],
   );
 
-  async function onLogin() {
-    const mail = normalizeEmailInput(email);
-    const policy = passwordPolicyError(password, 'login');
-    if (!emailLooksValid(mail) || policy) {
-      setAuthMsg(policy || 'Geçerli e-posta ve şifre gerekli.');
-      return;
-    }
-    if (!supabase) {
-      setAuthMsg(SUPABASE_UNAVAILABLE);
-      return;
-    }
-    try {
-      const { error } = await withTimeout(supabase.auth.signInWithPassword({ email: mail, password }));
-      if (error) {
-        setAuthMsg(publicAuthError(error));
-        return;
-      }
-      const { data } = await supabase.auth.getUser();
-      const uid = data.user?.id;
-      if (!uid) {
-        setAuthMsg(SESSION_REQUIRED);
-        return;
-      }
-      const mine = await fetchMyCoach(uid);
-      if (!mine) {
-        setAuthMsg('Bu hesap koç değil. Koç kaydı Hesabım’dan yapılır.');
-        return;
-      }
-      if (mine.status !== 'active') {
-        setAuthMsg(mine.status === 'pending' ? 'Koç başvurun yönetici onayı bekliyor. Panel henüz kapalı.' : 'Bu koç hesabı kapalı.');
-        return;
-      }
-      const cloudDesk = await fetchCoachDesk(mine.id);
-      const sess: CoachSession = { coachId: mine.id, name: getCoachDisplayName(mine.name), email: mine.email, track: mine.track };
-      saveCoachSession(sess);
-      setSession(sess);
-      setCloudCoachId(mine.id);
-      setCoachScore(typeof mine.score === 'number' ? mine.score : null);
-      const local = loadCoachDesk(mine.id);
-      const merged = cloudDesk
-        ? { ...cloudDesk, homeworks: cloudDesk.homeworks, payments: cloudDesk.payments.length ? cloudDesk.payments : local.payments }
-        : { ...emptyDesk(), appointments: [] };
-      setDesk(merged);
-      saveCoachDesk(mine.id, merged);
-      setPassword('');
-      setAuthMsg('');
-      toast('Koç girişi yapıldı.');
-    } catch (e) {
-      setAuthMsg(publicAuthError(e));
-    }
-  }
-
   async function onLogout() {
     const mine = user ? await fetchMyCoach(user.id) : null;
     clearCoachSession();
@@ -428,6 +381,30 @@ export function CoachesPage() {
         ) : (
           <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             {asCoach ? <span className="chip">{a.status}</span> : null}
+            {canRequestApprovedCancel(a, user?.id, asCoach) ? (
+              <button className="btn secondary" type="button" onClick={() => {
+                void requestCancelApprovedAppointment(a.id).then((res) => {
+                  toast(res.ok ? res.message : res.error);
+                  if (user) void listMyAppointments(user.id, cloudCoachId).then((r) => { if (r.ok) setMyAppts(r.rows); });
+                });
+              }}>İptal talebi</button>
+            ) : null}
+            {canDecideApprovedCancel(a, user?.id, { asCoachForThisAppt: asCoach, isAdmin: false }) ? (
+              <>
+                <button className="btn primary" type="button" onClick={() => {
+                  void decideApprovedAppointmentCancel(a.id, true).then((res) => {
+                    toast(res.ok ? res.message : res.error);
+                    if (user) void listMyAppointments(user.id, cloudCoachId).then((r) => { if (r.ok) setMyAppts(r.rows); });
+                  });
+                }}>İptali onayla</button>
+                <button className="btn secondary" type="button" onClick={() => {
+                  void decideApprovedAppointmentCancel(a.id, false).then((res) => {
+                    toast(res.ok ? res.message : res.error);
+                    if (user) void listMyAppointments(user.id, cloudCoachId).then((r) => { if (r.ok) setMyAppts(r.rows); });
+                  });
+                }}>Talebi reddet</button>
+              </>
+            ) : null}
             <MeetingJoinButton appt={a} userId={user?.id} coachId={cloudCoachId} now={Date.now()} />
           </span>
         )}
@@ -447,38 +424,24 @@ export function CoachesPage() {
         </p>
       </div>
 
-      {!user ? (
-        <div className="card" style={{ marginTop: 16 }}>
-          <div className="section-title">
-            <h3>Koç girişi</h3>
-            <button className="btn secondary" type="button" onClick={() => go('account')}>Koç olmak</button>
-          </div>
-          <p className="muted">Kayıt Hesabım’dadır. Panel için aynı e-posta ile gir.</p>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              void onLogin();
-            }}
-          >
-          <div className="form-grid">
-            <div className="field"><label>E-posta</label><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="koc@mail.com" autoComplete="email" maxLength={120} /></div>
-            <div className="field"><label>Şifre</label><input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" maxLength={72} /></div>
-          </div>
-          <div className="actions">
-            <button className="btn primary" type="submit">Koç paneline gir</button>
-          </div>
-          </form>
-          {authMsg ? <div className="notice" style={{ marginTop: 12 }}>{authMsg}</div> : null}
-        </div>
+      {view.showCoachLoginHint ? (
+        <p className="muted" style={{ marginTop: 12 }}>
+          Koç paneli için{' '}
+          <button className="btn secondary" type="button" onClick={() => go('account')}>Hesabım’dan giriş</button>
+        </p>
       ) : null}
 
       {coachUx && user && !session ? (
         <div className="card" style={{ marginTop: 16 }}>
-          <p className="muted">Koç kaydın henüz yok veya onay bekliyor. Panel, yönetici onayından sonra açılır.</p>
+          <p className="muted">
+            {isAdmin
+              ? 'Koç paneli bu hesapta coaches satırı olunca açılır. Yönetici rolü koça dönüştürülmez.'
+              : 'Koç kaydın henüz yok veya onay bekliyor. Panel, yönetici onayından sonra açılır.'}
+          </p>
         </div>
       ) : null}
 
-      {session ? (
+      {view.showCoachPanel && session ? (
         <>
           <div className="card" style={{ marginTop: 16 }}>
             <div className="section-title">
@@ -487,7 +450,7 @@ export function CoachesPage() {
             </div>
             <CoachZorroAssist students={linked} homeworks={desk.homeworks} />
             <div className="chip-row" style={{ marginBottom: 12 }}>
-              {([['ozet', 'Özet'], ['ogrenci', 'Öğrenciler'], ['odev', 'Ödev'], ['para', 'Tahsilat'], ['randevu', 'Randevu'], ['musait', 'Boşum']] as const).map(([id, label]) => (
+              {([['ozet', 'Özet'], ['ogrenci', 'Öğrenciler'], ['odev', 'Ödev'], ['para', 'Tahsilat'], ['randevu', 'Randevu'], ['musait', 'Boşum'], ['oda', 'Çalışma odası']] as const).map(([id, label]) => (
                 <button key={id} className={`chip ${tab === id ? 'on' : ''}`} type="button" onClick={() => setTab(id)}>{label}</button>
               ))}
             </div>
@@ -531,6 +494,20 @@ export function CoachesPage() {
                     </small>
                   </span>
                   <button className="btn secondary" type="button" onClick={() => {
+                    setPlanStudent(s.id);
+                    setWeek(emptyWeekPlan());
+                    void fetchStudentWeekPlan(s.id).then((row) => {
+                      if (!row || typeof row !== 'object') return;
+                      const rec = row as { days?: ScheduleDay[]; week_hours?: number; notes?: string; lock?: string; coach_id?: string; updated_at?: string };
+                      setWeek({
+                        days: Array.isArray(rec.days) && rec.days.length ? rec.days as ScheduleDay[] : emptyWeekPlan().days,
+                        weekHours: Number(rec.week_hours) || 0,
+                        notes: String(rec.notes || ''),
+                        lock: 'coach',
+                        coachId: rec.coach_id ? String(rec.coach_id) : null,
+                        updatedAt: String(rec.updated_at || ''),
+                      });
+                    });
                     setBriefId(s.id);
                     setBrief(null);
                     setBriefErr('');
@@ -551,6 +528,25 @@ export function CoachesPage() {
                   brief={brief}
                   name={(linked.find((s) => s.id === briefId) || desk.students.find((s) => s.id === briefId))?.name || 'Öğrenci'}
                 />
+              ) : null}
+              {planStudent ? (
+                <div style={{ marginTop: 16 }}>
+                  <div className="section-title"><h3>7 günlük program</h3><span>{(linked.find((s) => s.id === planStudent) || desk.students.find((s) => s.id === planStudent))?.name || 'Öğrenci'}</span></div>
+                  <WeekPlanEditor
+                    key={planStudent + week.updatedAt}
+                    plan={week}
+                    editable
+                    busy={weekBusy}
+                    onSave={(next) => {
+                      setWeekBusy(true);
+                      void saveStudentWeekPlan({ studentId: planStudent, days: next.days, weekHours: next.weekHours, notes: next.notes, lock: 'coach' }).then((res) => {
+                        setWeekBusy(false);
+                        toast(res.ok ? 'Öğrenci programı kaydedildi.' : res.error);
+                        if (res.ok) setWeek({ ...next, lock: 'coach' });
+                      });
+                    }}
+                  />
+                </div>
               ) : null}
             </div>
           ) : null}
@@ -607,6 +603,26 @@ export function CoachesPage() {
             </div>
           ) : null}
 
+          {tab === 'oda' ? (
+            <div className="card" style={{ marginTop: 16 }}>
+              <div className="section-title"><h3>Özel çalışma odası</h3></div>
+              <p className="muted">Varsayılan sessiz. Mikrofon kapalı. Sesli modu yalnız koç açar. Kamera isteğe bağlı ve henüz LiveKit oda token’ına bağlı değil. Yalnız eşleşmiş öğrenciler.</p>
+              {(linked.length ? linked : desk.students).map((s) => (
+                <div className="plan-item" key={s.id}>
+                  <span>{s.name}</span>
+                  <button className="btn secondary" type="button" onClick={() => {
+                    void (async () => {
+                      if (!supabase) return;
+                      const { error } = await supabase.rpc('coach_kick_student', { p_student: s.id });
+                      toast(error ? 'Çıkarma şeması yok veya yetkisiz (037).' : 'Öğrenci odadan çıkarıldı.');
+                    })();
+                  }}>Odadan çıkar</button>
+                </div>
+              ))}
+              {!(linked.length || desk.students.length) ? <div className="empty">Atanmış öğrenci yok.</div> : null}
+            </div>
+          ) : null}
+
           {tab === 'ozet' || tab === 'musait' ? (
             <div className="card" style={{ marginTop: 16 }}>
               <div className="section-title"><h3>Boşum / Müsaitlik</h3><span>Türkiye saati</span></div>
@@ -657,26 +673,7 @@ export function CoachesPage() {
         </>
       ) : null}
 
-      <div className="card" style={{ marginTop: 16 }}>
-        <div className="section-title"><h3>Randevularım</h3><span>Görüşme</span></div>
-        <p className="muted" style={{ marginTop: 0 }}>Geçmiş randevular listede kalır. Katılma, başlangıçtan 24 saat sonra kapanır. Sayaç, iki taraf da odadayken 40 dk başlar. Kayıt yok.</p>
-        {!user ? (
-          <div className="empty">
-            Görüşmeleri görmek için giriş yap.
-            <div className="actions" style={{ marginTop: 10 }}>
-              <button className="btn primary" type="button" onClick={() => go('account')}>Giriş</button>
-            </div>
-          </div>
-        ) : myApptsMsg && !allAppts.length ? (
-          <div className="notice">{myApptsMsg}</div>
-        ) : allAppts.length ? (
-          allAppts.map((a) => apptRow(a))
-        ) : (
-          <div className="empty">Bulutta randevu yok.</div>
-        )}
-      </div>
-
-      {!coachUx ? (
+      {view.showDirectory ? (
       <div className="card" style={{ marginTop: 16 }}>
         <div className="section-title"><h3>Randevu al</h3><span>Koçlar</span></div>
         <p className="muted" style={{ marginTop: 0 }}>Koçun açtığı saatlerden seç. Son talep, dersten 30 dk önce kapanır. Saatler Türkiye.</p>
@@ -713,7 +710,26 @@ export function CoachesPage() {
       </div>
       ) : null}
 
-      {bookCoach && !coachUx ? (
+      <div className="card" style={{ marginTop: 16 }}>
+        <div className="section-title"><h3>Randevularım</h3><span>Görüşme</span></div>
+        <p className="muted" style={{ marginTop: 0 }}>Geçmiş randevular listede kalır. Katılma, başlangıçtan 24 saat sonra kapanır. Sayaç, iki taraf da odadayken 40 dk başlar. Kayıt yok.</p>
+        {!user ? (
+          <div className="empty">
+            Görüşmeleri görmek için giriş yap.
+            <div className="actions" style={{ marginTop: 10 }}>
+              <button className="btn primary" type="button" onClick={() => go('account')}>Giriş</button>
+            </div>
+          </div>
+        ) : myApptsMsg && !allAppts.length ? (
+          <div className="notice">{myApptsMsg}</div>
+        ) : allAppts.length ? (
+          allAppts.map((a) => apptRow(a))
+        ) : (
+          <div className="empty">Bulutta randevu yok.</div>
+        )}
+      </div>
+
+      {bookCoach && view.showDirectory ? (
         <div className="modal" role="dialog" aria-modal="true" aria-label={`Randevu • ${getCoachDisplayName(bookCoach.name)}`} onClick={() => setBookCoach(null)}>
           <div className="modal-box" onClick={(e) => e.stopPropagation()}>
             <div className="section-title">

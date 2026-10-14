@@ -6,12 +6,24 @@ import { ExamInsight } from '../components/ExamInsight';
 import { FeatureLock } from '../components/FeatureLock';
 import { examKind, examTitle } from '../lib/stage';
 import { localDateKey } from '../lib/util';
-import { canUseFeature } from '../lib/subscription';
+import { canSeeAnalyticsPage, canUseAnalytics } from '../lib/subscription';
+import { ExamAnalysisPanel } from '../components/ExamAnalysisPanel';
 
 export function AnalyticsPage() {
-  const { data, go, profile } = useApp();
-  if (!canUseFeature(profile, 'analytics')) {
-    return <FeatureLock title="Analiz Pro veya deneme süresinde" />;
+  const { data, go, profile, isAdmin } = useApp();
+  const see = canSeeAnalyticsPage(profile, isAdmin);
+  const use = canUseAnalytics(profile, isAdmin);
+  if (!see) {
+    return <FeatureLock title="Analiz sayfası üyelik veya 14 günlük deneme sonrası görünür" />;
+  }
+  if (!use) {
+    return (
+      <>
+        <FeatureLock title="Analiz özelliği Premium veya 14 günlük denemede açılır">
+          <p className="muted">Sayfa görünür; grafikler, tarama ve ücretli analiz Pro veya ücretsiz planda çalışmaz. Yerel rol/paket değişikliği yetki vermez.</p>
+        </FeatureLock>
+      </>
+    );
   }
   const total = data.sessions.reduce((a, x) => a + x.minutes, 0);
   const avgTyt = data.exams.length ? data.exams.reduce((a, x) => a + Number(x.tyt || 0), 0) / data.exams.length : 0;
@@ -61,6 +73,7 @@ export function AnalyticsPage() {
         {elite.lines.map((ln) => <p key={ln.slice(0, 40)} className="muted" style={{ margin: '6px 0' }}>{ln}</p>)}
       </div>
       ) : null}
+      <ExamAnalysisPanel />
       <div style={{ marginBottom: 16 }}><ExamInsight /></div>
       <div className="grid two">
         <div className="card">

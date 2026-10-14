@@ -31,11 +31,11 @@ type Msg = ZorroMsg & { source?: CoachSource; badge?: string };
 const FRIENDLY_FAIL = 'ZORRO şu anda yanıt veremiyor. Lütfen biraz sonra tekrar dene.';
 
 export function CoachChat() {
-  const { data, setData, toast, go, user, page, profile } = useApp();
-  const chatLocked = paidAccessLocked(profile);
+  const { data, setData, toast, go, user, page, profile, isAdmin } = useApp();
+  const chatLocked = paidAccessLocked(profile, Date.now(), isAdmin);
   const weak = weakBankTopics(data, 1)[0];
   const lastQ = lastBankTopic(data);
-  const chips = workingModeChips(data, Boolean(user), canUseFeature(profile, 'zorro_advanced'));
+  const chips = workingModeChips(data, Boolean(user), canUseFeature(profile, 'zorro_advanced', Date.now(), isAdmin));
   const fact = topicMastery(data).find((m) => m.enough);
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState('');

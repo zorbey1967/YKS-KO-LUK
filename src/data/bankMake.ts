@@ -227,7 +227,7 @@ function pick<T>(arr: T[], i: number): T {
   return arr[Math.abs(i) % arr.length];
 }
 
-/** Konu adına göre ek, doğru cevaplı 5 şıklı soru üretir (katalog bitince). */
+/** Konu başına 12’ye tamamlamak için şablon. cv-* id, kind='osym' yanıltıcı; ÖSYM doğrulaması değil. Ana paketi bu turda değiştirme. */
 function generatedFillers(level: string, subject: string, topic: string, need: number): Item[] {
   if (need <= 0) return [];
   const t = topic.toLocaleLowerCase('tr-TR');
@@ -349,7 +349,7 @@ export function coverCurriculum(
         const need = COVER_PER_TOPIC - have;
         const extra = [
           ...generatedFillers(level, subject, topic, need + 8).map((it, i) =>
-            q(idOf(level, subject, topic, 800 + i), it[0], it[1], it[2], it[3], it[4], 'osym')),
+            q(idOf(level, subject, topic, 800 + i), it[0], it[1], it[2], it[3], it[4], 'osym')), // yanıltıcı etiket; üretim aynı kalsın
           ...catalogQuestions(level, subject, topic, Math.max(need, 12)),
           ...makeTopicQuestions(level, subject, topic, Math.max(need, 12)),
         ];

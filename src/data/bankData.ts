@@ -14,7 +14,9 @@ import { LGS_FEN_BANK } from './bankLgsFen';
 import { KPSS_OSMANLI_BANK } from './bankKpssOsmanli';
 import { AYT_CORE_BANK } from './bankAytCore';
 import { OSYM_BANK } from './bankOsym';
+import { ORIGINAL_BANK } from './bankPackOriginal';
 import { dedupeBank } from './bankDedupe';
+import { applyQualityReplacements } from './bankQualityApply';
 
 type Q = BankQuestion;
 
@@ -34,7 +36,7 @@ export const CURRICULUM: Record<string, Record<string, string[]>> = {
   ...KPSS_CURRICULUM,
 };
 
-export const BANK: Record<string, Q[]> = dedupeBank(coverCurriculum(
+export const BANK_PRE_QUALITY_MERGE: Record<string, Q[]> = dedupeBank(coverCurriculum(
   CURRICULUM,
   mergeBanks(
     SCHOOL_BANK,
@@ -50,8 +52,11 @@ export const BANK: Record<string, Q[]> = dedupeBank(coverCurriculum(
     KPSS_OSMANLI_BANK,
     AYT_CORE_BANK,
     OSYM_BANK,
+    ORIGINAL_BANK,
   ),
 ));
+
+export const BANK: Record<string, Q[]> = applyQualityReplacements(BANK_PRE_QUALITY_MERGE).bank;
 
 export function bundledManifest(): BankManifest {
   const slugify = (name: string) => name

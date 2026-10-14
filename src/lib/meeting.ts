@@ -1,7 +1,7 @@
 import { fetchMyCoach } from './cloudPlatform';
 import { getCoachDisplayName, getPersonDisplayName } from './displayName';
 import type { AppointmentStatus, CoachAppointment } from './coaches';
-import { asCancelReason } from './coaches';
+import { asCancelDecision, asCancelReason } from './coaches';
 import { publicCloudError, supabase, supabaseAnonKey, supabaseUrl, withTimeout } from './supabase';
 
 export const BOOKING_LEAD_MIN = 30;
@@ -254,6 +254,8 @@ function mapAppointment(r: Record<string, unknown>, coachName: string): MyAppoin
     minutes: Number(r.minutes) || 40,
     status: asStatus(r.status),
     cancelReason: asCancelReason(r.cancel_reason),
+    cancelRequestedAt: r.cancel_requested_at ? String(r.cancel_requested_at) : null,
+    cancelDecision: asCancelDecision(r.cancel_decision),
     coachName: getCoachDisplayName(coachName),
     startsAt: r.starts_at ? String(r.starts_at) : null,
   };
@@ -281,7 +283,7 @@ export async function listMyAppointments(userId: string, coachId: string | null)
   if (!userId) return { ok: true, rows: [] };
   try {
     const { data, error } = await withTimeout(
-      supabase.from('appointments').select('id, coach_id, student_id, student_name, date, time, minutes, status, cancel_reason, starts_at').order('date', { ascending: false }),
+      supabase.from('appointments').select('id, coach_id, student_id, student_name, date, time, minutes, status, cancel_reason, cancel_requested_at, cancel_decision, starts_at').order('date', { ascending: false }),
     );
     if (error) throw error;
     const rows = (data || []) as Record<string, unknown>[];
@@ -308,7 +310,7 @@ export async function fetchAppointmentForMeeting(id: string, userId: string): Pr
   if (!id || !userId) return { ok: false, reason: 'not-found' };
   try {
     const { data, error } = await withTimeout(
-      supabase.from('appointments').select('id, coach_id, student_id, student_name, date, time, minutes, status, cancel_reason, starts_at').eq('id', id).maybeSingle(),
+      supabase.from('appointments').select('id, coach_id, student_id, student_name, date, time, minutes, status, cancel_reason, cancel_requested_at, cancel_decision, starts_at').eq('id', id).maybeSingle(),
     );
     if (error) throw error;
     if (!data) return { ok: false, reason: 'not-found' };

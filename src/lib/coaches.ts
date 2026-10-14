@@ -61,7 +61,15 @@ export type CoachPayment = {
   note: string;
 };
 
-export type AppointmentCancelReason = 'student_no_show' | 'sibling_accepted' | 'coach_rejected' | 'expired';
+export type AppointmentCancelReason =
+  | 'student_no_show'
+  | 'sibling_accepted'
+  | 'coach_rejected'
+  | 'expired'
+  | 'approved_cancel_request'
+  | 'approved_cancel_accepted';
+
+export type AppointmentCancelDecision = 'pending' | 'accepted' | 'denied';
 
 export type CoachAppointment = {
   id: string;
@@ -73,17 +81,33 @@ export type CoachAppointment = {
   minutes: number;
   status: AppointmentStatus;
   cancelReason?: AppointmentCancelReason | null;
+  cancelRequestedAt?: string | null;
+  cancelDecision?: AppointmentCancelDecision | null;
   startsAt?: string | null;
 };
 
 export function asCancelReason(v: unknown): AppointmentCancelReason | null {
-  return v === 'student_no_show' || v === 'sibling_accepted' || v === 'coach_rejected' || v === 'expired'
+  return v === 'student_no_show'
+    || v === 'sibling_accepted'
+    || v === 'coach_rejected'
+    || v === 'expired'
+    || v === 'approved_cancel_request'
+    || v === 'approved_cancel_accepted'
     ? v
     : null;
 }
 
-export function appointmentStatusLabel(a: Pick<CoachAppointment, 'status' | 'cancelReason'>, party: 'student' | 'coach' = 'student') {
+export function asCancelDecision(v: unknown): AppointmentCancelDecision | null {
+  return v === 'pending' || v === 'accepted' || v === 'denied' ? v : null;
+}
+
+export function appointmentStatusLabel(a: Pick<CoachAppointment, 'status' | 'cancelReason' | 'cancelDecision'>, party: 'student' | 'coach' = 'student') {
   if (a.status === 'bekliyor') return party === 'coach' ? 'Onay bekliyor' : 'Bekliyor — koç onayı yok, kesin değil';
+  if (a.status === 'onay' && a.cancelReason === 'approved_cancel_request' && a.cancelDecision !== 'denied') {
+    return party === 'coach'
+      ? 'Onaylı — iptal talebi bekliyor'
+      : 'Onaylı — iptal talebin koç/yönetici onayında';
+  }
   if (a.status === 'onay') return 'Onaylı — randevu kesin';
   if (a.status === 'tamamlandi') return 'Tamamlandı';
   if (a.cancelReason === 'student_no_show') {
@@ -98,6 +122,7 @@ export function appointmentStatusLabel(a: Pick<CoachAppointment, 'status' | 'can
   }
   if (a.cancelReason === 'coach_rejected') return party === 'coach' ? 'Reddettin' : 'İptal: koç reddetti';
   if (a.cancelReason === 'expired') return 'İptal: onay süresi doldu';
+  if (a.cancelReason === 'approved_cancel_accepted') return 'İptal: onaylı randevu taleple kapatıldı';
   return 'İptal';
 }
 

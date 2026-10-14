@@ -1,12 +1,33 @@
 import type { BankManifest, BankQuestion } from './types';
-import { BANK, bundledManifest, questionsForLevel } from '../data/bankData';
 import { hash32, seededOrder } from './util';
+import { isSupabaseConfigured, supabase } from './supabase';
+import { slugifyLevel } from '../../supabase/functions/_shared/bankPackSchema.ts';
 
 let manifestCache: BankManifest | null = null;
 const levelCache = new Map<string, Record<string, BankQuestion[]>>();
 
+async function localBank() {
+  return import('../data/bankData');
+}
+
+async function invokeBankPack(body: Record<string, unknown>) {
+  if (!supabase || !isSupabaseConfigured()) return { error: 'config', data: null as Record<string, unknown> | null };
+  const { data, error } = await supabase.functions.invoke('bank-pack', { body });
+  if (error) return { error: String(error.message || error), data: null };
+  return { error: null as string | null, data: (data && typeof data === 'object') ? data as Record<string, unknown> : null };
+}
+
 export async function loadManifest(): Promise<BankManifest> {
   if (manifestCache) return manifestCache;
+  if (!import.meta.env.DEV) {
+    const remote = await invokeBankPack({ action: 'manifest' });
+    const man = remote.data?.manifest;
+    if (man && typeof man === 'object') {
+      manifestCache = man as BankManifest;
+      return manifestCache;
+    }
+    throw new Error(String(remote.data?.error || remote.error || 'Soru bankası sunucuda kapalı.'));
+  }
   try {
     const res = await fetch('/bank/manifest.json');
     if (res.ok) {
@@ -14,15 +35,26 @@ export async function loadManifest(): Promise<BankManifest> {
       return manifestCache;
     }
   } catch {
-    /* bundled fallback */
+    /* yerel paket */
   }
-  manifestCache = bundledManifest();
+  const mod = await localBank();
+  manifestCache = mod.bundledManifest();
   return manifestCache;
 }
 
 export async function loadLevel(slug: string, levelName: string): Promise<Record<string, BankQuestion[]>> {
   const cacheKey = slug || levelName;
   if (levelCache.has(cacheKey)) return levelCache.get(cacheKey)!;
+  if (!import.meta.env.DEV) {
+    const remote = await invokeBankPack({ action: 'level', slug, level: levelName });
+    const pack = remote.data?.questions;
+    if (!pack || typeof pack !== 'object') {
+      throw new Error(String(remote.data?.error || remote.error || 'Soru paketi yetkisiz veya yok.'));
+    }
+    const shuffled = shuffleBank(pack as Record<string, BankQuestion[]>);
+    levelCache.set(cacheKey, shuffled);
+    return shuffled;
+  }
   try {
     const res = await fetch(`/bank/${slug}.json`);
     if (res.ok) {
@@ -32,24 +64,16 @@ export async function loadLevel(slug: string, levelName: string): Promise<Record
       return shuffled;
     }
   } catch {
-    /* bundled */
+    /* yerel */
   }
-  const bundled = shuffleBank(questionsForLevel(levelName));
+  const mod = await localBank();
+  const bundled = shuffleBank(mod.questionsForLevel(levelName));
   levelCache.set(cacheKey, bundled);
   return bundled;
 }
 
 export function levelSlug(name: string) {
-  return name
-    .toLocaleLowerCase('tr-TR')
-    .replaceAll('ı', 'i')
-    .replaceAll('ğ', 'g')
-    .replaceAll('ü', 'u')
-    .replaceAll('ş', 's')
-    .replaceAll('ö', 'o')
-    .replaceAll('ç', 'c')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '');
+  return slugifyLevel(name);
 }
 
 function shuffleBank(data: Record<string, BankQuestion[]>) {
@@ -98,17 +122,19 @@ export function findBankQuestions(opts: {
   const diff = opts.difficulty;
   const limit = Math.min(5, Math.max(1, opts.limit || 1));
   const hits: BankQuestion[] = [];
-  for (const [key, list] of Object.entries(BANK)) {
-    const k = key.toLocaleLowerCase('tr-TR');
-    if (exam.includes('ayt') && !k.includes('ayt')) continue;
-    if (exam.includes('tyt') && !k.includes('tyt')) continue;
-    if (exam.includes('lgs') && !k.includes('8. sınıf') && !k.includes('lgs')) continue;
-    if (exam.includes('kpss') && !k.includes('kpss')) continue;
-    if (subject && !k.includes(subject)) continue;
-    if (topic && !k.includes(topic)) continue;
-    for (const item of list) {
-      if (diff && (item.difficulty || 'Orta') !== diff) continue;
-      hits.push({ ...item, _bankKey: key });
+  for (const data of levelCache.values()) {
+    for (const [key, list] of Object.entries(data)) {
+      const k = key.toLocaleLowerCase('tr-TR');
+      if (exam.includes('ayt') && !k.includes('ayt')) continue;
+      if (exam.includes('tyt') && !k.includes('tyt')) continue;
+      if (exam.includes('lgs') && !k.includes('8. sınıf') && !k.includes('lgs')) continue;
+      if (exam.includes('kpss') && !k.includes('kpss')) continue;
+      if (subject && !k.includes(subject)) continue;
+      if (topic && !k.includes(topic)) continue;
+      for (const item of list) {
+        if (diff && (item.difficulty || 'Orta') !== diff) continue;
+        hits.push({ ...item, _bankKey: key });
+      }
     }
   }
   if (!hits.length) return [];

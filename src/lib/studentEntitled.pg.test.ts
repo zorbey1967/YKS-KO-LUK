@@ -1,7 +1,7 @@
-import { execFileSync } from 'node:child_process';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { livePgUrlBlocked, pgSqlAvailable, runPgSqlFile } from './pgTestRun';
 
 const pgUrl = String(process.env.YKS_PG_TEST_URL || '').trim();
 const sqlFile = join(
@@ -9,21 +9,18 @@ const sqlFile = join(
   '../../supabase/tests/020_entitlement_pg.sql',
 );
 
-describe.skipIf(!pgUrl)('student_entitled PostgreSQL (YKS_PG_TEST_URL)', () => {
-  it('psql ile 020_entitlement_pg.sql çalışır (ROLLBACK)', () => {
-    const out = execFileSync('psql', ['-v', 'ON_ERROR_STOP=1', '-f', sqlFile, pgUrl], {
-      encoding: 'utf8',
-      timeout: 30_000,
-    });
+describe.skipIf(!pgSqlAvailable())('student_entitled PostgreSQL', () => {
+  it('psql/docker ile 020_entitlement_pg.sql çalışır (ROLLBACK); canlı URL yok', () => {
+    if (pgUrl) expect(livePgUrlBlocked(pgUrl)).toBe(false);
+    const out = runPgSqlFile(sqlFile);
     expect(out.toLowerCase()).toMatch(/rollback/);
   });
 });
 
 describe('PostgreSQL entegrasyon test yolu', () => {
-  it('YKS_PG_TEST_URL yoksa atlanır; metin testi yerine supabase/tests/020_entitlement_pg.sql kullanılır', () => {
+  it('canlı supabase.co reddedilir; dosya sözleşmesi durur', () => {
     expect(sqlFile.replace(/\\/g, '/')).toContain('supabase/tests/020_entitlement_pg.sql');
-    if (!pgUrl) {
-      expect(pgUrl).toBe('');
-    }
+    expect(livePgUrlBlocked('postgresql://postgres@db.abc.supabase.co:5432/postgres')).toBe(true);
+    expect(livePgUrlBlocked('postgresql://postgres@127.0.0.1:54322/postgres')).toBe(false);
   });
 });

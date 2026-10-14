@@ -234,7 +234,7 @@ h1{font-size:28px;margin:3px 0 0}h2{margin:0 0 7px}h3{margin:0}
 .auth-brand li{font-size:14px;font-weight:700;color:#fff}
 .auth-brand li::before{content:"✓ ";color:#cfe1ff}
 .auth-card{padding:28px 26px}
-.auth-tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:5px;background:var(--bg);border-radius:14px;margin-bottom:18px}
+.auth-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:5px;background:var(--bg);border-radius:14px;margin-bottom:18px}
 .auth-tabs button{border:0;background:transparent;padding:10px;border-radius:10px;font-weight:800;color:var(--muted)}
 .auth-tabs button.on{background:var(--card);color:var(--text);box-shadow:var(--shadow)}
 .meeting-room{display:flex;flex-direction:column;height:100%;min-height:0;background:#070b12;color:#eef4ff}

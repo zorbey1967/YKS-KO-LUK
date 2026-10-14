@@ -92,8 +92,9 @@ export function entitledPlan(snap: BillingSnapshot): PlanId | 'trial' | null {
 }
 
 /** Kullanıcıya gösterilen ad. DB’deki 'Ücretsiz' değeri ekrana yazılmaz. */
-export function displayMembershipName(profile: Profile | null | undefined, now = Date.now()) {
-  if (profile?.role === 'coach' || profile?.role === 'admin') return '—';
+export function displayMembershipName(profile: Profile | null | undefined, now = Date.now(), isAdmin = false) {
+  if (isAdmin) return 'Premium';
+  if (profile?.role === 'coach') return '—';
   const snap = billingFromProfile(profile, now);
   const tier = entitledPlan(snap);
   if (!snap.schemaReady || snap.status === 'legacy') return 'Üyelik kaydı sunucuda yok';
@@ -117,7 +118,13 @@ export function labelStoredPlan(raw: unknown) {
   return s;
 }
 
-export function canUseFeature(profile: Profile | null | undefined, feature: FeatureId, now = Date.now()) {
+export function canUseFeature(
+  profile: Profile | null | undefined,
+  feature: FeatureId,
+  now = Date.now(),
+  isAdmin = false,
+) {
+  if (isAdmin) return true;
   if (profile?.role === 'coach') return true;
   const snap = billingFromProfile(profile, now);
   const tier = entitledPlan(snap);
@@ -127,7 +134,41 @@ export function canUseFeature(profile: Profile | null | undefined, feature: Feat
   return false;
 }
 
-export function paidAccessLocked(profile: Profile | null | undefined, now = Date.now()) {
+/** Analiz kullanımı: Premium / deneme / sunucu isAdmin. Pro görür, çalıştırmaz. */
+export function canUseAnalytics(
+  profile: Profile | null | undefined,
+  isAdmin: boolean,
+  now = Date.now(),
+) {
+  if (isAdmin) return true;
+  if (profile?.role === 'coach' || profile?.role === 'admin') return false;
+  return canUseFeature(profile, 'analytics', now, false);
+}
+
+/** Analiz sayfası: öğrenci görür (ücretsiz/Pro kilitli ekran). Kullanım ayrı. Koç göremez. */
+export function canSeeAnalyticsPage(
+  profile: Profile | null | undefined,
+  isAdmin: boolean,
+  _now = Date.now(),
+) {
+  if (isAdmin) return true;
+  if (!profile) return false;
+  if (profile.role === 'coach') return false;
+  if (profile.role === 'admin') return false;
+  return true;
+}
+
+/** Eski ad: kullanım kapısı. */
+export function canViewAnalytics(
+  profile: Profile | null | undefined,
+  isAdmin: boolean,
+  now = Date.now(),
+) {
+  return canUseAnalytics(profile, isAdmin, now);
+}
+
+export function paidAccessLocked(profile: Profile | null | undefined, now = Date.now(), isAdmin = false) {
+  if (isAdmin) return false;
   if (profile?.role === 'coach') return false;
   return !entitledPlan(billingFromProfile(profile, now));
 }
@@ -140,8 +181,8 @@ export function studyPagesLocked(input: {
   now?: number;
 }) {
   if (input.isAdmin) return false;
-  if (input.accessGate === 'guest') return true;
-  if (input.accessGate === 'ok') return paidAccessLocked(input.profile, input.now);
+  if (input.accessGate === 'boot' || input.accessGate === 'guest') return true;
+  if (input.accessGate === 'ok') return paidAccessLocked(input.profile, input.now, false);
   return false;
 }
 

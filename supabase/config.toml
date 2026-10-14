@@ -13,3 +13,35 @@ verify_jwt = true
 
 [functions.billing-webhook]
 verify_jwt = false
+
+[functions.admin-account-status]
+verify_jwt = true
+
+[functions.exam-scan]
+verify_jwt = true
+
+[functions.bank-pack]
+verify_jwt = false
+
+[functions.exam-upload]
+verify_jwt = true
+
+[functions.meeting-ai-review]
+verify_jwt = true
+
+[functions.meeting-recording-ingest]
+verify_jwt = true
+
+# Google: Client ID/Secret ortam değişkeni. Değer bu dosyada yok.
+# Yerel: YKS_GOOGLE_CLIENT_ID / YKS_GOOGLE_CLIENT_SECRET
+# Canlı Dashboard: Authentication → Providers → Google; Automatic linking kapalı.
+[auth.external.google]
+enabled = false
+client_id = "env(YKS_GOOGLE_CLIENT_ID)"
+secret = "env(YKS_GOOGLE_CLIENT_SECRET)"
+skip_nonce_check = false
+
+[storage.buckets.exam-scans]
+public = false
+file_size_limit = "8MiB"
+allowed_mime_types = ["image/jpeg", "image/png", "image/webp", "application/pdf"]

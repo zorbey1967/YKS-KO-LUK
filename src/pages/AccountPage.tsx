@@ -12,6 +12,7 @@ import { emailLooksValid, normalizeEmailInput, passwordPolicyError, publicAuthEr
 import { authEmailRedirectTo } from '../lib/authRedirect';
 import { fullPersonName, validatePersonName } from '../lib/personName';
 import { accessMessage } from '../lib/accessGate';
+import { googleOAuthOptions } from '../lib/googleOAuth';
 import { displayMembershipName } from '../lib/subscription';
 import { GRADES } from '../lib/stage';
 import { TRACKS } from '../lib/goal';
@@ -186,6 +187,23 @@ export function AccountPage() {
     }
   }
 
+  async function signInGoogle() {
+    if (!supabase) return setAuthMsg(SUPABASE_UNAVAILABLE);
+    setBusy(true);
+    setAuthMsg('Google’a yönlendiriliyorsun…');
+    try {
+      const spec = googleOAuthOptions(window.location.origin);
+      const { error } = await withTimeout(supabase.auth.signInWithOAuth({
+        provider: spec.provider,
+        options: spec.options,
+      }));
+      if (error) throw error;
+    } catch (e) {
+      setAuthMsg(publicAuthError(e));
+      setBusy(false);
+    }
+  }
+
   async function signIn() {
     if (!supabase) return setAuthMsg(SUPABASE_UNAVAILABLE);
     const mail = normalizeEmailInput(email);
@@ -218,6 +236,7 @@ export function AccountPage() {
     if (supabase) await supabase.auth.signOut({ scope: 'global' });
     setAuthMsg('Çıkış yapıldı.');
     toast('Çıkış yapıldı');
+    go('account');
   }
 
   async function changePassword() {
@@ -250,14 +269,17 @@ export function AccountPage() {
       <div className="auth-shell">
         <section className="auth-brand">
           <div>
-            <div className="eyebrow" style={{ color: '#cfe1ff' }}>Öğrenci paneli</div>
-            <h2>Çalışma panelin tek yerde.</h2>
-            <p>Hedef, program, deneme, net ve soru bankası. 14 günlük deneme yalnızca sunucuda abonelik kaydı varsa geçerlidir; tarayıcıda başlatılmaz.</p>
+            <div className="eyebrow" style={{ color: '#cfe1ff' }}>E-Koçluk</div>
+            <h2>Çalışmana giriş yaparak devam et.</h2>
+            <p>Hedef, program, deneme, net ve soru bankası hesabına bağlıdır. Koçları giriş olmadan da inceleyebilir, randevu için oturum açarsın.</p>
             <ul>
-              <li>Öğrenci ve koç aynı sitede</li>
-              <li>Verin hesabına bağlı kalır</li>
-              <li>ZORRO, girişten sonra sunucuya gider</li>
+              <li>Öğrenci ve koç aynı platformda</li>
+              <li>Oturumun bu cihazda saklanır; her yenilemede tekrar şifre istenmez</li>
+              <li>ZORRO ve çalışma araçları girişten sonra açılır</li>
             </ul>
+            <p className="muted" style={{ color: '#cfe1ff', marginBottom: 0 }}>
+              <button className="btn secondary" type="button" onClick={() => go('coaches')}>Koçları incele</button>
+            </p>
           </div>
         </section>
         <div className="card auth-card">
@@ -267,6 +289,14 @@ export function AccountPage() {
             <button className={mode === 'sifre' ? 'on' : ''} type="button" onClick={() => { setMode('sifre'); setAuthMsg(''); }}>Şifre sıfırla</button>
           </div>
           {!supabase ? <div className="notice" role="alert">{SUPABASE_UNAVAILABLE}</div> : null}
+          {mode !== 'sifre' ? (
+            <div className="actions" style={{ marginBottom: 12 }}>
+              <button className="btn secondary" type="button" disabled={busy || !supabase} onClick={() => void signInGoogle()}>
+                Google ile devam et
+              </button>
+              <p className="muted" style={{ margin: 0 }}>Mevcut e-posta hesabı Google ile otomatik birleştirilmez. Canlı Google istemcisi yapılandırılmadıysa yönlendirme başarısız olur.</p>
+            </div>
+          ) : null}
           {mode === 'kayit' ? (
             <div className="field" style={{ marginBottom: 12 }}>
               <label>Hesap türü</label>
@@ -381,7 +411,7 @@ export function AccountPage() {
         <div className="status-grid">
           <div className="status"><b>Oturum</b><span>Açık</span></div>
           <div className="status"><b>E-posta</b><span>{user.email}</span></div>
-          <div className="status"><b>Plan</b><span>{displayMembershipName(profile)}</span></div>
+          <div className="status"><b>Plan</b><span>{displayMembershipName(profile, Date.now(), isAdmin)}</span></div>
           <div className="status"><b>Veri</b><span>{cloudStatus}</span></div>
         </div>
         {isAdmin ? (
@@ -393,7 +423,7 @@ export function AccountPage() {
         <div className="form-grid">
           <div className="field"><label>Ad</label><input value={firstName} readOnly /></div>
           <div className="field"><label>Soyad</label><input value={lastName} readOnly /></div>
-          <div className="field"><label>Plan</label><input value={displayMembershipName(profile)} disabled /></div>
+          <div className="field"><label>Plan</label><input value={displayMembershipName(profile, Date.now(), isAdmin)} disabled /></div>
         </div>
         <p className="muted">Ad ve soyad kayıtta belirlenir; hesap üzerinden değiştirilemez. E-posta yalnızca giriş içindir.</p>
         <div className="actions">

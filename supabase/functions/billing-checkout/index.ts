@@ -75,6 +75,11 @@ Deno.serve(async (req) => {
   const { data: auth, error: authErr } = await supabase.auth.getUser(token);
   if (authErr || !auth.user) return json(req, { error: "Geçersiz oturum", ready: false }, 401);
 
+  const { data: activeRpc, error: activeErr } = await supabase.rpc("caller_account_active");
+  if (!activeErr && activeRpc !== true) {
+    return json(req, { error: "Hesap askıda", ready: false }, 403);
+  }
+
   let body: { plan_id?: string; amount?: unknown; price?: unknown } = {};
   try {
     body = await req.json();

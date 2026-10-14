@@ -1,4 +1,4 @@
-export type PageId = 'home' | 'questionbank' | 'coaches' | 'goal' | 'schedule' | 'tasks' | 'plan' | 'exams' | 'calculator' | 'topics' | 'questions' | 'calendar' | 'timer' | 'analytics' | 'membership' | 'account' | 'settings' | 'admin' | 'meeting';
+export type PageId = 'home' | 'questionbank' | 'coaches' | 'meetings' | 'library' | 'goal' | 'schedule' | 'tasks' | 'plan' | 'exams' | 'calculator' | 'topics' | 'questions' | 'calendar' | 'timer' | 'analytics' | 'membership' | 'account' | 'settings' | 'admin' | 'meeting';
 
 export type TaskOrigin = 'student' | 'zorro' | 'coach';
 
@@ -245,6 +245,7 @@ export type BankQuestion = {
   a: number;
   e: string;
   difficulty?: string;
+  /** `osym` üretim/sınıflama etiketidir; doğrulanmış ÖSYM maddesi anlamına gelmez. */
   kind?: string;
   _bankKey?: string;
 };
@@ -333,6 +334,8 @@ export const emptyData = (): AppData => ({
 export const NAV: { id: PageId; icon: string; label: string }[] = [
   { id: 'home', icon: '🏠', label: 'Ana Sayfa' },
   { id: 'coaches', icon: '🎓', label: 'Koçlar' },
+  { id: 'meetings', icon: '📹', label: 'Görüşmelerim' },
+  { id: 'library', icon: '📚', label: 'Sessiz Kütüphane' },
   { id: 'questionbank', icon: '🧠', label: 'Soru Bankası' },
   { id: 'goal', icon: '🎯', label: 'Hedefim' },
   { id: 'schedule', icon: '🗓️', label: 'Ders Programım' },
@@ -353,7 +356,10 @@ export const NAV: { id: PageId; icon: string; label: string }[] = [
 const STUDENT_NAV_IDS: PageId[] = [
   'home',
   'coaches',
+  'meetings',
+  'library',
   'questionbank',
+  'analytics',
   'schedule',
   'calendar',
   'tasks',
@@ -361,7 +367,7 @@ const STUDENT_NAV_IDS: PageId[] = [
   'membership',
   'account',
 ];
-const COACH_NAV_IDS: PageId[] = ['coaches', 'home', 'account', 'settings'];
+const COACH_NAV_IDS: PageId[] = ['coaches', 'account', 'settings'];
 
 function navItem(id: PageId, role?: Profile['role']) {
   const n = NAV.find((x) => x.id === id);
@@ -376,7 +382,11 @@ export function sidebarNav(
   isAdmin: boolean,
   restrictedIds?: PageId[] | null,
 ) {
-  const ids = role === 'coach' || role === 'admin' ? COACH_NAV_IDS : STUDENT_NAV_IDS;
+  const ids = isAdmin
+    ? NAV.map((n) => n.id)
+    : role === 'coach' || role === 'admin'
+      ? COACH_NAV_IDS
+      : STUDENT_NAV_IDS;
   let items = ids.map((id) => navItem(id, role)).filter((x): x is NonNullable<typeof x> => Boolean(x));
   if (restrictedIds) {
     items = items.filter((x) => restrictedIds.includes(x.id));
@@ -384,10 +394,18 @@ export function sidebarNav(
       const acc = navItem('account', role);
       if (acc) items.push(acc);
     }
+    if (!items.some((x) => x.id === 'coaches') && restrictedIds.includes('coaches')) {
+      const c = navItem('coaches', role);
+      if (c) items.unshift(c);
+    }
+    return items;
   }
-  if (isAdmin && !restrictedIds && !items.some((x) => x.id === 'admin')) {
-    const rest = items.slice(1);
-    return [items[0] || NAV[0], ADMIN_NAV, ...rest];
+  if (isAdmin) {
+    if (!items.some((x) => x.id === 'admin')) {
+      const home = items[0] || NAV[0];
+      const rest = items.filter((x) => x.id !== home.id);
+      return [home, ADMIN_NAV, ...rest];
+    }
   }
   return items;
 }
@@ -399,13 +417,9 @@ export function commandNav(
   restrictedIds?: PageId[] | null,
 ) {
   if (restrictedIds) return sidebarNav(role, isAdmin, restrictedIds);
+  if (isAdmin) return sidebarNav(role, true, null);
   if (role === 'coach' || role === 'admin') return sidebarNav(role, isAdmin, restrictedIds);
-  let items = NAV.map((n) => navItem(n.id, role)).filter((x): x is NonNullable<typeof x> => Boolean(x));
-  if (isAdmin && !items.some((x) => x.id === 'admin')) {
-    const rest = items.slice(1);
-    return [items[0] || NAV[0], ADMIN_NAV, ...rest];
-  }
-  return items;
+  return NAV.map((n) => navItem(n.id, role)).filter((x): x is NonNullable<typeof x> => Boolean(x));
 }
 
 /** Öğrenci menüsünde yok; hash ve yetkili menü için. */
@@ -414,5 +428,5 @@ export const ADMIN_NAV = { id: 'admin' as const, icon: '🛡', label: 'Yönetici
 export const MEETING_NAV = { id: 'meeting' as const, icon: '📹', label: 'Görüşme' };
 
 export function isKnownPage(id: string): id is PageId {
-  return id === 'admin' || id === 'meeting' || NAV.some((n) => n.id === id);
+  return id === 'admin' || id === 'meeting' || id === 'meetings' || id === 'library' || NAV.some((n) => n.id === id);
 }

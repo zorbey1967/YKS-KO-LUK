@@ -83,4 +83,170 @@ describe('migration hedef şema (020 sonra 021+016; 013/017 atlanır)', () => {
     expect(s).toContain('billing_checkout_shopier_product_uidx');
     expect(s).toContain("provider = 'shopier'");
   });
+
+  it('027 010 şemasında e-posta admin ve anon RPC kapatır; 023 dosyasını değiştirmez', () => {
+    const s = sql('027_live010_no_email_admin.sql');
+    expect(s).toContain('handle_new_user');
+    expect(s).toContain('revoke all on function public.handle_new_user() from public, anon, authenticated');
+    expect(s).toContain('001–010');
+    expect(sql('023_protect_role_no_email_admin.sql')).toContain('revoke all on function public.is_admin() from public, anon');
+  });
+
+  it('028 coach_directory security_invoker ayrı dosyadır', () => {
+    expect(sql('028_coach_directory_security_invoker.sql')).toContain('security_invoker = true');
+  });
+
+  it('030 sahip/deneme/program taslağı e-posta gömmez; 027–029 ayrı kalır', () => {
+    const s = sql('030_owner_trial_weekplan_exam.sql');
+    expect(s).toContain('is_platform_owner');
+    expect(s).toContain('start_top_plan_trial');
+    expect(s).toContain('deneme yalnızca öğrenci hesabına özel');
+    expect(s).toContain('upsert_student_week_plan');
+    expect(s).not.toContain("current_setting('yks.internal'");
+    expect(s).not.toContain("set_config('yks.internal'");
+    expect(s).toContain("current_user in ('authenticated', 'anon')");
+    expect(s).toContain('take_exam_scan_slot');
+    expect(s).toContain('protect_exam_report');
+    expect(s).toContain('Production’a bu turda uygulanmaz');
+    expect(s.toLowerCase()).not.toContain('yusufbesiroglu357@gmail.com');
+    expect(sql('027_live010_no_email_admin.sql')).toContain('handle_new_user');
+  });
+
+  it('032 boş sahipte no-op; silme yok; dizin aktif profil ister', () => {
+    const s = sql('032_disable_non_owner_accounts.sql');
+    expect(s).toContain('platform_owner boş');
+    expect(s).toContain('disable_non_owner_accounts');
+    expect(s).toContain('preview_disable_non_owner_accounts');
+    expect(s).toContain('owner_uuid_confirmed');
+    expect(s).toContain('owner_confirm_reason');
+    expect(s).toContain('aktif sahip profili yok');
+    expect(s).toContain('p_confirm_owner');
+    expect(s).toContain('total_profiles');
+    expect(s).toContain('meeting_count');
+    expect(s).toContain('payment_count');
+    expect(s).toContain('disable_counts_match');
+    expect(s).toContain('p_expect');
+    expect(s).toContain('pg_advisory_xact_lock');
+    expect(s).toContain('randevu sayısı değişti');
+    expect(s).toContain('keep_ids_for_disable');
+    expect(s).toContain('Toplu kapatma otomatik çalışmaz');
+    expect(s).toContain('appointments_preserved');
+    expect(s).toContain("p.account_status = 'active'");
+    expect(s).toContain('Production’a bu turda uygulanmaz');
+    expect(s.toLowerCase()).not.toMatch(/delete from public\.(profiles|appointments|coaches)/);
+    expect(s.toLowerCase()).not.toContain('yusufbesiroglu357@gmail.com');
+  });
+
+  it('040 iptal denetim tablosu; respond_appointment yok; silme yok', () => {
+    const s = sql('040_approved_cancel_audit.sql');
+    expect(s).toContain('appointment_cancel_events');
+    expect(s).toContain('duplicate');
+    expect(s).toContain('cancel_decision');
+    expect(s).not.toContain('create or replace function public.respond_appointment');
+    expect(s.toLowerCase()).not.toMatch(/delete from public\.appointments/);
+    expect(s).toContain('Production’a bu turda uygulanmaz');
+  });
+
+  it('039 onaylı iptal talebi; respond_appointment yok', () => {
+    const s = sql('039_approved_appointment_cancel.sql');
+    expect(s).toContain('request_cancel_approved_appointment');
+    expect(s).toContain('decide_approved_appointment_cancel');
+    expect(s).not.toContain('create or replace function public.respond_appointment');
+    expect(s).toContain('Production’a bu turda uygulanmaz');
+  });
+
+  it('038 istemci Storage INSERT kapatır; kayıt hattı false; AI kapatma yok', () => {
+    const s = sql('038_storage_ingest_recording_gate.sql');
+    expect(s).toContain('drop policy if exists "exam_scans_insert_own"');
+    expect(s).toContain('drop policy if exists "meet_rec_insert_own"');
+    expect(s).toContain('meeting_recording_pipeline_ready');
+    expect(s).toContain('enqueue_meeting_ai_review');
+    expect(s).toContain('select false');
+    expect(s).toContain('Production’a bu turda uygulanmaz');
+    expect(s.toLowerCase()).not.toMatch(/delete from public\.(profiles|appointments)/);
+  });
+
+  it('037 sessiz kütüphane heartbeat ve koç kick; e-posta yok', () => {
+    const s = sql('037_study_rooms.sql');
+    expect(s).toContain('library_heartbeat');
+    expect(s).toContain('coach_kick_student');
+    expect(s).toContain("kind = 'library'");
+    expect(s).toContain('share_exams');
+    expect(s).not.toContain('email');
+    expect(s).toContain('Production’a bu turda uygulanmaz');
+  });
+
+  it('036 sahip Premium, oturum iptali, test koç dizini, kayıt tabloları; silme yok', () => {
+    const s = sql('036_owner_meetings_security.sql');
+    expect(s).toContain('grant_owner_premium_entitlement');
+    expect(s).toContain('revoke_non_owner_sessions');
+    expect(s).toContain("plan = 'premium'");
+    expect(s).toContain('is_test');
+    expect(s).toContain('meeting_recordings');
+    expect(s).toContain('meeting_ai_reviews');
+    expect(s).toContain('admin_security_alerts');
+    expect(s).toContain('admin_security_inbox');
+    expect(s).toContain('Production’a bu turda uygulanmaz');
+    expect(s.toLowerCase()).not.toMatch(/delete from public\.(profiles|appointments)/);
+  });
+
+  it('035 randevu DELETE yalnız yönetici', () => {
+    const s = sql('035_appointments_no_client_delete.sql');
+    expect(s).toContain('for delete using (public.is_admin())');
+    expect(s).toContain('Production’a bu turda uygulanmaz');
+  });
+
+  it('034 dizin genel karttır; definer fonksiyon search_path kilitli; email/score yok', () => {
+    const s = sql('034_coach_directory_public_cards.sql');
+    expect(s).toContain('coach_directory_cards');
+    expect(s).toContain('security definer');
+    expect(s).toContain("set search_path = ''");
+    expect(s).toContain('security_invoker = true');
+    expect(s).toContain('security_barrier = true');
+    expect(s).toContain("c.status = 'active'");
+    expect(s).toContain("p.account_status = 'active'");
+    expect(s).not.toMatch(/c\.email|c\.score/);
+    expect(s).not.toMatch(/returns table \([^)]*email/);
+    expect(s).not.toMatch(/returns table \([^)]*user_id/);
+    expect(s).toContain('revoke all on table public.coach_directory from public, anon, authenticated');
+    expect(s).toContain('Production’a bu turda uygulanmaz');
+  });
+
+  it('033 appointment_starts_at authenticated GRANT; 004 REVOKE kalır', () => {
+    expect(sql('004_meetings.sql')).toContain(
+      'revoke all on function public.appointment_starts_at(date, text) from public, anon, authenticated',
+    );
+    expect(sql('033_appointment_starts_at_grant.sql')).toContain(
+      'grant execute on function public.appointment_starts_at(date, text) to authenticated',
+    );
+    expect(sql('033_appointment_starts_at_grant.sql')).toContain('Production’a bu turda uygulanmaz');
+  });
+
+  it('031 özel exam-scans kovası; public false', () => {
+    const s = sql('031_exam_scans_storage.sql');
+    expect(s).toContain("public = false");
+    expect(s).toContain('exam-scans');
+    expect(s).toContain('exam_scans_insert_own');
+    expect(s).toContain('exam_scans_select_own');
+    expect(s).toContain('exam_scans_delete_own');
+    expect(s).toContain('Production’a bu turda uygulanmaz');
+  });
+
+  it('029 askıya alma taslağı 027/028’i değiştirmeden gelir; silme yok', () => {
+    const s = sql('029_account_suspend.sql');
+    expect(s).toContain('admin_set_account_status');
+    expect(s).toContain('son aktif yönetici askıya alınamaz');
+    expect(s).toContain('kendi hesabını askıya alamazsın');
+    expect(s).toContain('admin_account_events');
+    expect(s).toContain('status_before_suspend');
+    expect(s).toContain('platform sahibi askıya alınamaz');
+    expect(s).toContain('appt_select');
+    expect(s).toContain('request_appointment_unguarded');
+    expect(s).toContain('require_caller_account_active');
+    expect(s).toContain('Production’a bu turda uygulanmaz');
+    expect(s).not.toContain('delete from public.profiles');
+    expect(s).not.toContain('delete from auth.users');
+    expect(sql('027_live010_no_email_admin.sql')).toContain('handle_new_user');
+    expect(sql('028_coach_directory_security_invoker.sql')).toContain('security_invoker = true');
+  });
 });

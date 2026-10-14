@@ -3,6 +3,9 @@ import type { Profile } from './types';
 import {
   billingFromProfile,
   canUseFeature,
+  canSeeAnalyticsPage,
+  canUseAnalytics,
+  canViewAnalytics,
   displayMembershipName,
   entitledPlan,
   paidAccessLocked,
@@ -65,7 +68,24 @@ describe('üyelik fail-closed kilitler', () => {
     expect(entitledPlan(billingFromProfile(profile, now))).toBe('trial');
     expect(paidAccessLocked(profile, now)).toBe(false);
     expect(canUseFeature(profile, 'analytics', now)).toBe(true);
+    expect(canSeeAnalyticsPage(profile, false, now)).toBe(true);
+    expect(canUseAnalytics(profile, false, now)).toBe(true);
     expect(studyPagesLocked({ isAdmin: false, accessGate: 'ok', profile, now })).toBe(false);
+  });
+
+  it('ücretsiz öğrenci Analiz sayfasını görür ama kullanamaz; koç ve sahte admin göremez', () => {
+    const free = student({ subscription_status: 'none', plan: 'Ücretsiz', trial_ends_at: null });
+    expect(canSeeAnalyticsPage(free, false, now)).toBe(true);
+    expect(canUseAnalytics(free, false, now)).toBe(false);
+    expect(canSeeAnalyticsPage(null, false, now)).toBe(false);
+    const coach: Profile = { name: 'K', email: 'k@b.c', plan: 'premium', role: 'coach', subscription_status: 'active' };
+    expect(canSeeAnalyticsPage(coach, false, now)).toBe(false);
+    expect(canUseAnalytics(coach, false, now)).toBe(false);
+    const spoofAdmin: Profile = { name: 'A', email: 'a@b.c', plan: 'premium', role: 'admin', subscription_status: 'active' };
+    expect(canSeeAnalyticsPage(spoofAdmin, false, now)).toBe(false);
+    expect(canUseAnalytics(spoofAdmin, false, now)).toBe(false);
+    expect(canSeeAnalyticsPage(spoofAdmin, true, now)).toBe(true);
+    expect(canUseAnalytics(spoofAdmin, true, now)).toBe(true);
   });
 
   it('geçerli ücretli üyeliği plana göre açar', () => {
@@ -85,6 +105,12 @@ describe('üyelik fail-closed kilitler', () => {
       subscription_ends_at: future,
     });
     expect(canUseFeature(premium, 'analytics', now)).toBe(true);
+    expect(canViewAnalytics(premium, false, now)).toBe(true);
+    expect(canViewAnalytics(pro, false, now)).toBe(false);
+    expect(canSeeAnalyticsPage(pro, false, now)).toBe(true);
+    expect(canUseAnalytics(pro, false, now)).toBe(false);
+    expect(canSeeAnalyticsPage(premium, false, now)).toBe(true);
+    expect(canUseAnalytics(premium, false, now)).toBe(true);
     expect(canUseFeature(premium, 'ai_plan', now)).toBe(true);
   });
 
@@ -94,7 +120,16 @@ describe('üyelik fail-closed kilitler', () => {
     expect(paidAccessLocked(admin, now)).toBe(true);
     expect(paidAccessLocked(coach, now)).toBe(false);
     expect(canUseFeature(admin, 'analytics', now)).toBe(false);
+    expect(canViewAnalytics(admin, false, now)).toBe(false);
+    expect(canViewAnalytics(admin, true, now)).toBe(true);
+    expect(canViewAnalytics(coach, false, now)).toBe(false);
+    expect(canViewAnalytics(null, false, now)).toBe(false);
     expect(studyPagesLocked({ isAdmin: false, accessGate: 'ok', profile: admin, now })).toBe(true);
     expect(studyPagesLocked({ isAdmin: true, accessGate: 'ok', profile: { name: '', email: '', plan: '' }, now })).toBe(false);
+    expect(displayMembershipName(admin, now, true)).toBe('Premium');
+    expect(displayMembershipName(admin, now, false)).not.toBe('Premium');
+    expect(canUseFeature(admin, 'analytics', now, true)).toBe(true);
+    expect(canUseFeature(admin, 'ai_plan', now, true)).toBe(true);
+    expect(paidAccessLocked(admin, now, true)).toBe(false);
   });
 });

@@ -10,8 +10,8 @@ import { canUseFeature } from '../lib/subscription';
 import { appendGeneratedTasks } from '../lib/coachPlan';
 
 export function PlanPage() {
-  const { data, setData, toast, profile } = useApp();
-  const aiPlan = canUseFeature(profile, 'ai_plan');
+  const { data, setData, toast, profile, isAdmin } = useApp();
+  const aiPlan = canUseFeature(profile, 'ai_plan', Date.now(), isAdmin);
   const kind = examKind(data);
   const [minutes, setMinutes] = useState(kind === 'Okul' ? (data.age > 0 && data.age <= 9 ? 60 : 120) : 240);
   const [focus, setFocus] = useState('Eksik konular');

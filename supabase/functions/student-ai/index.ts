@@ -1,7 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
-import { billingOk } from "../_shared/billingEntitled.ts";
+import { studentFeatureOk } from "../_shared/billingEntitled.ts";
 import { type RateStore } from "../_shared/edgeRateLimit.ts";
 import { allowDistributed, readUpstashEnv } from "../_shared/upstashRateLimit.ts";
 
@@ -108,15 +108,36 @@ async function requireUser(req: Request) {
 
   const supabase = createClient(url, anon, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+    global: { headers: { Authorization: `Bearer ${token}` } },
   });
   const { data, error } = await supabase.auth.getUser(token);
   if (error || !data.user) return { user: null as null, error: "Geçersiz veya süresi dolmuş oturum" };
 
+  const { data: activeRpc, error: activeErr } = await supabase.rpc("caller_account_active");
+  if (!activeErr && activeRpc !== true) {
+    return { user: null as null, error: "Hesap askıda" };
+  }
+
   const { data: profile } = await supabase.from("profiles").select("account_status, role, plan").eq("id", data.user.id).maybeSingle();
   const st = String(profile?.account_status || "");
+  if (activeErr) {
+    if (st === "pasif") return { user: null as null, error: "Hesap askıda" };
+    if (!profile) return { user: null as null, error: "Hesap doğrulanamadı" };
+  }
   if (st === "pending" || st === "rejected") {
     return { user: null as null, error: "Hesabınız yönetici onayı bekliyor." };
   }
+
+  const { data: owner } = await supabase.rpc("is_platform_owner");
+  const { data: admin } = await supabase.rpc("is_admin");
+  if (owner === true || admin === true) {
+    return {
+      user: data.user,
+      error: null as string | null,
+      billing: { skip: false as const, role: "admin", plan: "", status: "active", trialEnds: "", subEnds: "" },
+    };
+  }
+
   const { data: billRow, error: billErr } = await supabase
     .from("profiles")
     .select("subscription_status, trial_ends_at, subscription_ends_at, plan, role")
@@ -265,7 +286,10 @@ Deno.serve(async (req) => {
   })) {
     return json(req, { error: "Kota doldu. Biraz sonra dene." }, 429);
   }
-  const bill = billingOk(auth.billing);
+  if (auth.billing.role === "coach") {
+    return json(req, { error: "Bu özellik öğrenci hesabına özel." }, 403);
+  }
+  const bill = studentFeatureOk(auth.billing);
   if (!bill.entitled) {
     return json(req, { error: "Deneme veya ücretli üyelik gerekli." }, 402);
   }

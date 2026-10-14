@@ -1,13 +1,13 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-function supabaseUrlOk(u: string) {
+/** Canlı yalnızca https *.supabase.co. 127.0.0.1/localhost yerel staging (DEV veya preview). */
+export function supabaseUrlOk(u: string) {
   if (!u) return false;
   try {
     const x = new URL(u);
-    if (x.protocol === 'https:' && (x.hostname.endsWith('.supabase.co') || x.hostname === 'localhost')) return true;
-    if (import.meta.env.DEV && (x.hostname === 'localhost' || x.hostname === '127.0.0.1') && (x.protocol === 'http:' || x.protocol === 'https:')) {
-      return true;
-    }
+    const loopback = x.hostname === 'localhost' || x.hostname === '127.0.0.1';
+    if (loopback && (x.protocol === 'http:' || x.protocol === 'https:')) return true;
+    if (x.protocol === 'https:' && x.hostname.endsWith('.supabase.co')) return true;
     return false;
   } catch {
     return false;

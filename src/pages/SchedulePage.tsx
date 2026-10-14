@@ -8,9 +8,13 @@ import { today } from '../lib/util';
 import { assertPdfFile, clearSchedulePdf, loadSchedulePdf, saveSchedulePdf } from '../lib/pdfStore';
 
 import { ExamCenter } from '../components/ExamCenter';
+import { WeekPlanEditor } from '../components/WeekPlanEditor';
+import { emptyWeekPlan, scheduleFromWeekPlan, type WeekPlan } from '../lib/weekPlan';
+import { fetchStudentWeekPlan, saveStudentWeekPlan } from '../lib/cloudPlatform';
+import type { ScheduleDay } from '../lib/types';
 
 export function SchedulePage() {
-  const { data, setData, toast } = useApp();
+  const { data, setData, toast, user, profile } = useApp();
   const age = data.age > 0 ? data.age : 0;
   const kind = examKind(data);
   const [daily, setDaily] = useState(() => (age > 0 ? suggestedDailyMinutes(age, kind) : 150));
@@ -20,11 +24,32 @@ export function SchedulePage() {
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState('');
   const [preview, setPreview] = useState('');
+  const [week, setWeek] = useState<WeekPlan>(() => emptyWeekPlan());
+  const [weekBusy, setWeekBusy] = useState(false);
   const sch = data.schedule;
+  const coachLocked = week.lock === 'coach' || sch.source === 'coach';
 
   useEffect(() => {
     void loadSchedulePdf().then((f) => { if (f) setFile(f); }).catch(() => undefined);
   }, []);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    void fetchStudentWeekPlan(user.id).then((row) => {
+      if (!row || typeof row !== 'object') return;
+      const rec = row as { days?: ScheduleDay[]; week_hours?: number; notes?: string; lock?: string; coach_id?: string; updated_at?: string };
+      const next: WeekPlan = {
+        days: Array.isArray(rec.days) && rec.days.length ? rec.days as ScheduleDay[] : emptyWeekPlan().days,
+        weekHours: Number(rec.week_hours) || 0,
+        notes: String(rec.notes || ''),
+        lock: rec.lock === 'coach' ? 'coach' : 'self',
+        coachId: rec.coach_id ? String(rec.coach_id) : null,
+        updatedAt: String(rec.updated_at || ''),
+      };
+      setWeek(next);
+      if (next.days.length) setData((prev) => ({ ...prev, schedule: scheduleFromWeekPlan(next, prev.schedule), weekHours: next.weekHours || prev.weekHours }));
+    });
+  }, [user?.id]);
 
   async function acceptFile(next: File | null) {
     if (!next) return;
@@ -85,6 +110,28 @@ export function SchedulePage() {
   return (
     <>
       <ExamCenter />
+      {profile?.role !== 'coach' ? (
+        <div className="card" style={{ marginTop: 16 }}>
+          <div className="section-title"><h3>7 günlük çalışma programı</h3><span>{coachLocked ? 'Koç planı' : 'Senin planın'}</span></div>
+          <WeekPlanEditor
+            key={week.updatedAt || 'empty'}
+            plan={week}
+            editable={!coachLocked}
+            busy={weekBusy}
+            onSave={(next) => {
+              if (!user?.id) return;
+              setWeekBusy(true);
+              void saveStudentWeekPlan({ studentId: user.id, days: next.days, weekHours: next.weekHours, notes: next.notes, lock: 'self' }).then((res) => {
+                setWeekBusy(false);
+                toast(res.ok ? 'Program kaydedildi.' : res.error);
+                if (!res.ok) return;
+                setWeek({ ...next, lock: 'self' });
+                setData({ ...data, schedule: scheduleFromWeekPlan({ ...next, lock: 'self' }, sch), weekHours: next.weekHours });
+              });
+            }}
+          />
+        </div>
+      ) : null}
       <div id="week-program" className="hero" style={{ marginTop: 20 }}>
         <div className="eyebrow" style={{ color: '#cfe1ff' }}>Haftalık ritim</div>
         <h2>PDF yükle, haftalık program üret</h2>

@@ -1,6 +1,6 @@
-import { useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { bundledManifest } from '../data/bankData';
+import { loadManifest } from '../lib/bank';
 import { SUPABASE_UNAVAILABLE, isSupabaseConfigured } from '../lib/supabase';
 import { emptyData } from '../lib/types';
 import { storageKey } from '../lib/storage';
@@ -9,7 +9,10 @@ import { LlmSettingsCard } from '../components/LlmSettingsCard';
 
 export function SettingsPage() {
   const { data, setData, toast, theme, toggleTheme, user, cloudStatus, go } = useApp();
-  const man = useMemo(() => bundledManifest(), []);
+  const [man, setMan] = useState<{ questionCount: number; curriculum: Record<string, unknown> } | null>(null);
+  useEffect(() => {
+    void loadManifest().then((m) => setMan(m)).catch(() => setMan({ questionCount: 0, curriculum: {} }));
+  }, []);
   const raw = (() => {
     try { return localStorage.getItem(storageKey(user?.id)) || ''; } catch { return ''; }
   })();
@@ -22,8 +25,8 @@ export function SettingsPage() {
       <div className="section-title"><h3>Ayarlar</h3></div>
       <p className="muted">Bu cihazdaki kayıt boyutu ve bağlantı durumu. Model anahtarı tarayıcıda tutulmaz.</p>
       <div className="status-grid">
-        <div className="status"><b>Soru grupları</b><span>{Object.keys(man.curriculum).length} seviye</span></div>
-        <div className="status"><b>Soru kayıtları</b><span>{man.questionCount}</span></div>
+        <div className="status"><b>Soru grupları</b><span>{man ? Object.keys(man.curriculum).length : '—'} seviye</span></div>
+        <div className="status"><b>Soru kayıtları</b><span>{man ? man.questionCount : '—'}</span></div>
         <div className="status"><b>Supabase</b><span>{isSupabaseConfigured() ? 'Hazır' : 'Yapılandırılmadı'}</span></div>
         <div className="status"><b>Bulut</b><span>{cloudStatus}</span></div>
         <div className="status"><b>Yerel veri</b><span>{(raw.length / 1024).toFixed(1)} KB</span></div>

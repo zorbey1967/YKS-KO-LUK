@@ -7,8 +7,6 @@ import {
   loadAdminNotes,
   loadAdminSettings,
   loadFinance,
-  maskEmail,
-  platformOwnerEmail,
   saveAdminSettings,
   saveFinance,
   setApptStatus,
@@ -38,6 +36,7 @@ import {
   insertAdminNote,
   insertFinanceRow,
   markFinancePaid,
+  decideApprovedAppointmentCancel,
   respondAppointment,
   updateAppointmentStatus,
   type CloudAdminBundle,
@@ -51,21 +50,22 @@ import { today } from '../lib/util';
 import { activeMembershipCount, shopierRevenueFromPayments } from '../lib/shopierRevenue';
 import { istanbulToday } from '../lib/meeting';
 import { displayMembershipName, labelStoredPlan } from '../lib/subscription';
+import { canDecideApprovedCancel } from '../lib/appointmentCancelPolicy';
 import { normalizePlanId } from '../lib/plans';
 import { paymentStatusLabel } from '../lib/billing';
+import { SQL_DRAFTS, draftStatusLabel } from '../lib/deployStatus';
+import { supabase, withTimeout } from '../lib/supabase';
 
-type Tab = 'ozet' | 'basvuru' | 'uyelik' | 'kullanici' | 'koc' | 'eslesme' | 'finans' | 'randevu' | 'ayar';
+type Tab = 'ozet' | 'basvuru' | 'uyelik' | 'kullanici' | 'koc' | 'eslesme' | 'finans' | 'randevu' | 'denetim' | 'ayar';
 
 const TABS: { id: Tab; label: string }[] = [
-  { id: 'ozet', label: 'Genel bakış' },
-  { id: 'basvuru', label: 'Öğrenci başvuruları' },
-  { id: 'uyelik', label: 'Üyelikler' },
-  { id: 'kullanici', label: 'Kullanıcılar' },
-  { id: 'koc', label: 'Koçlar' },
-  { id: 'eslesme', label: 'Eşleştirme' },
-  { id: 'finans', label: 'Finans' },
-  { id: 'randevu', label: 'Randevular' },
-  { id: 'ayar', label: 'Ayarlar' },
+  { id: 'ozet', label: 'Genel Bakış' },
+  { id: 'basvuru', label: 'Öğrenciler ve Koçlar' },
+  { id: 'kullanici', label: 'Hesap Yönetimi' },
+  { id: 'uyelik', label: 'Üyelikler ve Denemeler' },
+  { id: 'finans', label: 'Ödemeler' },
+  { id: 'denetim', label: 'Görüşme Denetimi' },
+  { id: 'ayar', label: 'Sistem Güvenliği' },
 ];
 
 function statusLabel(s: CoachStatus) {
@@ -120,7 +120,7 @@ export function AdminPage() {
 
   const owner = isAdmin;
   const localSnap = useMemo(
-    () => adminSnapshot(user?.email ? { name: profile?.name || '', email: user.email, plan: displayMembershipName(profile), grade: data.grade } : undefined),
+    () => adminSnapshot(user?.email ? { name: profile?.name || '', email: user.email, plan: displayMembershipName(profile, Date.now(), isAdmin), grade: data.grade } : undefined),
     [user?.email, profile?.name, profile?.plan, data.grade, tick],
   );
   const shopierRev = useMemo(() => shopierRevenueFromPayments(payRows), [payRows]);
@@ -165,7 +165,6 @@ export function AdminPage() {
   const links = cloud?.links ?? localSnap.links;
   const finance = cloud?.finance.length ? cloud.finance : loadFinance();
   const notes = cloud?.notes.length ? cloud.notes : loadAdminNotes();
-  const source = cloud ? 'supabase' : 'yerel yedek';
   const studentCount = cloud ? cloud.profiles.filter((p) => p.role !== 'coach').length : localSnap.studentCount;
   const activeCoaches = coaches.filter((a) => a.status === 'active').length;
   const pendingCoaches = coaches.filter((a) => a.status === 'pending').length;
@@ -194,12 +193,7 @@ export function AdminPage() {
       : 'Bu başvuruyu reddetmek istediğinize emin misiniz?';
     if (!confirm(msg)) return;
     const res = await adminReviewStudent(id, status, note);
-    if (!res.ok) {
-      const ok = await adminSetAccountStatus(id, status);
-      toast(ok ? (status === 'active' ? 'Öğrenci onaylandı.' : 'Başvuru reddedildi.') : res.error);
-    } else {
-      toast(status === 'active' ? 'Öğrenci onaylandı.' : 'Başvuru reddedildi.');
-    }
+    toast(res.ok ? (status === 'active' ? 'Öğrenci onaylandı.' : 'Başvuru reddedildi.') : res.error);
     setRejectId('');
     setRejectNote('');
     refresh();
@@ -248,8 +242,8 @@ export function AdminPage() {
     <>
       <div className="hero">
         <div className="eyebrow" style={{ color: '#cfe1ff' }}>Yönetici paneli</div>
-        <h2>Platform yönetimi</h2>
-        <p>Kaynak: {loading ? 'yükleniyor…' : source}. Finans ödeme almaz; defter hazırlığı.</p>
+        <h2>Yönetim</h2>
+        <p>{loading ? 'Kayıtlar yükleniyor…' : (cloud ? 'Sayılar sunucudan gelir; uydurma istatistik yok.' : 'Sunucu listesi alınamadı. Aşağıdakiler bu tarayıcıdaki yedektir.')}</p>
       </div>
       <div className="chip-row" style={{ marginTop: 16, flexWrap: 'wrap' }}>
         {TABS.map((t) => (
@@ -258,13 +252,23 @@ export function AdminPage() {
       </div>
 
       {tab === 'ozet' ? (
+        <>
         <div className="grid stats" style={{ marginTop: 16 }}>
-          <div className="card stat"><div className="label">Öğrenci</div><div className="value">{studentCount}</div></div>
-          <div className="card stat"><div className="label">Koç</div><div className="value">{coaches.length}</div></div>
-          {activeCoaches ? <div className="card stat"><div className="label">Aktif koç</div><div className="value">{activeCoaches}</div></div> : null}
-          {pendingCoaches ? <div className="card stat"><div className="label">Bekleyen koç</div><div className="value">{pendingCoaches}</div></div> : null}
-          {pendingAppts ? <div className="card stat"><div className="label">Bekleyen randevu</div><div className="value">{pendingAppts}</div></div> : null}
+          <div className="card stat"><div className="label">Öğrenci kaydı</div><div className="value">{studentCount}</div></div>
+          <div className="card stat"><div className="label">Aktif koç</div><div className="value">{activeCoaches}</div></div>
+          <div className="card stat"><div className="label">Koç başvurusu</div><div className="value">{pendingCoaches}</div></div>
+          <div className="card stat"><div className="label">Bekleyen randevu</div><div className="value">{pendingAppts}</div></div>
+          {billingRows ? (
+            <div className="card stat"><div className="label">Açık deneme</div><div className="value">{billingRows.filter((r) => r.subscription_status === 'trialing').length}</div></div>
+          ) : null}
         </div>
+        <div className="card" style={{ marginTop: 16 }}>
+          <p className="muted">Askıya alma, deneme ve görsel analiz canlıya işlenmeden çalışmaz. Sistem Güvenliği sekmesinde taslak durumunu görebilirsin.</p>
+          <div className="actions">
+            <button className="btn secondary" type="button" onClick={() => go('analytics')}>Analizler sayfası</button>
+          </div>
+        </div>
+        </>
       ) : null}
 
       {tab === 'basvuru' ? (
@@ -381,17 +385,24 @@ export function AdminPage() {
       {tab === 'kullanici' ? (
         <div className="card" style={{ marginTop: 16 }}>
           <div className="section-title"><h3>Kullanıcılar</h3><span>{cloud ? 'profiles' : 'Yerel yedek'}</span></div>
-          <div className="field"><label>Ara</label><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Ad, e-posta, tür" /></div>
+          <div className="field"><label>Ara</label><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Ad veya rol" /></div>
           {users.length ? users.map((u) => (
             <div className="plan-item" key={u.id}>
-              <span><b>{u.name}</b><br /><small style={{ color: 'var(--muted)' }}>{maskEmail(u.email)} • {u.kind} • {u.extra}</small></span>
+              <span><b>{u.name}</b><br /><small style={{ color: 'var(--muted)' }}>{u.id.slice(0, 8)}… • {u.kind} • {u.status}</small></span>
               <span>
                 <span className="chip">{u.status}</span>
                 {cloud && u.id !== user?.id ? (
-                  <button className="btn secondary" type="button" style={{ marginLeft: 8 }} onClick={() => void adminSetAccountStatus(u.id, u.pasif ? 'active' : 'pasif').then((ok) => {
-                    toast(ok ? 'Hesap güncellendi.' : 'Güncellenemedi (RLS / SQL).');
-                    refresh();
-                  })}>{u.pasif ? 'Aktif et' : 'Pasif'}</button>
+                  <button className="btn secondary" type="button" style={{ marginLeft: 8 }} onClick={() => {
+                    const next = u.pasif ? 'active' : 'pasif';
+                    const q = next === 'pasif'
+                      ? 'Bu hesabı askıya almak istiyor musun? Veriler silinmez; kişi giriş yapamaz ve koç listesinde görünmez.'
+                      : 'Bu hesabı yeniden açmak istiyor musun?';
+                    if (!confirm(q)) return;
+                    void adminSetAccountStatus(u.id, next).then((res) => {
+                      toast(res.ok ? (next === 'active' ? 'Hesap yeniden açıldı.' : 'Hesap askıya alındı.') : (res.error || 'İşlem yapılmadı.'));
+                      refresh();
+                    });
+                  }}>{u.pasif ? 'Yeniden etkinleştir' : 'Hesabı askıya al'}</button>
                 ) : null}
               </span>
             </div>
@@ -399,7 +410,7 @@ export function AdminPage() {
         </div>
       ) : null}
 
-      {tab === 'koc' ? (
+      {tab === 'basvuru' ? (
         <div className="card" style={{ marginTop: 16 }}>
           <div className="section-title"><h3>Koç yönetimi</h3></div>
           <div className="chip-row" style={{ marginBottom: 12 }}>
@@ -454,7 +465,7 @@ export function AdminPage() {
         </div>
       ) : null}
 
-      {tab === 'eslesme' ? (
+      {tab === 'basvuru' ? (
         <div className="card" style={{ marginTop: 16 }}>
           <div className="section-title"><h3>Öğrenci–koç</h3></div>
           {links.length ? links.map((l, i) => (
@@ -553,7 +564,7 @@ export function AdminPage() {
         </div>
       ) : null}
 
-      {tab === 'randevu' ? (
+      {tab === 'basvuru' ? (
         <div className="card" style={{ marginTop: 16 }}>
           <div className="section-title"><h3>Randevular</h3></div>
           <p className="muted">Yönetici görüşmeye katılmaz. Liste varsayılan olarak bugün. Katılma öğrenci veya koç hesabıyla Koçlar sayfasındadır.</p>
@@ -595,7 +606,23 @@ export function AdminPage() {
                     });
                   }}>Onayla</button>
                 ) : null}
-                {a.status === 'onay' ? (
+                {canDecideApprovedCancel(a, user?.id, { asCoachForThisAppt: false, isAdmin }) ? (
+                  <>
+                    <button className="btn primary" type="button" style={{ marginLeft: 8 }} onClick={() => {
+                      void decideApprovedAppointmentCancel(a.id, true).then((res) => {
+                        toast(res.ok ? res.message : res.error);
+                        refresh();
+                      });
+                    }}>İptali onayla</button>
+                    <button className="btn secondary" type="button" style={{ marginLeft: 8 }} onClick={() => {
+                      void decideApprovedAppointmentCancel(a.id, false).then((res) => {
+                        toast(res.ok ? res.message : res.error);
+                        refresh();
+                      });
+                    }}>Talebi reddet</button>
+                  </>
+                ) : null}
+                {a.status === 'onay' && a.cancelDecision !== 'pending' ? (
                   <button className="btn" type="button" style={{ marginLeft: 8 }} onClick={() => {
                     void updateAppointmentStatus(a.id, 'tamamlandi').then((ok) => {
                       if (!ok) setApptStatus(a.coachId, a.id, 'tamamlandi');
@@ -610,15 +637,25 @@ export function AdminPage() {
         </div>
       ) : null}
 
+      {tab === 'denetim' ? (
+        <SecurityInbox />
+      ) : null}
+
       {tab === 'ayar' ? (
         <div className="card" style={{ marginTop: 16 }}>
           <div className="section-title"><h3>Sistem</h3></div>
           <div className="status-grid">
-            <div className="status"><b>Yönetici</b><span>{maskEmail(user?.email || '')}</span></div>
-            <div className="status"><b>Kilidi</b><span>{platformOwnerEmail() ? 'Ortam değişkeni' : 'Tanımsız'}</span></div>
-            <div className="status"><b>Erişim</b><span>is_admin() / oturum</span></div>
-            <div className="status"><b>Veri</b><span>{source}</span></div>
+            <div className="status"><b>Giriş</b><span>Sunucu yönetici / sahip kaydı</span></div>
+            <div className="status"><b>Veri kaynağı</b><span>{loading ? 'yükleniyor' : (cloud ? 'sunucu' : 'yerel yedek')}</span></div>
           </div>
+          <div className="section-title" style={{ marginTop: 16 }}><h3>Canlıya henüz işlenmeyen işler</h3></div>
+          {SQL_DRAFTS.map((d) => (
+            <div className="plan-item" key={d.id}>
+              <span><b>{d.id} — {d.title}</b><br /><small className="muted">{d.file}</small></span>
+              <span className="chip">{draftStatusLabel(d.status)}</span>
+            </div>
+          ))}
+          <p className="muted">Askıya alma tuşu, 14 günlük deneme ve sınav görseli ancak ilgili SQL ve fonksiyon canlıdaysa gerçekten işler. Aksi halde hata mesajı görürsün; başarı yazılmaz.</p>
           <div className="field" style={{ marginTop: 12 }}>
             <label>Platform komisyonu (%)</label>
             <input type="number" min={0} max={50} value={pct} onChange={(e) => setPct(e.target.value)} />
@@ -634,5 +671,46 @@ export function AdminPage() {
         </div>
       ) : null}
     </>
+  );
+}
+
+function SecurityInbox() {
+  const [rows, setRows] = useState<Record<string, unknown>[] | null>(null);
+  const [err, setErr] = useState('');
+  useEffect(() => {
+    let alive = true;
+    void (async () => {
+      if (!supabase) {
+        if (alive) setErr('Bulut yok');
+        return;
+      }
+      const { data, error } = await withTimeout(supabase.rpc('admin_security_inbox'));
+      if (!alive) return;
+      if (error) {
+        setErr(/does not exist|schema cache/i.test(error.message) ? '036 henüz yok; kuyruk boş, otomatik kapatma yok.' : 'Kuyruk okunamadı.');
+        setRows([]);
+        return;
+      }
+      setRows(Array.isArray(data) ? data as Record<string, unknown>[] : []);
+    })();
+    return () => { alive = false; };
+  }, []);
+  return (
+    <div className="card" style={{ marginTop: 16 }}>
+      <div className="section-title"><h3>Görüşme Denetimi ve Güvenlik Merkezi</h3></div>
+      <p className="muted">Yüksek risk insan incelemesine gider. Tek AI kararı hesap kapatmaz. Yönetici notları öğrenciye gitmez.</p>
+      {err ? <p className="notice">{err}</p> : null}
+      {rows && !rows.length ? <div className="empty">İnceleme kuyruğu boş.</div> : null}
+      {(rows || []).map((r) => (
+        <div className="plan-item" key={String(r.id)}>
+          <span>
+            {String(r.appointment_id)} • risk {String(r.risk_level)} • {String(r.analysis_status)}
+            <br />
+            <small className="muted">{String(r.rationale || '')} • eminlık {String(r.model_confidence)}</small>
+          </span>
+          <span className="chip">{String(r.analysis_version)}</span>
+        </div>
+      ))}
+    </div>
   );
 }

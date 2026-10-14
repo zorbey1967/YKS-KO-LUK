@@ -661,6 +661,7 @@ export function MeetingPage() {
           <button className="meeting-hud-back" type="button" aria-label="Görüşmeden ayrıl" onClick={() => void leaveMeeting()}>Görüşmeden ayrıl</button>
           <p className={`meeting-clock${remaining === null && !ended ? ' meeting-clock--idle' : ''}`} aria-live="polite">{clockLabel}</p>
           <span className={`meeting-pill ${statusKind}`}>{statusLabel}</span>
+          <span className="meeting-chip">Kayıt kapalı · LiveKit Egress yok</span>
         </div>
 
         <div className={`meeting-tile meeting-tile--remote${peerVideo || peerScreen || sharing ? '' : ' is-idle'}${peerScreen || sharing ? ' is-screen' : ''}`}>

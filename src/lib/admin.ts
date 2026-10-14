@@ -45,20 +45,17 @@ export function normalizeEmail(email: string) {
   return normalizeEmailInput(email);
 }
 
-const PLATFORM_OWNER_EMAIL = 'yusufbesiroglu357@gmail.com';
-
-/** Yönetici e-postası: VITE_ADMIN_EMAIL, yoksa platform sahibi. */
+/** İstemci e-posta sabiti yok. Panel `is_admin()` RPC ile açılır. */
 export function platformOwnerEmail() {
-  return normalizeEmail(String(import.meta.env.VITE_ADMIN_EMAIL || PLATFORM_OWNER_EMAIL));
+  return normalizeEmail(String(import.meta.env.VITE_ADMIN_EMAIL || ''));
 }
 
-/** Supabase oturum e-postası yönetici adresiyle eşleşmeli. */
+/** Yalnızca isteğe bağlı VITE_ADMIN_EMAIL; yetki vermez. */
 export function isPlatformOwner(user: User | { email?: string | null } | null | undefined) {
-  const email = normalizeEmail(user?.email || '');
-  if (!email) return false;
-  if (email === PLATFORM_OWNER_EMAIL) return true;
   const owner = platformOwnerEmail();
-  return Boolean(owner && email === owner);
+  const email = normalizeEmail(user?.email || '');
+  if (!owner || !email) return false;
+  return email === owner;
 }
 
 /** `true`/`false` = RLS cevabı. `null` = fonksiyon henüz yok veya ağ hatası. */
@@ -66,6 +63,18 @@ export async function fetchServerAdmin(): Promise<boolean | null> {
   if (!supabase) return null;
   try {
     const { data, error } = await withTimeout(supabase.rpc('is_admin'));
+    if (error) return null;
+    return Boolean(data);
+  } catch {
+    return null;
+  }
+}
+
+/** Sunucu `is_platform_owner()`; tablo boşsa false. E-posta karşılaştırması yok. */
+export async function fetchServerPlatformOwner(): Promise<boolean | null> {
+  if (!supabase) return null;
+  try {
+    const { data, error } = await withTimeout(supabase.rpc('is_platform_owner'));
     if (error) return null;
     return Boolean(data);
   } catch {
@@ -86,8 +95,9 @@ export async function fetchServerAdmin(): Promise<boolean | null> {
 export function canAccessAdminPanel(
   _user: User | { email?: string | null } | null | undefined,
   serverAdmin: boolean | null,
+  serverOwner: boolean | null = null,
 ) {
-  return serverAdmin === true;
+  return serverAdmin === true || serverOwner === true;
 }
 
 export function maskEmail(email: string) {

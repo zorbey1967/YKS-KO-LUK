@@ -9,4 +9,6 @@ legacy/app-v31.html
 .vercel
 .supabase
 supabase/.temp
+supabase/functions/bank-pack/pack.json
+.local-e2e-users.json
 .env*

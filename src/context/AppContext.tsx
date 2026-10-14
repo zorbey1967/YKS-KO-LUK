@@ -4,7 +4,7 @@ import type { AppData, PageId, Profile } from '../lib/types';
 import { isKnownPage } from '../lib/types';
 import { loadData, saveData, normalizeData, applyProfileSeed } from '../lib/storage';
 import { SUPABASE_UNAVAILABLE, isSupabaseConfigured, supabase, withTimeout } from '../lib/supabase';
-import { canAccessAdminPanel, fetchServerAdmin } from '../lib/admin';
+import { canAccessAdminPanel, fetchServerAdmin, fetchServerPlatformOwner } from '../lib/admin';
 import { readLocal, writeLocal } from '../lib/util';
 import { coerceAppPage } from '../lib/roleNav';
 import { getPersonDisplayName } from '../lib/displayName';
@@ -32,6 +32,7 @@ type Ctx = {
   refreshAuth: () => Promise<void>;
   saveGoals: () => Promise<void>;
   isAdmin: boolean;
+  isPlatformOwner: boolean;
   accessGate: AccessGate;
 };
 
@@ -71,6 +72,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [authMsg, setAuthMsg] = useState('');
   const [cloudStatus, setCloudStatus] = useState(isSupabaseConfigured() ? 'Giriş yok' : 'Yapılandırılmadı');
   const [serverAdmin, setServerAdmin] = useState<boolean | null>(null);
+  const [serverOwner, setServerOwner] = useState<boolean | null>(null);
+  const [authReady, setAuthReady] = useState(() => !isSupabaseConfigured());
   const toastTimer = useRef(0);
   const pushTimer = useRef(0);
   const cloudReady = useRef(false);
@@ -218,6 +221,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!supabase) {
       setAuthMsg(SUPABASE_UNAVAILABLE);
       setCloudStatus('Yapılandırılmadı');
+      setAuthReady(true);
       return;
     }
     const { data: sessionData } = await withTimeout(supabase.auth.getSession());
@@ -226,15 +230,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setUser(u);
     if (u) {
       const p = await loadCloudProfile(u);
-      if (userRef.current?.id !== u.id) return;
+      if (userRef.current?.id !== u.id) {
+        setAuthReady(true);
+        return;
+      }
       await pullCloud(u, p);
       setServerAdmin(await fetchServerAdmin());
+      setServerOwner(await fetchServerPlatformOwner());
     } else {
       setServerAdmin(null);
+      setServerOwner(null);
       setCloudStatus('Giriş yok');
       setProfile({ name: readLocal('yks_guest_name'), email: '', plan: '' });
       setDataState(loadData(null));
     }
+    setAuthReady(true);
   }, [loadCloudProfile, pullCloud]);
 
   const saveGoals = useCallback(async () => {
@@ -259,13 +269,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [data.dept, data.rank, toast]);
 
-  const isAdmin = canAccessAdminPanel(user, serverAdmin);
-  const accessGate = resolveAccessGate({ user, profile, isAdmin });
+  const isAdmin = canAccessAdminPanel(user, serverAdmin, serverOwner);
+  const isPlatformOwner = serverOwner === true;
+  const accessGate = resolveAccessGate({ user, profile, isAdmin, authReady });
   const accessGateRef = useRef(accessGate);
   accessGateRef.current = accessGate;
+  const isAdminRef = useRef(isAdmin);
+  isAdminRef.current = isAdmin;
 
   const go = useCallback((id: PageId, query?: string) => {
-    const dest = coerceAppPage(id, profileRef.current?.role, accessGateRef.current);
+    const dest = coerceAppPage(id, profileRef.current?.role, accessGateRef.current, isAdminRef.current);
     const q = query?.replace(/^\?/, '');
     location.hash = q ? `/${dest}?${q}` : `/${dest}`;
     setPage(dest);
@@ -281,7 +294,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     syncHashFromPath();
     const onHash = () => {
       const raw = pageFromHash();
-      const dest = coerceAppPage(raw, profileRef.current?.role, accessGateRef.current);
+      const dest = coerceAppPage(raw, profileRef.current?.role, accessGateRef.current, isAdminRef.current);
       if (dest !== raw) location.hash = `/${dest}`;
       setPage(dest);
     };
@@ -299,9 +312,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setProfile({ name: readLocal('yks_guest_name'), email: '', plan: '' });
         setDataState(loadData(null));
         setServerAdmin(null);
+        setServerOwner(null);
+        setAuthReady(true);
       } else {
         void loadCloudProfile(u).then((p) => pullCloud(u, p));
         void fetchServerAdmin().then(setServerAdmin);
+        void fetchServerPlatformOwner().then(setServerOwner);
+        setAuthReady(true);
       }
     });
     return () => {
@@ -311,9 +328,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [loadCloudProfile, pullCloud, refreshAuth]);
 
   useEffect(() => {
-    const dest = coerceAppPage(page, profile?.role, accessGate);
+    const dest = coerceAppPage(page, profile?.role, accessGate, isAdmin);
     if (dest !== page) go(dest);
-  }, [page, profile?.role, accessGate, go]);
+  }, [page, profile?.role, accessGate, isAdmin, go]);
 
   const value = useMemo<Ctx>(
     () => ({
@@ -336,9 +353,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       refreshAuth,
       saveGoals,
       isAdmin,
+      isPlatformOwner,
       accessGate,
     }),
-    [page, go, data, setData, user, profile, theme, toast, toastMsg, menuOpen, authMsg, cloudStatus, refreshAuth, saveGoals, isAdmin, accessGate],
+    [page, go, data, setData, user, profile, theme, toast, toastMsg, menuOpen, authMsg, cloudStatus, refreshAuth, saveGoals, isAdmin, isPlatformOwner, accessGate],
   );
 
   return <AppCtx.Provider value={value}>{children}</AppCtx.Provider>;

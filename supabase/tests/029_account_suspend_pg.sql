@@ -1,0 +1,3 @@
+-- İzole PG. Production’da çalıştırılmaz. Canlı hesap askıya alınmaz.
+-- Beklenen: son admin ve self-suspend reddi; student_data pasif kullanıcılara kapalı.
+-- Bu dosya otomatik test koşucusuna bağlı değildir.

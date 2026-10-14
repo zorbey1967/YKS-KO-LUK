@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { billingOk } from '../../supabase/functions/_shared/billingEntitled.ts';
+import { billingOk, examAnalyticsAllowed, studentFeatureOk } from '../../supabase/functions/_shared/billingEntitled.ts';
 
 const now = Date.parse('2026-10-10T00:00:00.000Z');
 const future = '2026-11-01T00:00:00.000Z';
@@ -99,19 +99,61 @@ describe('student-ai billingOk fail-closed', () => {
     }, now).entitled).toBe(false);
   });
 
-  it('student-ai her POST yolunda getUser ve billingOk ister', () => {
+  it('studentFeatureOk koça öğrenci Zorro’sunu açmaz; student-ai kaynakta rol ayrılır', () => {
+    expect(studentFeatureOk({
+      skip: true,
+      role: 'coach',
+      status: '',
+      trialEnds: '',
+      subEnds: '',
+      plan: '',
+    }, now).entitled).toBe(false);
     const src = readFileSync(
       join(dirname(fileURLToPath(import.meta.url)), '../../supabase/functions/student-ai/index.ts'),
       'utf8',
     );
+    const scan = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), '../../supabase/functions/exam-scan/index.ts'),
+      'utf8',
+    );
+    expect(src).toContain('studentFeatureOk');
+    expect(src).toContain('Bu özellik öğrenci hesabına özel.');
+    expect(src).toContain('is_admin');
+    expect(src).toContain('is_platform_owner');
+    expect(scan).toContain('studentFeatureOk');
+    expect(scan).toContain('Bu özellik öğrenci hesabına özel.');
     const authAt = src.indexOf('const auth = await requireUser(req)');
-    const billAt = src.indexOf('const bill = billingOk(auth.billing)');
+    const billAt = src.indexOf('const bill = studentFeatureOk(auth.billing)');
     const jsonAt = src.indexOf('body = await req.json()');
     expect(authAt).toBeGreaterThan(0);
     expect(billAt).toBeGreaterThan(authAt);
     expect(jsonAt).toBeGreaterThan(billAt);
-    expect(src).toContain('await supabase.auth.getUser(token)');
-    expect(src).toContain('return json(req, { error: "Deneme veya ücretli üyelik gerekli." }, 402)');
+  });
+
+  it('exam-scan analiz: ücretsiz/Pro/koç kapalı; Premium ve deneme açık', () => {
+    const pro = studentFeatureOk({
+      skip: false, role: 'student', status: 'active', trialEnds: '', subEnds: future, plan: 'pro',
+    }, now);
+    const premium = studentFeatureOk({
+      skip: false, role: 'student', status: 'active', trialEnds: '', subEnds: future, plan: 'premium',
+    }, now);
+    const trial = studentFeatureOk({
+      skip: false, role: 'student', status: 'trialing', trialEnds: future, subEnds: '', plan: '',
+    }, now);
+    const free = studentFeatureOk({
+      skip: false, role: 'student', status: 'none', trialEnds: '', subEnds: '', plan: 'Ücretsiz',
+    }, now);
+    const coach = studentFeatureOk({
+      skip: false, role: 'coach', status: 'active', trialEnds: '', subEnds: future, plan: 'premium',
+    }, now);
+    expect(examAnalyticsAllowed(false, free)).toBe(false);
+    expect(examAnalyticsAllowed(false, pro)).toBe(false);
+    expect(examAnalyticsAllowed(false, premium)).toBe(true);
+    expect(examAnalyticsAllowed(false, trial)).toBe(true);
+    expect(examAnalyticsAllowed(false, coach)).toBe(false);
+    expect(examAnalyticsAllowed(true, pro)).toBe(true);
+    const scan = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '../../supabase/functions/exam-scan/index.ts'), 'utf8');
+    expect(scan).toContain('examAnalyticsAllowed');
   });
 
   it('active ama plansız kaydı reddeder', () => {

@@ -10,8 +10,13 @@
     "test": "vitest run",
     "test:pg": "vitest run src/lib/studentEntitled.pg.test.ts",
     "test:pg:docker": "node scripts/run-pg-entitlement-test.mjs",
+    "test:pg:security": "node scripts/run-pg-security-test.mjs",
+    "test:pg:four": "node scripts/run-pg-four-sql.mjs",
     "preview": "vite preview",
     "extract-bank": "node scripts/extract-bank.mjs",
+    "pack:bank": "node scripts/pack-bank.mjs",
+    "verify:bank": "node scripts/verify-bank-pack.mjs",
+    "staging:check": "node scripts/staging-cutover.mjs",
     "deploy:ai": "npx supabase functions deploy student-ai --no-verify-jwt",
     "deploy:web": "npx vercel --prod --yes"
   },
@@ -29,5 +34,8 @@
     "typescript": "~5.9.2",
     "vite": "^7.1.5",
     "vitest": "^3.2.7"
+  },
+  "overrides": {
+    "source-map-js": "1.2.2"
   }
 }

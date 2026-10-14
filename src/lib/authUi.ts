@@ -46,5 +46,8 @@ export function publicAuthError(err: unknown) {
   if (/network|fetch|timeout|zaman aşımı/i.test(msg)) {
     return 'Bağlantı hatası. Ağını kontrol edip yeniden dene.';
   }
+  if (/provider is not enabled|unsupported provider/i.test(msg)) {
+    return 'Google girişi bu ortamda yapılandırılmamış. E-posta ile devam et. Otomatik hesap birleştirme kapalıdır.';
+  }
   return 'İşlem tamamlanamadı. Bilgileri kontrol edip tekrar dene.';
 }

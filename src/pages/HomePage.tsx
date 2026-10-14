@@ -13,7 +13,7 @@ import { zorroHomeHint } from '../lib/zorroSuggest';
 import { StudySuggestCard } from '../components/StudySuggestCard';
 
 export function HomePage({ onNewTask }: { onNewTask: () => void }) {
-  const { data, go, profile, user } = useApp();
+  const { data, go, profile, user, isPlatformOwner } = useApp();
   const td = today();
   const todayOpen = data.tasks.filter((t) => t.date === td && !t.done);
   const day = todaySchedule(data);
@@ -69,23 +69,19 @@ export function HomePage({ onNewTask }: { onNewTask: () => void }) {
     return (
       <>
         <div className="hero">
-          <div className="eyebrow" style={{ color: '#cfe1ff' }}>Öğrenci E-Koçluk</div>
-          <h2>Ne çalışacağını netleştir.</h2>
-          <p>Hedef, günlük iş, soru bankası ve koç randevusu. Üyelik durumu Hesabım’daki sunucu kaydına göredir; tarayıcıda deneme başlatılmaz.</p>
+          <div className="eyebrow" style={{ color: '#cfe1ff' }}>Giriş / Kayıt</div>
+          <h2>Hesabınla devam et.</h2>
+          <p>Çalışma araçları, randevu ve görüşmeler oturum açtıktan sonra açılır.</p>
           <div className="hero-actions">
             <button className="btn primary" type="button" onClick={() => go('account')}>Giriş / kayıt</button>
-            <button className="btn" type="button" onClick={() => go('questionbank')}>Soru bankası</button>
-            <button className="btn" type="button" onClick={() => window.dispatchEvent(new Event('yks-open-zorro'))}>🦁 ZORRO</button>
+            <button className="btn" type="button" onClick={() => go('account')}>Google ile devam et</button>
           </div>
         </div>
-        <div className="grid two" style={{ marginTop: 16 }}>
-          <div className="card">
-            <div className="section-title"><h3>Bugün</h3></div>
-            <p className="muted">Görev ve program girişten sonra senin kaydından gelir; örnek istatistik yok.</p>
-          </div>
-          <div className="card">
-            <div className="section-title"><h3>ZORRO</h3></div>
-            <p className="muted">Çalışma koçu. Sağ alttaki aslanla veya menüden açılır.</p>
+        <div className="card" style={{ marginTop: 16 }}>
+          <div className="section-title"><h3>Koçluk</h3></div>
+          <p className="muted">Koçları incele; randevu için giriş gerekir.</p>
+          <div className="actions">
+            <button className="btn secondary" type="button" onClick={() => go('coaches')}>Koçları incele</button>
           </div>
         </div>
       </>
@@ -96,7 +92,7 @@ export function HomePage({ onNewTask }: { onNewTask: () => void }) {
     <>
       <div className="hero">
         <div className="eyebrow" style={{ color: '#cfe1ff' }}>Bugün</div>
-        <h2>Merhaba, {name}</h2>
+        <h2>{isPlatformOwner ? 'Yönetici hesabı' : `Merhaba, ${name}`}</h2>
         <p>
           {data.examDate
             ? (count.past ? `${examTitle(data)} tarihi geçti.` : `${examTitle(data)}’ye ${count.label}.`)

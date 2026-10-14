@@ -62,7 +62,7 @@ export function Layout({ children }: { children: ReactNode }) {
           <div className="brand-icon" aria-hidden="true">🎓</div>
           <div className="brand-copy">
             <strong>{SITE_NAME}</strong>
-            <small>{isCoach ? 'Koçluk paneli' : `${examTitle(data)} çalışma paneli`}</small>
+            <small>{!user ? 'Giriş ve koçlar' : isCoach ? 'Koçluk paneli' : `${examTitle(data)} çalışma paneli`}</small>
           </div>
         </div>
         <nav className="nav">
@@ -71,7 +71,7 @@ export function Layout({ children }: { children: ReactNode }) {
               {n.icon} <span>{n.id === 'account' && !user ? 'Giriş' : n.label}</span>
             </button>
           ))}
-          {!isCoach ? (
+          {!isCoach && user && accessGate === 'ok' ? (
             <button type="button" onClick={() => window.dispatchEvent(new Event('yks-open-zorro'))}>
               🦁 <span>ZORRO</span>
             </button>

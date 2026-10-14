@@ -1,0 +1,19 @@
+{
+  "schema": "yks-bank-pack-v7",
+  "version": 7,
+  "generatedAt": "2026-10-14T15:55:11.701Z",
+  "questionCount": 7007,
+  "levelCount": 17,
+  "topicCount": 501,
+  "bytes": 1884024,
+  "sha256": "496bbc27ed8093e834030ded7ee54d2d4a0b728612c5b869dc80807da82d2272",
+  "packFile": "supabase/functions/bank-pack/pack.json",
+  "uploadTarget": "Supabase Edge Function bank-pack (fonksiyon klasöründeki pack.json; istemci dist değil)",
+  "access": "JWT + caller_account_active + studentFeatureOk; koç 403; askı 403; üyeliksiz 402",
+  "repro": [
+    "npm run pack:bank",
+    "npm run verify:bank"
+  ],
+  "gitignored": true,
+  "liveDeployed": false
+}
