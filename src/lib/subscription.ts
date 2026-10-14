@@ -95,7 +95,7 @@ export function entitledPlan(snap: BillingSnapshot): PlanId | 'trial' | null {
 export function displayMembershipName(profile: Profile | null | undefined, now = Date.now(), isAdmin = false) {
   const snap = billingFromProfile(profile, now);
   const tier = entitledPlan(snap);
-  if (tier === 'trial') return '14 Günlük Deneme';
+  if (tier === 'trial') return '14 Günlük Ücretsiz Premium Deneme';
   if (isAdmin) return 'Premium';
   if (profile?.role === 'coach') return '—';
   if (!snap.schemaReady || snap.status === 'legacy') return 'Üyelik kaydı sunucuda yok';

@@ -137,7 +137,7 @@ describe('üyelik fail-closed kilitler', () => {
       trial_started_at: '2026-10-10T00:00:00.000Z',
       trial_ends_at: future,
     };
-    expect(displayMembershipName(adminTrial, now, true)).toBe('14 Günlük Deneme');
+    expect(displayMembershipName(adminTrial, now, true)).toBe('14 Günlük Ücretsiz Premium Deneme');
     const adminExpired: Profile = { ...adminTrial, trial_ends_at: past };
     expect(displayMembershipName(adminExpired, now, true)).toBe('Premium');
     expect(canUseFeature(admin, 'analytics', now, true)).toBe(true);

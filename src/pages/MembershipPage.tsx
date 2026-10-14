@@ -36,6 +36,10 @@ export function MembershipPage() {
   const showMembershipStatus = Boolean(user) && profile?.role !== 'coach';
 
   useEffect(() => {
+    void refreshAuth();
+  }, [refreshAuth]);
+
+  useEffect(() => {
     if (!student) return;
     void listMyPayments().then(setPays);
   }, [student]);
@@ -106,17 +110,17 @@ export function MembershipPage() {
             <div className="label">PLANIN</div>
             <div className="value" style={{ fontSize: 22 }}>{planName}</div>
             <div className="sub">
-              {trialActive ? (days ? `Aktif erişim • ${days} gün kaldı` : 'Aktif erişim') : snap.status === 'active' ? 'Ücretli üyelik' : ''}
+              {trialActive ? 'Premium erişim aktif' : snap.status === 'active' ? 'Ücretli üyelik' : ''}
             </div>
           </div>
           {trialActive ? (
             <>
               <div className="card stat">
-                <div className="label">DENEME BAŞLANGIÇ</div>
+                <div className="label">BAŞLANGIÇ</div>
                 <div className="value" style={{ fontSize: 18 }}>{fmtDate(profile?.trial_started_at || null)}</div>
               </div>
               <div className="card stat">
-                <div className="label">DENEME BİTİŞ</div>
+                <div className="label">BİTİŞ</div>
                 <div className="value" style={{ fontSize: 18 }}>{fmtDate(snap.trialEndsAt)}</div>
               </div>
             </>
@@ -175,11 +179,11 @@ export function MembershipPage() {
       ) : null}
 
       <div className="card" style={{ marginTop: 16 }}>
-        <div className="section-title"><h3>14 günlük ücretsiz Premium deneme</h3><span>{TRIAL_DAYS} gün</span></div>
+        <div className="section-title"><h3>14 Günlük Ücretsiz Premium Deneme</h3><span>{TRIAL_DAYS} gün</span></div>
         <p className="muted">
-          En üst plan (Premium) özellikleri 14 gün açılır. Başlangıç ve bitiş sunucuda yazılır. Ücret alınmaz.
-          Aynı hesap ikinci kez deneme alamaz.
-          {trialActive && days ? ` Kalan: ${days} gün.` : ''}
+          {trialActive
+            ? `Premium erişim aktif. Kalan: ${days} gün. Ücret alınmadı.`
+            : 'En üst plan (Premium) özellikleri 14 gün açılır. Başlangıç ve bitiş sunucuda yazılır. Ücret alınmaz. Aynı hesap ikinci kez deneme alamaz.'}
         </p>
         {(snap.status === 'expired' && profile?.trial_started_at) || (snap.status !== 'trialing' && snap.status !== 'active' && profile?.trial_started_at && snap.trialEndsAt) ? (
           <p className="notice">Bu hesap denemeyi kullandı. Devam için Pro veya Premium satın al.</p>
@@ -188,10 +192,10 @@ export function MembershipPage() {
           <button
             className="btn primary"
             type="button"
-            disabled={trialBusy || !user || !student || trialActive || snap.status === 'active' || isAdmin}
+            disabled={trialBusy || !user || trialActive || snap.status === 'active' || (!student && !isAdmin)}
             onClick={() => void startTrial()}
           >
-            {trialBusy ? 'Başlatılıyor…' : trialActive ? `${days} gün kaldı` : '14 günlük ücretsiz denemeyi başlat'}
+            {trialBusy ? 'Başlatılıyor…' : trialActive ? 'Premium erişim aktif' : '14 günlük ücretsiz denemeyi başlat'}
           </button>
         </div>
       </div>
