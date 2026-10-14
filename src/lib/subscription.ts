@@ -93,12 +93,12 @@ export function entitledPlan(snap: BillingSnapshot): PlanId | 'trial' | null {
 
 /** Kullanıcıya gösterilen ad. DB’deki 'Ücretsiz' değeri ekrana yazılmaz. */
 export function displayMembershipName(profile: Profile | null | undefined, now = Date.now(), isAdmin = false) {
-  if (isAdmin) return 'Premium';
-  if (profile?.role === 'coach') return '—';
   const snap = billingFromProfile(profile, now);
   const tier = entitledPlan(snap);
-  if (!snap.schemaReady || snap.status === 'legacy') return 'Üyelik kaydı sunucuda yok';
   if (tier === 'trial') return '14 Günlük Deneme';
+  if (isAdmin) return 'Premium';
+  if (profile?.role === 'coach') return '—';
+  if (!snap.schemaReady || snap.status === 'legacy') return 'Üyelik kaydı sunucuda yok';
   if (tier === 'pro') return 'Pro';
   if (tier === 'premium') return 'Premium';
   if (snap.status === 'pending_approval') return 'Onay bekliyor';

@@ -33,6 +33,7 @@ export function MembershipPage() {
   const planName = displayMembershipName(profile, Date.now(), isAdmin);
   const trialActive = Boolean(user) && tier === 'trial';
   const student = Boolean(user) && profile?.role !== 'coach' && profile?.role !== 'admin';
+  const showMembershipStatus = Boolean(user) && profile?.role !== 'coach';
 
   useEffect(() => {
     if (!student) return;
@@ -99,18 +100,26 @@ export function MembershipPage() {
         </p>
       </div>
 
-      {student ? (
+      {showMembershipStatus ? (
         <div className="grid stats" style={{ marginTop: 16 }}>
           <div className="card stat">
             <div className="label">PLANIN</div>
             <div className="value" style={{ fontSize: 22 }}>{planName}</div>
-            <div className="sub">{trialActive && days ? `${days} gün kaldı` : snap.status === 'active' ? 'Ücretli üyelik' : ''}</div>
-          </div>
-          {trialActive && snap.trialEndsAt ? (
-            <div className="card stat">
-              <div className="label">DENEME BİTİŞ</div>
-              <div className="value" style={{ fontSize: 18 }}>{fmtDate(snap.trialEndsAt)}</div>
+            <div className="sub">
+              {trialActive ? (days ? `Aktif erişim • ${days} gün kaldı` : 'Aktif erişim') : snap.status === 'active' ? 'Ücretli üyelik' : ''}
             </div>
+          </div>
+          {trialActive ? (
+            <>
+              <div className="card stat">
+                <div className="label">DENEME BAŞLANGIÇ</div>
+                <div className="value" style={{ fontSize: 18 }}>{fmtDate(profile?.trial_started_at || null)}</div>
+              </div>
+              <div className="card stat">
+                <div className="label">DENEME BİTİŞ</div>
+                <div className="value" style={{ fontSize: 18 }}>{fmtDate(snap.trialEndsAt)}</div>
+              </div>
+            </>
           ) : snap.status === 'active' ? (
             <div className="card stat">
               <div className="label">DÖNEM BİTİŞ</div>
@@ -157,7 +166,11 @@ export function MembershipPage() {
 
       {isAdmin ? (
         <div className="card" style={{ marginTop: 16 }}>
-          <p className="muted" style={{ margin: 0 }}>Yönetici hesabında plan satın alman gerekmez; özellikler sunucu yetkisiyle açıktır.</p>
+          <p className="muted" style={{ margin: 0 }}>
+            {trialActive
+              ? 'Yönetici rolü duruyor. Bu hesapta 14 günlük Premium deneme kaydı açık; ücret alınmadı.'
+              : 'Yönetici hesabında plan satın alman gerekmez; özellikler sunucu yetkisiyle açıktır.'}
+          </p>
         </div>
       ) : null}
 

@@ -128,6 +128,18 @@ describe('üyelik fail-closed kilitler', () => {
     expect(studyPagesLocked({ isAdmin: true, accessGate: 'ok', profile: { name: '', email: '', plan: '' }, now })).toBe(false);
     expect(displayMembershipName(admin, now, true)).toBe('Premium');
     expect(displayMembershipName(admin, now, false)).not.toBe('Premium');
+    const adminTrial: Profile = {
+      name: 'A',
+      email: 'a@b.c',
+      plan: '',
+      role: 'admin',
+      subscription_status: 'trialing',
+      trial_started_at: '2026-10-10T00:00:00.000Z',
+      trial_ends_at: future,
+    };
+    expect(displayMembershipName(adminTrial, now, true)).toBe('14 Günlük Deneme');
+    const adminExpired: Profile = { ...adminTrial, trial_ends_at: past };
+    expect(displayMembershipName(adminExpired, now, true)).toBe('Premium');
     expect(canUseFeature(admin, 'analytics', now, true)).toBe(true);
     expect(canUseFeature(admin, 'ai_plan', now, true)).toBe(true);
     expect(paidAccessLocked(admin, now, true)).toBe(false);
