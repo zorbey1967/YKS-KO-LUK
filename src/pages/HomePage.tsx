@@ -74,7 +74,7 @@ export function HomePage({ onNewTask }: { onNewTask: () => void }) {
           <p>Çalışma araçları, randevu ve görüşmeler oturum açtıktan sonra açılır.</p>
           <div className="hero-actions">
             <button className="btn primary" type="button" onClick={() => go('account')}>Giriş / kayıt</button>
-            <button className="btn" type="button" onClick={() => go('account')}>Google ile devam et</button>
+            <button className="btn" type="button" onClick={() => go('account', 'oauth=google')}>Google ile devam et</button>
           </div>
         </div>
         <div className="card" style={{ marginTop: 16 }}>

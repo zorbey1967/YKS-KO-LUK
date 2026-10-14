@@ -49,5 +49,17 @@ export function publicAuthError(err: unknown) {
   if (/provider is not enabled|unsupported provider/i.test(msg)) {
     return 'Google girişi bu ortamda yapılandırılmamış. E-posta ile devam et. Otomatik hesap birleştirme kapalıdır.';
   }
+  if (/access_denied|user.?denied|cancelled|canceled/i.test(msg)) {
+    return 'Google girişi iptal edildi.';
+  }
+  if (/redirect_uri|redirect uri/i.test(msg)) {
+    return 'Google yönlendirme adresi eşleşmiyor. Site adresiyle tekrar dene.';
+  }
+  if (/pkce|code verifier|flow state|unable to exchange|invalid request|bad_oauth/i.test(msg)) {
+    return 'Google oturumu kurulamadı. Sayfayı yenileyip yeniden dene.';
+  }
+  if (/identity.*already|already linked|manual linking|multiple.*identit/i.test(msg)) {
+    return 'Bu Google hesabı mevcut e-posta kaydıyla otomatik birleşmez. E-posta ile giriş yap.';
+  }
   return 'İşlem tamamlanamadı. Bilgileri kontrol edip tekrar dene.';
 }

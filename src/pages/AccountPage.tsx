@@ -42,6 +42,14 @@ export function AccountPage() {
   const coach = coachAdvice(data);
 
   useEffect(() => {
+    const hashQ = location.hash.includes('?') ? location.hash.slice(location.hash.indexOf('?') + 1) : '';
+    if (/(?:^|&)oauth=google(?:&|$)/.test(hashQ) && supabase && !user) {
+      void signInGoogle();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- yalnızca ilk yüklemede Google’a git
+  }, []);
+
+  useEffect(() => {
     if (profile?.name) {
       const parts = splitPersonName(profile.name);
       setFirstName(parts.firstName);
@@ -189,6 +197,7 @@ export function AccountPage() {
 
   async function signInGoogle() {
     if (!supabase) return setAuthMsg(SUPABASE_UNAVAILABLE);
+    if (location.hash.includes('oauth=google')) location.hash = '/account';
     setBusy(true);
     setAuthMsg('Google’a yönlendiriliyorsun…');
     try {
@@ -196,9 +205,10 @@ export function AccountPage() {
       const { error } = await withTimeout(supabase.auth.signInWithOAuth({
         provider: spec.provider,
         options: spec.options,
-      }));
+      }), 25000);
       if (error) throw error;
     } catch (e) {
+      if (document.visibilityState === 'hidden') return;
       setAuthMsg(publicAuthError(e));
       setBusy(false);
     }
@@ -294,7 +304,7 @@ export function AccountPage() {
               <button className="btn secondary" type="button" disabled={busy || !supabase} onClick={() => void signInGoogle()}>
                 Google ile devam et
               </button>
-              <p className="muted" style={{ margin: 0 }}>Mevcut e-posta hesabı Google ile otomatik birleştirilmez. Canlı Google istemcisi yapılandırılmadıysa yönlendirme başarısız olur.</p>
+              <p className="muted" style={{ margin: 0 }}>Mevcut e-posta hesabı Google ile otomatik birleştirilmez.</p>
             </div>
           ) : null}
           {mode === 'kayit' ? (

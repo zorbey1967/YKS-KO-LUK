@@ -12,8 +12,10 @@ describe('authEmailRedirectTo', () => {
   });
 
   it('açık yönlendirmeyi reddeder', () => {
+    expect(isAllowedAuthOrigin('https://e-kocluk-git-fix.vercel.app')).toBe(true);
     expect(isAllowedAuthOrigin('https://evil.example')).toBe(false);
     expect(isAllowedAuthOrigin('https://e-kocluk.vercel.app.evil.com')).toBe(false);
+    expect(isAllowedAuthOrigin('https://evil.vercel.app')).toBe(false);
     expect(authEmailRedirectTo('https://evil.example/phish')).toBe(`${SITE_ORIGIN}/${AUTH_RECOVERY_HASH}`);
     expect(authEmailRedirectTo('javascript:alert(1)')).toBe(`${SITE_ORIGIN}/${AUTH_RECOVERY_HASH}`);
   });

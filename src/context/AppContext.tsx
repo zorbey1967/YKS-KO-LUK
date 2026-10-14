@@ -11,6 +11,7 @@ import { getPersonDisplayName } from '../lib/displayName';
 import { parseAccountStatus, fetchMyCoach, pushStudentData } from '../lib/cloudPlatform';
 import { mergeAppData } from '../lib/syncMerge';
 import { resolveAccessGate, type AccessGate } from '../lib/accessGate';
+import { consumeOAuthRedirect } from '../lib/authCallback';
 
 type Ctx = {
   page: PageId;
@@ -55,7 +56,13 @@ function syncHashFromPath() {
   const hash = location.hash.replace('#/', '').replace('#', '').split('?')[0];
   if (isKnownPage(hash)) return;
   const path = location.pathname.replace(/^\//, '').split('/')[0];
-  if (isKnownPage(path)) location.hash = `/${path}${location.search || ''}`;
+  if (!isKnownPage(path)) return;
+  const q = new URLSearchParams(location.search);
+  if (q.has('code') || q.has('error') || q.has('error_code')) {
+    location.hash = `/${path}`;
+    return;
+  }
+  location.hash = `/${path}${location.search || ''}`;
 }
 
 export function AppProvider({ children }: { children: ReactNode }) {
@@ -224,7 +231,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setAuthReady(true);
       return;
     }
-    const { data: sessionData } = await withTimeout(supabase.auth.getSession());
+    const { data: sessionData } = await withTimeout(supabase.auth.getSession(), 20000);
     const u = sessionData.session?.user || null;
     userRef.current = u;
     setUser(u);
@@ -299,8 +306,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setPage(dest);
     };
     window.addEventListener('hashchange', onHash);
-    void refreshAuth();
-    if (!supabase) return;
+    void (async () => {
+      if (supabase) {
+        const oauth = await consumeOAuthRedirect(supabase);
+        if (oauth.message) setAuthMsg(oauth.message);
+      }
+      await refreshAuth();
+    })();
+    if (!supabase) {
+      return () => window.removeEventListener('hashchange', onHash);
+    }
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'TOKEN_REFRESHED') return;
       const u = session?.user || null;
