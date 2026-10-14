@@ -21,6 +21,12 @@ describe('oauth debug', () => {
     expect(href.startsWith('https://naiakscryafhvcghjmzx.supabase.co/auth/v1/authorize')).toBe(true);
     expect(href).not.toContain('e-kocluk.vercel.app/auth');
     expect(inspectAuthorizeUrl(href, 'https://naiakscryafhvcghjmzx.supabase.co').ok).toBe(true);
+    const fromGh = authorizeUrlForNavigation(
+      'https://naiakscryafhvcghjmzx.supabase.co/auth/v1/authorize?provider=google&redirect_to=https%3A%2F%2Fzorbey1967.github.io%2FYKS-KO-LUK%2F&code_challenge=x&code_challenge_method=s256',
+      'https://naiakscryafhvcghjmzx.supabase.co',
+    );
+    expect(fromGh).toContain('redirect_to=https%3A%2F%2Fe-kocluk.vercel.app%2F');
+    expect(fromGh).not.toContain('github.io');
     expect(inspectAuthorizeUrl('https://e-kocluk.vercel.app/auth/v1/authorize?provider=google&redirect_to=https%3A%2F%2Fe-kocluk.vercel.app%2F&code_challenge=x', 'https://naiakscryafhvcghjmzx.supabase.co').host).toBe('naiakscryafhvcghjmzx.supabase.co');
   });
 

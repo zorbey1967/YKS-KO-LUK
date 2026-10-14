@@ -1,13 +1,13 @@
-import { authEmailRedirectTo, isAllowedAuthOrigin } from './authRedirect';
+import { authEmailRedirectTo, isLegacyGithubPagesUrl, isLocalAuthOrigin } from './authRedirect';
 import { authorizeUrlForNavigation, inspectAuthorizeUrl, writeOAuthDebug, yesNo } from './oauthDebug';
 import { SITE_ORIGIN } from './site';
 import { supabaseUrl } from './supabase';
 
-/** PKCE: kod query’de kalır; hash rota ile çakışmaz. */
+/** Production Google callback yalnızca Vercel; GitHub Pages / yabancı origin yok. */
 export function authOAuthRedirectTo(candidateOrigin?: string) {
   const raw = String(candidateOrigin || SITE_ORIGIN).trim().replace(/\/$/, '');
-  const origin = isAllowedAuthOrigin(raw) ? raw : SITE_ORIGIN;
-  return `${origin}/`;
+  if (isLegacyGithubPagesUrl(raw) || !isLocalAuthOrigin(raw)) return `${SITE_ORIGIN}/`;
+  return `${raw}/`;
 }
 
 export function googleOAuthOptions(origin?: string) {

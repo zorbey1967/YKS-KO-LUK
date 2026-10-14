@@ -9,6 +9,7 @@ describe('Google OAuth', () => {
     expect(authOAuthRedirectTo('http://127.0.0.1:5173')).toBe('http://127.0.0.1:5173/');
     expect(authOAuthRedirectTo('http://localhost:5173')).toBe('http://localhost:5173/');
     expect(authOAuthRedirectTo('https://evil.example')).toBe(`${SITE_ORIGIN}/`);
+    expect(authOAuthRedirectTo('https://zorbey1967.github.io/YKS-KO-LUK')).toBe(`${SITE_ORIGIN}/`);
     expect(googleOAuthOptions('http://localhost:5173').provider).toBe('google');
     expect(googleOAuthOptions('http://localhost:5173').options.redirectTo).toBe('http://localhost:5173/');
     expect(authOAuthRedirectTo('https://e-kocluk.vercel.app')).toBe('https://e-kocluk.vercel.app/');

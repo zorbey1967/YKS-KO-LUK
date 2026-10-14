@@ -16,6 +16,8 @@ describe('authEmailRedirectTo', () => {
     expect(isAllowedAuthOrigin('https://evil.example')).toBe(false);
     expect(isAllowedAuthOrigin('https://e-kocluk.vercel.app.evil.com')).toBe(false);
     expect(isAllowedAuthOrigin('https://evil.vercel.app')).toBe(false);
+    expect(isAllowedAuthOrigin('https://zorbey1967.github.io')).toBe(false);
+    expect(isAllowedAuthOrigin('https://zorbey1967.github.io/YKS-KO-LUK')).toBe(false);
     expect(authEmailRedirectTo('https://evil.example/phish')).toBe(`${SITE_ORIGIN}/${AUTH_RECOVERY_HASH}`);
     expect(authEmailRedirectTo('javascript:alert(1)')).toBe(`${SITE_ORIGIN}/${AUTH_RECOVERY_HASH}`);
   });

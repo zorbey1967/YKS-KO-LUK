@@ -16,13 +16,22 @@ function isProjectVercelOrigin(origin: string) {
   }
 }
 
+export function isLegacyGithubPagesUrl(value: string) {
+  return /(?:^|[/.])github\.io(?:\/|$)/i.test(String(value || ''));
+}
+
+export function isLocalAuthOrigin(origin: string) {
+  return /^http:\/\/(localhost|127\.0\.0\.1):\d{2,5}$/.test(origin.trim().replace(/\/$/, ''));
+}
+
 export function isAllowedAuthOrigin(origin: string) {
   const o = origin.trim().replace(/\/$/, '');
+  if (isLegacyGithubPagesUrl(o)) return false;
   if (o === SITE_ORIGIN) return true;
-  if (/^http:\/\/(localhost|127\.0\.0\.1):\d{2,5}$/.test(o)) return true;
+  if (isLocalAuthOrigin(o)) return true;
   if (isProjectVercelOrigin(o)) return true;
   const extra = String(import.meta.env.VITE_SITE_URL || '').trim().replace(/\/$/, '');
-  if (extra && extra === o && isProjectVercelOrigin(extra)) return true;
+  if (extra && extra === o && isProjectVercelOrigin(extra) && !isLegacyGithubPagesUrl(extra)) return true;
   return false;
 }
 

@@ -13,6 +13,7 @@ import { authEmailRedirectTo } from '../lib/authRedirect';
 import { fullPersonName, validatePersonName } from '../lib/personName';
 import { accessMessage } from '../lib/accessGate';
 import { beginGoogleSignIn } from '../lib/googleOAuth';
+import { SITE_ORIGIN } from '../lib/site';
 import { displayMembershipName } from '../lib/subscription';
 import { GRADES } from '../lib/stage';
 import { TRACKS } from '../lib/goal';
@@ -213,7 +214,7 @@ export function AccountPage() {
     setGoogleBusy(true);
     setAuthMsg('Google’a yönlendiriliyorsun…');
     try {
-      await withTimeout(beginGoogleSignIn(supabase, window.location.origin), 8000);
+      await withTimeout(beginGoogleSignIn(supabase, import.meta.env.PROD ? SITE_ORIGIN : window.location.origin), 8000);
     } catch (e) {
       setAuthMsg(publicAuthError(e));
     } finally {

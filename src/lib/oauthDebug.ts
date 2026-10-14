@@ -1,3 +1,6 @@
+import { isLegacyGithubPagesUrl, isLocalAuthOrigin } from './authRedirect';
+import { SITE_ORIGIN } from './site';
+
 const STORAGE_KEY = 'yks_oauth_debug';
 export const OAUTH_DEBUG_EVENT = 'yks-oauth-debug';
 
@@ -119,6 +122,10 @@ export function inspectAuthorizeUrl(raw: string, supabaseBase?: string) {
     const authorizeState = Boolean(u.searchParams.get('state'));
     const skipHttpRedirect = u.searchParams.get('skip_http_redirect');
     const authorizePath = u.pathname.includes('/auth/v1/authorize');
+    const redirectOrigin = redirectTo.replace(/\/$/, '');
+    const redirectOk = Boolean(redirectTo)
+      && !isLegacyGithubPagesUrl(redirectTo)
+      && (redirectOrigin === SITE_ORIGIN || isLocalAuthOrigin(redirectOrigin));
     return {
       provider,
       redirectTo,
@@ -130,7 +137,7 @@ export function inspectAuthorizeUrl(raw: string, supabaseBase?: string) {
         isAuthHost(u.hostname)
         && authorizePath
         && provider === 'google'
-        && Boolean(redirectTo)
+        && redirectOk
         && codeChallenge
         && skipHttpRedirect !== 'true',
     };
@@ -157,6 +164,10 @@ export function authorizeUrlForNavigation(raw: string, supabaseBase?: string) {
     u = new URL(raw, `${fallback}/`);
   }
   u.searchParams.delete('skip_http_redirect');
+  const redirectTo = u.searchParams.get('redirect_to') || '';
+  if (!redirectTo || isLegacyGithubPagesUrl(redirectTo)) {
+    u.searchParams.set('redirect_to', `${SITE_ORIGIN}/`);
+  }
   if (isAuthHost(u.hostname) && u.pathname.includes('/auth/v1/authorize')) return u.toString();
   const rebuilt = new URL(`${fallback}/auth/v1/authorize`);
   u.searchParams.forEach((value, key) => rebuilt.searchParams.set(key, value));
