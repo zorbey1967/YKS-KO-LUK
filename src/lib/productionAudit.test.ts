@@ -82,6 +82,23 @@ describe('production audit contracts', () => {
     }
   });
 
+  it('042 additive schema start_top_plan_trial ve protect_plan’i değiştirmez', () => {
+    const sql = src('supabase/migrations/042_production_feature_schema.sql');
+    expect(sql).toMatch(/add column if not exists/);
+    expect(sql).not.toMatch(/drop table public/i);
+    expect(sql).not.toMatch(/create or replace function public\.start_top_plan_trial/);
+    expect(sql).not.toMatch(/create or replace function public\.protect_plan/);
+    expect(sql).not.toMatch(/create or replace function public\.handle_new_user/);
+  });
+
+  it('043 apply_verified_payment authenticated EXECUTE vermez', () => {
+    const sql = src('supabase/migrations/043_apply_verified_payment.sql');
+    expect(sql).toContain('revoke all on function public.apply_verified_payment');
+    expect(sql).not.toMatch(/grant execute on function public\.apply_verified_payment/);
+    expect(sql).toContain("set search_path to ''");
+    expect(sql).not.toMatch(/create or replace function public\.start_top_plan_trial/);
+  });
+
   it('canlı trial RPC ve protect_plan search_path yerel 041 ile uyumlu', () => {
     const sql = src('supabase/migrations/041_protect_plan_search_path.sql');
     expect(sql).toMatch(/set search_path to ''/);
