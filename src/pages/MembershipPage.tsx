@@ -85,7 +85,7 @@ export function MembershipPage() {
       }
       setPayNote(res.message);
       toast(res.message);
-      if (res.status === 'trialing' || res.status === 'active') await refreshAuth();
+      if (res.ok) await refreshAuth();
     } finally {
       setTrialBusy(false);
     }
@@ -104,10 +104,9 @@ export function MembershipPage() {
         <div className="eyebrow" style={{ color: '#cfe1ff' }}>Üyelik</div>
         <h2>Pro ve Premium</h2>
         <p>
-          {TRIAL_DAYS} günlük deneme yalnızca e-posta doğrulama ve yönetici onayından sonra sunucuya yazılır.
-          Ücretli dönem Shopier’de doğrulanmış tek seferlik çekimle 30 gün açılır. Otomatik yenileme yok.
-          Başlangıç paketi: kampanyalı Premium {formatTry(chargeAmountTry('premium'))} / 30 gün (katalog).
-          Mevcut aboneliğin kilitli tutarı onayın olmadan değişmez.
+          Öğrenci hesabında {TRIAL_DAYS} günlük Premium deneme bu sayfadan bir kez başlatılır; ücret alınmaz.
+          Süre bitince kilitler yeniden çalışır. Ücretli dönem Shopier’de doğrulanmış tek seferlik çekimle 30 gün açılır.
+          Otomatik yenileme yok. Başlangıç paketi: kampanyalı Premium {formatTry(chargeAmountTry('premium'))} / 30 gün (katalog).
         </p>
       </div>
 

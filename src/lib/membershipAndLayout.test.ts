@@ -157,6 +157,11 @@ describe('üyelik trial + Net Hesapla menü', () => {
 
   it('sidebar eski çalışma sırasını korur', () => {
     const ids = sidebarNav('student', false).map((x) => x.id);
+    expect(ids).toEqual([
+      'home', 'coaches', 'meetings', 'library', 'questionbank', 'analytics',
+      'schedule', 'calendar', 'tasks', 'goal', 'plan', 'exams', 'calculator',
+      'topics', 'questions', 'timer', 'membership', 'account',
+    ]);
     expect(ids.indexOf('home')).toBe(0);
     expect(ids.indexOf('coaches')).toBe(1);
     expect(ids.indexOf('questionbank')).toBeLessThan(ids.indexOf('analytics'));
