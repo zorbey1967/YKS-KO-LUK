@@ -145,7 +145,7 @@ export function ExamAnalysisPanel() {
           <span>{String((r as { exam_name?: string }).exam_name)}<br /><small className="muted">{String((r as { created_at?: string }).created_at || '').slice(0, 10)}</small></span>
           <b>{Number((r as { net?: number }).net)}</b>
         </div>
-      )) : <p className="muted">Kayıtlı analiz yok veya 030 henüz yok.</p>}
+      )) : <p className="muted">Kayıtlı analiz yok.</p>}
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { CALC_CONFIG } from './curriculum';
 import { googleOAuthOptions } from './googleOAuth';
 import { SITE_ORIGIN } from './site';
 import { sidebarNav } from './types';
+import { calcNet } from './util';
 
 const root = join(process.cwd());
 const src = (rel: string) => readFileSync(join(root, rel), 'utf8');
@@ -47,6 +48,38 @@ describe('production audit contracts', () => {
     expect(page).toContain('Premium erişim aktif');
     expect(page).not.toMatch(/deneme yalnızca e-posta doğrulama ve yönetici onayından sonra/);
     expect(page).not.toMatch(/henüz sunucuya işlenmedi/);
+  });
+
+  it('Net Hesapla 4 yanlış = 1 doğru', () => {
+    expect(calcNet(40, 0)).toBe(40);
+    expect(calcNet(36, 4)).toBe(35);
+    expect(calcNet(0, 4)).toBe(-1);
+  });
+
+  it('Soru Bankası fatura kilidinde değil; bundled seviyeler durur', () => {
+    const app = src('src/App.tsx');
+    const lockBlock = app.slice(app.indexOf('BILLING_LOCKED_PAGES'), app.indexOf('export default'));
+    expect(lockBlock).not.toMatch(/'questionbank'/);
+    const bank = src('src/data/bankData.ts');
+    expect(bank).toContain('YKS_CURRICULUM');
+    expect(bank).toContain('KPSS_CURRICULUM');
+    expect(bank).toContain('SCHOOL_CURRICULUM');
+  });
+
+  it('production UI migration numarası göstermez', () => {
+    const files = [
+      'src/pages/MembershipPage.tsx',
+      'src/pages/LibraryPage.tsx',
+      'src/pages/TasksPage.tsx',
+      'src/pages/CoachesPage.tsx',
+      'src/pages/AdminPage.tsx',
+      'src/components/ExamAnalysisPanel.tsx',
+      'src/lib/billing.ts',
+      'src/lib/cloudPlatform.ts',
+    ];
+    for (const f of files) {
+      expect(src(f), f).not.toMatch(/\((014|016|030|036|037)\)/);
+    }
   });
 
   it('canlı trial RPC ve protect_plan search_path yerel 041 ile uyumlu', () => {

@@ -78,7 +78,7 @@ export async function requestCancel(): Promise<CancelResult> {
     const { data, error } = await supabase.rpc('request_subscription_cancel');
     if (error) {
       if (/does not exist|schema cache|42883/i.test(error.message || '')) {
-        return { ok: false, error: 'İptal kaydı henüz sunucuda yok (016). Sahte iptal yok.' };
+        return { ok: false, error: 'İptal kaydı bu ortamda yok. Sahte iptal oluşturulmadı.' };
       }
       return { ok: false, error: error.message || 'İptal isteği gönderilemedi.' };
     }

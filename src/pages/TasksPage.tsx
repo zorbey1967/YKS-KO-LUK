@@ -25,7 +25,7 @@ export function TasksPage({ onNewTask }: { onNewTask: () => void }) {
       if (!alive) return;
       if (!res.ok) {
         setCoachHw([]);
-        setHwNote(res.missing ? 'Koç ödevi tablosu (014) yok. Sahte ödev gösterilmiyor.' : res.error);
+        setHwNote(res.missing ? 'Koç ödevi tablosu yok. Sahte ödev gösterilmiyor.' : res.error);
         return;
       }
       setHwNote('');

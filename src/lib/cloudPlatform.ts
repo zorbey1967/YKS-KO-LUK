@@ -1012,7 +1012,7 @@ export async function saveStudentWeekPlan(input: {
     if (error) {
       const msg = String(error.message || '');
       if (/could not find|does not exist/i.test(msg)) {
-        return { ok: false, error: 'Haftalık program tablosu henüz yok (030). Kayıt yazılmadı.' };
+        return { ok: false, error: 'Haftalık program buluta yazılamadı. Yerel kayıt duruyor.' };
       }
       return { ok: false, error: rpcUserMessage(error) };
     }
@@ -1050,7 +1050,7 @@ export async function saveExamReport(row: {
     }));
     if (error) {
       if (/does not exist|schema cache/i.test(error.message)) {
-        return { ok: false, error: 'Analiz kaydı tablosu henüz yok (030). Sonuç ekranda kaldı, sunucuya yazılmadı.' };
+        return { ok: false, error: 'Analiz kaydı sunucuya yazılamadı. Sonuç ekranda kaldı.' };
       }
       return { ok: false, error: publicCloudError(error) };
     }

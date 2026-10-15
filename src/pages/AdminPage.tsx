@@ -687,7 +687,7 @@ function SecurityInbox() {
       const { data, error } = await withTimeout(supabase.rpc('admin_security_inbox'));
       if (!alive) return;
       if (error) {
-        setErr(/does not exist|schema cache/i.test(error.message) ? '036 henüz yok; kuyruk boş, otomatik kapatma yok.' : 'Kuyruk okunamadı.');
+        setErr(/does not exist|schema cache/i.test(error.message) ? 'Güvenlik kuyruğu bu ortamda yok.' : 'Kuyruk okunamadı.');
         setRows([]);
         return;
       }

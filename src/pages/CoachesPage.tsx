@@ -218,7 +218,7 @@ export function CoachesPage() {
       if (!alive) return;
       if (!res.ok) {
         setLinked([]);
-        setLinkedMsg(res.missing ? 'Bağlı öğrenci özeti (014) yok. Randevusu olan öğrenci randevu listesinden görünür.' : res.error);
+        setLinkedMsg(res.missing ? 'Bağlı öğrenci özeti yok. Randevusu olan öğrenci randevu listesinden görünür.' : res.error);
         return;
       }
       setLinkedMsg('');
@@ -261,7 +261,7 @@ export function CoachesPage() {
     if (!hwStudent || !hwTitle.trim()) return toast('Öğrenci ve ödev başlığı gerekli.');
     void assignCoachHomework(hwStudent, hwTitle.trim(), hwDue).then((res) => {
       if (!res.ok) {
-        toast(res.missing ? 'Ödev tablosu yok (014). Sahte ödev yazılmadı.' : res.error);
+        toast(res.missing ? 'Ödev tablosu yok. Sahte ödev yazılmadı.' : res.error);
         return;
       }
       const item: CoachHomework = { id: res.id, studentId: hwStudent, title: hwTitle.trim(), due: hwDue, done: false };
@@ -614,7 +614,7 @@ export function CoachesPage() {
                     void (async () => {
                       if (!supabase) return;
                       const { error } = await supabase.rpc('coach_kick_student', { p_student: s.id });
-                      toast(error ? 'Çıkarma şeması yok veya yetkisiz (037).' : 'Öğrenci odadan çıkarıldı.');
+                      toast(error ? 'Çıkarma işlemi yok veya yetkin yok.' : 'Öğrenci odadan çıkarıldı.');
                     })();
                   }}>Odadan çıkar</button>
                 </div>

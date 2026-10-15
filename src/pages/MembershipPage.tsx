@@ -220,7 +220,7 @@ export function MembershipPage() {
           <div className="card" style={{ marginTop: 16 }}>
             <div className="section-title"><h3>Ödeme geçmişi</h3></div>
             {!pays.available ? (
-              <p className="muted">Ödeme tablosu bu veritabanında yok (016). Sahte geçmiş yok.</p>
+              <p className="muted">Ödeme geçmişi bu ortamda kayıtlı değil. Sahte geçmiş yok.</p>
             ) : pays.rows.length === 0 ? (
               <p className="muted">Kayıtlı ödeme yok.</p>
             ) : (

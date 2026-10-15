@@ -20,7 +20,7 @@ export function LibraryPage() {
       const hb = await withTimeout(sb.rpc('library_heartbeat', { p_display: display, p_share: share }));
       if (!alive) return;
       if (hb.error) {
-        setMsg(/does not exist/i.test(hb.error.message) ? 'Kütüphane henüz sunucuda yok (037).' : 'Katılım kaydedilemedi.');
+        setMsg(/does not exist/i.test(hb.error.message) ? 'Sessiz kütüphane sunucuda henüz açık değil. Katılım kaydı yazılmadı.' : 'Katılım kaydedilemedi.');
         return;
       }
       const roster = await withTimeout(sb.rpc('library_roster'));
