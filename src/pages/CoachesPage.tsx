@@ -108,7 +108,7 @@ export function CoachesPage() {
 
   useEffect(() => {
     let alive = true;
-    void fetchActiveCoaches().then((res) => {
+    void fetchActiveCoaches({ signedIn: Boolean(user) }).then((res) => {
       if (!alive) return;
       if (res.ok) {
         setListError('');
@@ -119,7 +119,7 @@ export function CoachesPage() {
       }
     });
     return () => { alive = false; };
-  }, [session]);
+  }, [session, user]);
 
   useEffect(() => {
     if (!user) {

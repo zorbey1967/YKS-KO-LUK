@@ -104,10 +104,29 @@ export function isUuid(id: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
 }
 
-function rpcUserMessage(e: unknown): string {
+/** Public koç dizini: misafir 42501/JWT → boş liste. Oturumlu gerçek auth hatası gizlenmez. */
+export function coachDirectoryGuestEmpty(input: {
+  signedIn: boolean;
+  code?: string;
+  message?: string;
+}): boolean {
+  if (input.signedIn) return false;
+  const code = String(input.code || '');
+  const msg = String(input.message || '');
+  if (code === '42501' || code === 'PGRST301' || code === 'PGRST303') return true;
+  return /jwt expired|invalid jwt|not authenticated|session missing|permission denied/i.test(msg);
+}
+
+function errorCodeMessage(e: unknown): { code: string; message: string } {
   const obj = e && typeof e === 'object' ? e as { message?: unknown; code?: unknown } : null;
-  const msg = obj && 'message' in obj ? String(obj.message || '') : e instanceof Error ? e.message : '';
-  const code = obj && 'code' in obj ? String(obj.code || '') : '';
+  return {
+    code: obj && 'code' in obj ? String(obj.code || '') : '',
+    message: obj && 'message' in obj ? String(obj.message || '') : e instanceof Error ? e.message : '',
+  };
+}
+
+function rpcUserMessage(e: unknown): string {
+  const { code, message: msg } = errorCodeMessage(e);
   if (
     code === '42501'
     || /permission denied for function/i.test(msg)
@@ -184,7 +203,7 @@ function directoryToHuman(row: Record<string, unknown>): HumanCoach {
   };
 }
 
-export async function fetchActiveCoaches(): Promise<{ ok: true; coaches: HumanCoach[] } | { ok: false; error: string }> {
+export async function fetchActiveCoaches(opts?: { signedIn?: boolean }): Promise<{ ok: true; coaches: HumanCoach[] } | { ok: false; error: string }> {
   if (!supabase) return { ok: false, error: SUPABASE_UNAVAILABLE };
   try {
     const { data, error } = await withTimeout(
@@ -193,6 +212,10 @@ export async function fetchActiveCoaches(): Promise<{ ok: true; coaches: HumanCo
     if (error) throw error;
     return { ok: true, coaches: (data || []).map((r) => directoryToHuman(r as Record<string, unknown>)) };
   } catch (e) {
+    const { code, message } = errorCodeMessage(e);
+    if (coachDirectoryGuestEmpty({ signedIn: Boolean(opts?.signedIn), code, message })) {
+      return { ok: true, coaches: [] };
+    }
     return { ok: false, error: rpcUserMessage(e) };
   }
 }
