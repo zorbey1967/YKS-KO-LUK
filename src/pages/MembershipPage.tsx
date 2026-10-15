@@ -10,7 +10,7 @@ import {
   formatTry,
   type PlanId,
 } from '../lib/plans';
-import { billingFromProfile, displayMembershipName, entitledPlan, trialDaysLeft } from '../lib/subscription';
+import { billingFromProfile, canStartMembershipTrial, displayMembershipName, entitledPlan, trialDaysLeft } from '../lib/subscription';
 import { startTopPlanTrial } from '../lib/cloudPlatform';
 
 function fmtDate(iso: string | null) {
@@ -34,10 +34,12 @@ export function MembershipPage() {
   const trialActive = Boolean(user) && tier === 'trial';
   const student = Boolean(user) && profile?.role !== 'coach' && profile?.role !== 'admin';
   const showMembershipStatus = Boolean(user) && profile?.role !== 'coach';
+  const canStartTrial = Boolean(user) && canStartMembershipTrial(profile, isAdmin);
 
   useEffect(() => {
+    if (!user) return;
     void refreshAuth();
-  }, [refreshAuth]);
+  }, [user, refreshAuth]);
 
   useEffect(() => {
     if (!student) return;
@@ -76,9 +78,14 @@ export function MembershipPage() {
     setPayNote('');
     try {
       const res = await startTopPlanTrial();
+      if (!res.ok) {
+        setPayNote(res.message);
+        toast(res.message);
+        return;
+      }
       setPayNote(res.message);
-      toast(res.ok ? res.message : res.message);
-      if (res.ok) await refreshAuth();
+      toast(res.message);
+      if (res.status === 'trialing' || res.status === 'active') await refreshAuth();
     } finally {
       setTrialBusy(false);
     }
@@ -189,14 +196,18 @@ export function MembershipPage() {
           <p className="notice">Bu hesap denemeyi kullandı. Devam için Pro veya Premium satın al.</p>
         ) : null}
         <div className="actions">
-          <button
-            className="btn primary"
-            type="button"
-            disabled={trialBusy || !user || trialActive || snap.status === 'active' || (!student && !isAdmin)}
-            onClick={() => void startTrial()}
-          >
-            {trialBusy ? 'Başlatılıyor…' : trialActive ? 'Premium erişim aktif' : '14 günlük ücretsiz denemeyi başlat'}
-          </button>
+          {canStartTrial ? (
+            <button
+              className="btn primary"
+              type="button"
+              disabled={trialBusy}
+              onClick={() => void startTrial()}
+            >
+              {trialBusy ? 'Başlatılıyor…' : '14 Günlük Ücretsiz Denemeyi Başlat'}
+            </button>
+          ) : trialActive ? (
+            <span className="chip">Premium erişim aktif</span>
+          ) : null}
         </div>
       </div>
 

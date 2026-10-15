@@ -6,6 +6,7 @@ import type { AppointmentStatus, CoachAccount, CoachAppointment, CoachDesk, Coac
 import { asCancelDecision, asCancelReason, COACH_TRACKS, emptyDesk } from './coaches';
 import { getCoachDisplayName, getPersonDisplayName } from './displayName';
 import { SESSION_REQUIRED, SUPABASE_UNAVAILABLE, publicCloudError, requireUserSession, supabase, withTimeout } from './supabase';
+import { interpretStartTopPlanTrialRpc } from './trialStart';
 
 type LedgerKind = 'odeme' | 'iade';
 type LedgerStatus = 'bekliyor' | 'odendi' | 'iade';
@@ -971,21 +972,7 @@ export async function startTopPlanTrial(): Promise<TrialStartResult> {
   if (!supabase) return { ok: false, status: 'config', message: SUPABASE_UNAVAILABLE, trialStartedAt: null, trialEndsAt: null };
   try {
     const { data, error } = await withTimeout(supabase.rpc('start_top_plan_trial'));
-    if (error) {
-      const msg = String(error.message || '');
-      if (/could not find|does not exist|üyelik şeması/i.test(msg)) {
-        return { ok: false, status: 'schema', message: '14 günlük deneme henüz sunucuya işlenmedi (030). Üyelik değişmedi.', trialStartedAt: null, trialEndsAt: null };
-      }
-      return { ok: false, status: 'error', message: rpcUserMessage(error), trialStartedAt: null, trialEndsAt: null };
-    }
-    const rec = (data && typeof data === 'object') ? data as Record<string, unknown> : {};
-    return {
-      ok: rec.ok === true,
-      status: String(rec.status || ''),
-      message: String(rec.message || 'Deneme kaydı alınamadı.'),
-      trialStartedAt: rec.trial_started_at ? String(rec.trial_started_at) : null,
-      trialEndsAt: rec.trial_ends_at ? String(rec.trial_ends_at) : null,
-    };
+    return interpretStartTopPlanTrialRpc(error, data);
   } catch (e) {
     return { ok: false, status: 'error', message: publicCloudError(e), trialStartedAt: null, trialEndsAt: null };
   }

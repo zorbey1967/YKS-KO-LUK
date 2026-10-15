@@ -54,6 +54,7 @@ export function billingFromProfile(profile: Profile | null | undefined, now = Da
     return { status: 'legacy', planId: null, trialEndsAt: null, subscriptionEndsAt: null, schemaReady: false };
   }
   const trialEndsAt = profile.trial_ends_at || null;
+  const trialStartedAt = profile.trial_started_at || null;
   const subscriptionEndsAt = profile.subscription_ends_at || null;
   let status = asStatus(profile.subscription_status);
   const planId = asPlanId(profile.plan);
@@ -62,7 +63,9 @@ export function billingFromProfile(profile: Profile | null | undefined, now = Da
     return { status: 'none', planId, trialEndsAt, subscriptionEndsAt, schemaReady: true };
   }
 
-  if (status === 'trialing' && !futureOrOpen(trialEndsAt, now, false)) {
+  const trialWindowOpen = futureOrOpen(trialEndsAt, now, false)
+    && (!trialStartedAt || !Number.isFinite(new Date(trialStartedAt).getTime()) || new Date(trialStartedAt).getTime() <= now);
+  if (status === 'trialing' && !trialWindowOpen) {
     status = 'expired';
   }
   if (status === 'active' && !futureOrOpen(subscriptionEndsAt, now, true)) {
@@ -165,6 +168,20 @@ export function canViewAnalytics(
   now = Date.now(),
 ) {
   return canUseAnalytics(profile, isAdmin, now);
+}
+
+/** Öğrenci kendi denemesini başlatabilir. Koç/admin/aktif üyelik/kullanılmış deneme hayır. */
+export function canStartMembershipTrial(
+  profile: Profile | null | undefined,
+  isAdmin = false,
+  now = Date.now(),
+) {
+  if (!profile || isAdmin) return false;
+  if (profile.role === 'coach' || profile.role === 'admin') return false;
+  const snap = billingFromProfile(profile, now);
+  if (snap.status === 'trialing' || snap.status === 'active') return false;
+  if (profile.trial_started_at) return false;
+  return true;
 }
 
 export function paidAccessLocked(profile: Profile | null | undefined, now = Date.now(), isAdmin = false) {

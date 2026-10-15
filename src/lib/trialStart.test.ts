@@ -29,6 +29,19 @@ describe('start_top_plan_trial durum makinesi', () => {
     expect(startTopPlanTrialStep(base({ role: 'student' }), now).result.wrote).toBe(true);
   });
 
+  it('yönetici mevcut denemeyi korur; ikinci yazım olmaz', () => {
+    const adminOpen = startTopPlanTrialStep(base({
+      role: 'admin',
+      trialStartedAt: '2026-10-14T23:01:08.602Z',
+      trialEndsAt: '2026-10-28T23:01:08.602Z',
+      subscriptionStatus: 'trialing',
+    }), now);
+    expect(adminOpen.result.wrote).toBe(false);
+    expect(adminOpen.result.status).toBe('trialing');
+    expect(adminOpen.row.trialStartedAt).toBe('2026-10-14T23:01:08.602Z');
+    expect(adminOpen.row.trialEndsAt).toBe('2026-10-28T23:01:08.602Z');
+  });
+
   it('ilk çağrı 14 gün yazar; tekrar ve eşzamanlı ikinci yazmaz', () => {
     const first = startTopPlanTrialStep(base(), now);
     expect(first.result.wrote).toBe(true);
