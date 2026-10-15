@@ -48,6 +48,9 @@ describe('production audit contracts', () => {
     expect(page).toContain('Premium erişim aktif');
     expect(page).not.toMatch(/deneme yalnızca e-posta doğrulama ve yönetici onayından sonra/);
     expect(page).not.toMatch(/henüz sunucuya işlenmedi/);
+    expect(page).not.toMatch(/if \(!user\) return;\s*void refreshAuth\(\)/);
+    expect(page).toContain('applyTrialRpcToProfile');
+    expect(page).not.toContain('confirm(');
   });
 
   it('Net Hesapla 4 yanlış = 1 doğru', () => {

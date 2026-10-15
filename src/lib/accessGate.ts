@@ -67,7 +67,7 @@ export function accessMessage(gate: AccessGate) {
 
 export function pagesAllowedForGate(gate: AccessGate): PageId[] | null {
   if (gate === 'ok' || gate === 'boot') return null;
-  if (gate === 'guest') return ['account', 'coaches'];
+  if (gate === 'guest') return ['account', 'coaches', 'library'];
   if (gate === 'coach_pending' || gate === 'coach_rejected') return ['account', 'settings', 'coaches'];
   return ['account', 'settings'];
 }

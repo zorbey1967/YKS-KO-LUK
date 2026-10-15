@@ -15,6 +15,35 @@ export type TrialResult = {
   wrote: boolean;
 };
 
+export function publicTrialStartMessage(raw: string) {
+  const msg = String(raw || '').replace(/\s+/g, ' ').trim();
+  if (/oturum gerekli/i.test(msg)) return 'Deneme için giriş yap.';
+  if (/hesap askıda/i.test(msg)) return 'Hesabın askıda; deneme açılamadı.';
+  if (/öğrenci hesabına özel/i.test(msg)) return 'Deneme yalnızca öğrenci hesabına özel.';
+  if (/could not find|does not exist|üyelik şeması|PGRST202/i.test(msg)) {
+    return 'Deneme kaydı okunamadı. Sayfayı yenile; üyelik değişmedi.';
+  }
+  if (/030|sunucuya işlenmedi|yönetici onay/i.test(msg)) {
+    return 'Deneme başlatılamadı. Üyelik değişmedi.';
+  }
+  if (!msg) return 'Deneme başlatılamadı. Üyelik değişmedi.';
+  return msg;
+}
+
+export function applyTrialRpcToProfile<T extends {
+  subscription_status?: string | null;
+  trial_started_at?: string | null;
+  trial_ends_at?: string | null;
+}>(profile: T, rpc: { ok: boolean; status: string; trialStartedAt: string | null; trialEndsAt: string | null }): T {
+  if (!rpc.ok || rpc.status !== 'trialing') return profile;
+  return {
+    ...profile,
+    subscription_status: 'trialing',
+    trial_started_at: rpc.trialStartedAt ?? profile.trial_started_at,
+    trial_ends_at: rpc.trialEndsAt ?? profile.trial_ends_at,
+  };
+}
+
 /** start_top_plan_trial SQL ile aynı durum makinesi (sunucu saati `now`). */
 export function startTopPlanTrialStep(row: TrialProfile, now: number): { row: TrialProfile; result: TrialResult } {
   if (row.signedIn === false) {
@@ -82,19 +111,10 @@ export function interpretStartTopPlanTrialRpc(
 ) {
   if (error) {
     const msg = String(error.message || '').replace(/\s+/g, ' ').trim();
-    if (/could not find|does not exist|üyelik şeması|PGRST202/i.test(msg)) {
-      return {
-        ok: false,
-        status: 'schema',
-        message: 'Deneme kaydı okunamadı. Sayfayı yenile; üyelik değişmedi.',
-        trialStartedAt: null as string | null,
-        trialEndsAt: null as string | null,
-      };
-    }
     return {
       ok: false,
-      status: 'error',
-      message: msg || 'Deneme başlatılamadı.',
+      status: /could not find|does not exist|üyelik şeması|PGRST202/i.test(msg) ? 'schema' : 'error',
+      message: publicTrialStartMessage(msg),
       trialStartedAt: null as string | null,
       trialEndsAt: null as string | null,
     };
@@ -107,7 +127,7 @@ export function interpretStartTopPlanTrialRpc(
   return {
     ok,
     status,
-    message: String(rec.message || (ok ? 'Deneme kaydı alındı.' : 'Deneme başlatılamadı.')),
+    message: publicTrialStartMessage(String(rec.message || (ok ? '14 günlük Premium deneme başladı. Ücret alınmadı.' : ''))),
     trialStartedAt: started,
     trialEndsAt: ends,
   };

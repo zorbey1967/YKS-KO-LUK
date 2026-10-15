@@ -75,10 +75,11 @@ describe('askıya alınan hesap kapıları', () => {
   });
 
   it('ziyaretçi korunan URL’yi yazsa da girişe düşer; koçlar açık kalır', () => {
-    expect(pagesAllowedForGate('guest')).toEqual(['account', 'coaches']);
+    expect(pagesAllowedForGate('guest')).toEqual(['account', 'coaches', 'library']);
     expect(coerceAppPage('admin', undefined, 'guest', false)).toBe('account');
     expect(coerceAppPage('analytics', undefined, 'guest', false)).toBe('account');
     expect(coerceAppPage('coaches', undefined, 'guest', false)).toBe('coaches');
-    expect(sidebarNav('student', false, pagesAllowedForGate('guest')).map((x) => x.id).sort()).toEqual(['account', 'coaches']);
+    expect(coerceAppPage('library', undefined, 'guest', false)).toBe('library');
+    expect(sidebarNav('student', false, pagesAllowedForGate('guest')).map((x) => x.id).sort()).toEqual(['account', 'coaches', 'library']);
   });
 });

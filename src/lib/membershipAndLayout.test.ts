@@ -9,7 +9,7 @@ import {
   entitledPlan,
   paidAccessLocked,
 } from './subscription';
-import { interpretStartTopPlanTrialRpc, startTopPlanTrialStep } from './trialStart';
+import { applyTrialRpcToProfile, interpretStartTopPlanTrialRpc, publicTrialStartMessage, startTopPlanTrialStep } from './trialStart';
 import { googleOAuthOptions } from './googleOAuth';
 import { SITE_ORIGIN } from './site';
 
@@ -175,6 +175,24 @@ describe('üyelik trial + Net Hesapla menü', () => {
     expect(googleOAuthOptions().provider).toBe('google');
     expect(googleOAuthOptions().options.redirectTo).toBe(`${SITE_ORIGIN}/`);
     expect(googleOAuthOptions().options.skipBrowserRedirect).toBe(false);
+  });
+
+  it('RPC trialing profili hemen günceller; 14 gün biterse kilitlenir', () => {
+    const after = applyTrialRpcToProfile(student(), {
+      ok: true,
+      status: 'trialing',
+      trialStartedAt: started,
+      trialEndsAt: future,
+    });
+    expect(after.subscription_status).toBe('trialing');
+    expect(after.trial_ends_at).toBe(future);
+    expect(entitledPlan(billingFromProfile(after, now))).toBe('trial');
+    expect(entitledPlan(billingFromProfile(after, Date.parse(future) + 1))).toBeNull();
+  });
+
+  it('RPC hata metni 030 / yönetici onayı debug göstermez', () => {
+    expect(publicTrialStartMessage('Could not find the function public.start_top_plan_trial (030)')).not.toMatch(/030|yönetici onay|sunucuya işlenmedi/);
+    expect(publicTrialStartMessage('oturum gerekli')).toBe('Deneme için giriş yap.');
   });
 
   it('RPC eksikse debug 030 metni göstermez', () => {

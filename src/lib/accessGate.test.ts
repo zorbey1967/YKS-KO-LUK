@@ -4,11 +4,11 @@ import { landingPageForGate, pagesAllowedForGate, resolveAccessGate } from './ac
 
 describe('giriş kapısı', () => {
   it('oturum yokken ilk açılış hesabadır; koçlar kamu', () => {
-    expect(pagesAllowedForGate('guest')).toEqual(['account', 'coaches']);
+    expect(pagesAllowedForGate('guest')).toEqual(['account', 'coaches', 'library']);
     expect(landingPageForGate('guest')).toBe('account');
     expect(coerceAppPage('home', undefined, 'guest')).toBe('account');
     expect(coerceAppPage('meetings', undefined, 'guest')).toBe('account');
-    expect(coerceAppPage('library', undefined, 'guest')).toBe('account');
+    expect(coerceAppPage('library', undefined, 'guest')).toBe('library');
     expect(coerceAppPage('coaches', undefined, 'guest')).toBe('coaches');
   });
 

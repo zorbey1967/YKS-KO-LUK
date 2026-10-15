@@ -12,6 +12,7 @@ import {
 } from '../lib/plans';
 import { billingFromProfile, canStartMembershipTrial, displayMembershipName, entitledPlan, trialDaysLeft } from '../lib/subscription';
 import { startTopPlanTrial } from '../lib/cloudPlatform';
+import { applyTrialRpcToProfile } from '../lib/trialStart';
 
 function fmtDate(iso: string | null) {
   if (!iso) return '—';
@@ -21,7 +22,7 @@ function fmtDate(iso: string | null) {
 }
 
 export function MembershipPage() {
-  const { profile, toast, go, user, refreshAuth, isAdmin } = useApp();
+  const { profile, setProfile, toast, go, user, refreshAuth, isAdmin } = useApp();
   const snap = billingFromProfile(profile);
   const days = trialDaysLeft(snap);
   const tier = entitledPlan(snap);
@@ -37,13 +38,12 @@ export function MembershipPage() {
   const canStartTrial = Boolean(user) && canStartMembershipTrial(profile, isAdmin);
 
   useEffect(() => {
-    if (!user) return;
-    void refreshAuth();
-  }, [user, refreshAuth]);
-
-  useEffect(() => {
     if (!student) return;
-    void listMyPayments().then(setPays);
+    let alive = true;
+    void listMyPayments().then((next) => {
+      if (alive) setPays(next);
+    });
+    return () => { alive = false; };
   }, [student]);
 
   async function pay(planId: PlanId) {
@@ -73,7 +73,6 @@ export function MembershipPage() {
       go('account');
       return;
     }
-    if (!confirm('14 günlük Premium denemeyi başlatmak istiyor musun? Ücret alınmaz. Aynı hesaba ikinci deneme verilmez.')) return;
     setTrialBusy(true);
     setPayNote('');
     try {
@@ -83,9 +82,15 @@ export function MembershipPage() {
         toast(res.message);
         return;
       }
+      if (res.status === 'trialing') {
+        if (profile) setProfile(applyTrialRpcToProfile(profile, res));
+        toast('Premium erişim aktif');
+        void refreshAuth();
+        return;
+      }
       setPayNote(res.message);
       toast(res.message);
-      if (res.ok) await refreshAuth();
+      void refreshAuth();
     } finally {
       setTrialBusy(false);
     }
