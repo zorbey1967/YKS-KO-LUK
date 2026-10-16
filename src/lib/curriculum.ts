@@ -123,6 +123,7 @@ export const SCHOOL_CURRICULUM: Record<string, Record<string, string[]>> = {
     'AYT Biyoloji': ['Hücre', 'Kalıtım', 'Sistemler', 'Enerji dönüşümleri', 'Ekoloji'],
     'AYT Felsefe Grubu': ['Felsefe', 'Psikoloji', 'Sosyoloji', 'Mantık'],
     'AYT Din Kültürü': ['İnanç', 'İbadet', 'Ahlak', 'Din ve hayat'],
+    'YDT İngilizce': ['Kelime', 'Dil bilgisi', 'Cloze test', 'Cümle tamamlama', 'Paragraf', 'Çeviri', 'Okuma'],
   },
   'KPSS Adayı': {
     'Genel Yetenek Türkçe': ['Sözcükte anlam', 'Cümlede anlam', 'Paragraf', 'Dil bilgisi', 'Anlatım bozukluğu', 'Yazım-noktalama'],
@@ -144,6 +145,70 @@ export function curriculumForGrade(grade: string) {
     return { ...SCHOOL_CURRICULUM[g], ...SCHOOL_CURRICULUM['Mezun / YKS'] };
   }
   return SCHOOL_CURRICULUM[g];
+}
+
+/** Account/profil `data.track` tek kaynak — EA/SAY/SÖZ/DİL (ve eşdeğerleri). */
+export type StudentTrackKind = 'ea' | 'say' | 'soz' | 'dil' | 'tyt' | 'kpss' | 'other';
+
+export function normalizeStudentTrack(track: string): StudentTrackKind {
+  const t = String(track || '').toLocaleLowerCase('tr-TR').trim();
+  if (!t) return 'other';
+  if (t.includes('kpss')) return 'kpss';
+  if (t === 'ea' || t.includes('eşit') || t.includes('esit')) return 'ea';
+  if (t === 'say' || t.includes('sayısal') || t.includes('sayisal')) return 'say';
+  if (t === 'söz' || t === 'soz' || t.includes('sözel') || t.includes('sozel')) return 'soz';
+  if (t === 'dil' || t.includes('ydt') || t.includes('yabancı') || t.includes('yabanci') || /(^|\s)dil(\s|$)/.test(t)) return 'dil';
+  if (t === 'tyt') return 'tyt';
+  return 'other';
+}
+
+const AYT_EA = new Set(['AYT Matematik', 'AYT Edebiyat', 'AYT Tarih-1', 'AYT Coğrafya-1']);
+const AYT_SAY = new Set(['AYT Matematik', 'AYT Fizik', 'AYT Kimya', 'AYT Biyoloji']);
+const AYT_SOZ = new Set(['AYT Edebiyat', 'AYT Tarih-1', 'AYT Coğrafya-1', 'AYT Sosyal-2', 'AYT Felsefe Grubu', 'AYT Din Kültürü']);
+const AYT_DIL = new Set(['YDT İngilizce']);
+
+function isTytSubject(name: string) {
+  return /^TYT\b/i.test(name.trim());
+}
+
+function isFieldExamSubject(name: string) {
+  return /^(AYT|YDT)\b/i.test(name.trim());
+}
+
+function fieldSubjectAllowed(subject: string, kind: StudentTrackKind): boolean {
+  if (kind === 'ea') return AYT_EA.has(subject);
+  if (kind === 'say') return AYT_SAY.has(subject);
+  if (kind === 'soz') return AYT_SOZ.has(subject);
+  if (kind === 'dil') return AYT_DIL.has(subject);
+  if (kind === 'tyt') return false;
+  return false;
+}
+
+/** Okul dersleri (TYT/AYT dışı) alan filtresinden düşmez; yalnızca alan AYT/YDT süzülür. */
+export function filterCurriculumByTrack(
+  curr: Record<string, string[]>,
+  track: string,
+): Record<string, string[]> {
+  const kind = normalizeStudentTrack(track);
+  if (kind === 'kpss') return curr;
+  const out: Record<string, string[]> = {};
+  for (const [subject, topics] of Object.entries(curr)) {
+    if (isTytSubject(subject)) {
+      out[subject] = topics;
+      continue;
+    }
+    if (isFieldExamSubject(subject)) {
+      if (fieldSubjectAllowed(subject, kind)) out[subject] = topics;
+      continue;
+    }
+    out[subject] = topics;
+  }
+  return out;
+}
+
+/** Sınıf müfredatı + öğrencinin `data.track` alan filtresi. */
+export function curriculumForStudent(grade: string, track: string) {
+  return filterCurriculumByTrack(curriculumForGrade(grade), track);
 }
 
 export const CALC_CONFIG = {

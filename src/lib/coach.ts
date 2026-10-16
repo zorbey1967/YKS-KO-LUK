@@ -3,7 +3,7 @@ import { examCountdown, todaySchedule, weekMinutes, studyStreak } from './insigh
 import { remainingClock } from './countdown';
 import { primaryExam } from './examTargets';
 import { examKind, examTitle } from './stage';
-import { curriculumForGrade } from './curriculum';
+import { curriculumForStudent } from './curriculum';
 import { eliteReport } from './elite';
 import { today } from './util';
 import { weakBankTopics } from './practice';
@@ -52,16 +52,12 @@ export function coachSnapshot(data: AppData): CoachSnap {
   const day = todaySchedule(data);
   const last = data.calcs[0];
   const kind = examKind(data);
-  const curr = Object.keys(curriculumForGrade(data.grade));
+  const curr = Object.keys(curriculumForStudent(data.grade, data.track));
   const fallback =
     kind === 'KPSS'
       ? ['GY Türkçe', 'GY Matematik', 'GK Tarih', 'Vatandaşlık']
       : kind === 'YKS'
-        ? data.track === 'Sayısal'
-          ? ['TYT Matematik', 'AYT Matematik', 'Fizik', 'Kimya']
-          : data.track === 'Sözel'
-            ? ['TYT Türkçe', 'AYT Edebiyat', 'Tarih', 'Coğrafya']
-            : ['TYT Matematik', 'AYT Matematik', 'TYT Türkçe', 'AYT Edebiyat']
+        ? (curr.length ? curr.slice(0, 4) : ['TYT Matematik', 'TYT Türkçe'])
         : (curr.length ? curr : ['Türkçe', 'Matematik']);
   const weak = [
     ...topics.filter((t) => t.level < 70).map((t) => `${t.name} (%${t.level})`),

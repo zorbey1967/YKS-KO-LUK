@@ -1,6 +1,6 @@
 import type { AppData, Schedule, ScheduleDay } from './types';
 import { examKind } from './stage';
-import { curriculumForGrade } from './curriculum';
+import { curriculumForStudent } from './curriculum';
 
 const WEEKDAYS = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
 
@@ -11,16 +11,14 @@ function subjectPool(data: AppData) {
     .map((x) => x.name)
     .filter(Boolean);
   const kind = examKind(data);
-  const curr = Object.keys(curriculumForGrade(data.grade)).slice(0, 6);
+  const curr = Object.keys(curriculumForStudent(data.grade, data.track)).slice(0, 6);
   const fallback =
     kind === 'KPSS'
       ? ['GY Türkçe', 'GY Matematik', 'GK Tarih', 'Vatandaşlık']
       : kind === 'YKS'
-        ? (data.track === 'Sayısal'
-          ? ['TYT Matematik', 'AYT Matematik', 'Fizik', 'Kimya']
-          : data.track === 'Sözel'
-            ? ['TYT Türkçe', 'AYT Edebiyat', 'Tarih', 'Coğrafya']
-            : ['TYT Matematik', 'AYT Matematik', 'AYT Edebiyat', 'TYT Türkçe'])
+        ? curr.length
+          ? curr
+          : ['TYT Matematik', 'TYT Türkçe']
         : (curr.length ? curr : ['Türkçe', 'Matematik', 'Fen', 'Sosyal']);
   return [...new Set([...weak, ...fallback])];
 }

@@ -1,6 +1,6 @@
 import type { AppData, ExamTarget, PlanBlock, Schedule, Session, Topic } from './types';
 import { emptySchedule } from './types';
-import { curriculumForGrade } from './curriculum';
+import { curriculumForStudent } from './curriculum';
 import { generatePlan, iconForTopic } from './coach';
 import { weekdayName, weekdayNameIstanbul, weekGoalPct } from './insights';
 import { calendarDaysUntil, istanbulDateKey } from './countdown';
@@ -266,12 +266,12 @@ function topicView(data: AppData, subject: string, name: string, board = buildAn
   };
 }
 
-export function curriculumSubjects(grade: string): Record<string, string[]> {
-  return curriculumForGrade(grade);
+export function curriculumSubjects(grade: string, track = ''): Record<string, string[]> {
+  return curriculumForStudent(grade, track);
 }
 
 export function buildSubjectCards(data: AppData): SubjectCard[] {
-  const curr = curriculumForGrade(data.grade);
+  const curr = curriculumForStudent(data.grade, data.track);
   const names = prioritizeSubjects(Object.keys(curr), data.track);
   const board = buildAnalyticsBoard(data);
   return names.map((subject) => {
@@ -609,8 +609,7 @@ export function progressFingerprint(data: AppData, live = 0) {
     (data.calcs || []).map((c) => `${c.id}:${c.net}`).join(','),
     data.schedule.notes || '',
     data.coachSchedule?.notes || '',
-    data.libraryPrefs.emoji || '',
-    data.libraryPrefs.nameMode || '',
+    // emoji / nameMode fingerprint dışı — figür seçimi AI/StudentProgress resetlemez
   ].join('|');
 }
 

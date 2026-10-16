@@ -36,7 +36,8 @@ describe('sessiz kütüphane görünür ad ve katılım', () => {
     expect(page).toContain('LIBRARY_EMOJIS');
     expect(page).toContain('library-card');
     expect(page).toContain('appendLibrarySession');
-    expect(page).toContain('pendingRoom');
+    expect(page).toContain('pendingJoin');
+    expect(page).toContain('selectEmoji');
     expect(page).toContain('LIBRARY_HEARTBEAT_MS');
     expect(page).toContain('document.hidden');
     expect(page).toContain('visibilitychange');

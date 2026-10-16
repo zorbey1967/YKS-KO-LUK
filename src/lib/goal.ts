@@ -12,7 +12,7 @@ export type GoalDraft = {
   examDate: string;
 };
 
-export const TRACKS = ['Eşit Ağırlık', 'Sayısal', 'Sözel', 'TYT', 'KPSS'] as const;
+export const TRACKS = ['Eşit Ağırlık', 'Sayısal', 'Sözel', 'Dil', 'TYT', 'KPSS'] as const;
 
 export const DEPT_PRESETS = [
   'Hukuk', 'Tıp', 'Diş Hekimliği', 'Eczacılık', 'Bilgisayar Mühendisliği',

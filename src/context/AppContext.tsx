@@ -12,7 +12,7 @@ import { parseAccountStatus, fetchMyCoach, pushStudentData } from '../lib/cloudP
 import { mergeAppData } from '../lib/syncMerge';
 import { resolveAccessGate, type AccessGate } from '../lib/accessGate';
 import { consumeOAuthRedirect, noteOAuthAuthEvent, oauthExchangeInFlight, urlHasOAuthCallback } from '../lib/authCallback';
-import { appendLibrarySession, invalidateStudentProgress } from '../lib/studentProgress';
+import { appendLibrarySession, invalidateStudentProgress, progressFingerprint } from '../lib/studentProgress';
 import { resetAiCoachCache } from '../lib/aiCoachAnalysis';
 import { emptyLibraryPrefs } from '../lib/libraryPresence';
 
@@ -150,7 +150,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const setData = useCallback((next: AppData | ((prev: AppData) => AppData)) => {
     setDataState((prev) => {
       const value = typeof next === 'function' ? next(prev) : next;
-      bumpCaches();
+      // Figür/emoji gibi fingerprint dışı değişikliklerde AI/StudentProgress resetleme.
+      if (progressFingerprint(prev) !== progressFingerprint(value)) bumpCaches();
       persistLocal(value);
       window.clearTimeout(pushTimer.current);
       pushTimer.current = window.setTimeout(() => void pushCloud(value), 700);

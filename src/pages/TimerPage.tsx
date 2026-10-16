@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { STUDY_SUBJECTS, todaySchedule } from '../lib/insights';
-import { curriculumForGrade } from '../lib/curriculum';
+import { curriculumForStudent } from '../lib/curriculum';
 import { eliteReport } from '../lib/elite';
 import { setBankJump } from '../lib/practice';
 import { QUESTION_BANK_ENABLED } from '../lib/features';
@@ -139,7 +139,7 @@ export function TimerPage() {
   const totals = dailyTotals(data.sessions, today());
   const progress = useMemo(() => getStudentProgress(data), [data]);
   const firstBlock = todaySchedule(data)?.blocks[0];
-  const curr = useMemo(() => curriculumForGrade(data.grade), [data.grade]);
+  const curr = useMemo(() => curriculumForStudent(data.grade, data.track), [data.grade, data.track]);
   const subjectOpts = Object.keys(curr).length
     ? Array.from(new Set([live.subject, ...Object.keys(curr)].filter(Boolean)))
     : STUDY_SUBJECTS;

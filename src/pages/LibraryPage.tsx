@@ -29,7 +29,7 @@ export function LibraryPage() {
   const [share, setShare] = useState(false);
   const [msg, setMsg] = useState('');
   const [consentOpen, setConsentOpen] = useState(false);
-  const [pendingRoom, setPendingRoom] = useState<string | null>(null);
+  const [pendingJoin, setPendingJoin] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const tickInFlight = useRef(false);
   const profileName = getPersonDisplayName(profile?.name, '');
@@ -54,6 +54,12 @@ export function LibraryPage() {
       return { ...prev, libraryPrefs: merged };
     });
   }, [setData, user]);
+
+  /** Figür seçimi: odaya katılmaz, ayrılmaz, heartbeat başlatmaz. */
+  const selectEmoji = useCallback((em: string) => {
+    if (!user) return;
+    persistPrefs({ emoji: em });
+  }, [persistPrefs, user]);
 
   const leaveRoom = useCallback(async () => {
     if (!user) return;
@@ -132,38 +138,38 @@ export function LibraryPage() {
     );
   }
 
-  function joinRoom(roomId: string, mode: LibraryNameMode = nameMode || 'alias') {
+  function joinRoom(mode: LibraryNameMode = nameMode || 'alias') {
     if (!user) return;
     persistPrefs({
       nameMode: mode,
       emoji: pickLibraryEmoji(user.id, prefs.emoji),
-      joinedRoomId: roomId,
-      joinedAt: prefs.joinedAt && prefs.joinedRoomId === roomId ? prefs.joinedAt : new Date().toISOString(),
+      joinedRoomId: LIBRARY_ROOM_ID,
+      joinedAt: prefs.joinedAt && prefs.joinedRoomId === LIBRARY_ROOM_ID ? prefs.joinedAt : new Date().toISOString(),
     });
-    setPendingRoom(null);
+    setPendingJoin(false);
     setConsentOpen(false);
     setMsg('');
   }
 
   function acceptRealName() {
-    if (pendingRoom) joinRoom(pendingRoom, 'real');
+    if (pendingJoin) joinRoom('real');
     else persistPrefs({ nameMode: 'real' });
     setConsentOpen(false);
   }
 
   function rejectRealName() {
-    if (pendingRoom) joinRoom(pendingRoom, 'alias');
+    if (pendingJoin) joinRoom('alias');
     else persistPrefs({ nameMode: 'alias' });
     setConsentOpen(false);
   }
 
-  function requestJoin(roomId: string) {
+  function requestJoin() {
     if (!nameMode) {
-      setPendingRoom(roomId);
+      setPendingJoin(true);
       setConsentOpen(true);
       return;
     }
-    joinRoom(roomId);
+    joinRoom();
   }
 
   const elapsedMs = joined && prefs.joinedAt ? Math.max(0, now - Date.parse(prefs.joinedAt)) : 0;
@@ -172,6 +178,7 @@ export function LibraryPage() {
   const todayTotalMin = rosterMinutes + (joined ? myMinutes : 0);
   const activeCount = peers.length || (joined ? 1 : 0);
   const myRoom = roomLabel(prefs.joinedRoomId);
+  const selectedEmoji = prefs.emoji ? pickLibraryEmoji(user.id, prefs.emoji) : null;
 
   return (
     <>
@@ -184,6 +191,18 @@ export function LibraryPage() {
           <div className="card stat"><div className="label">BUGÜN TOPLAM</div><div className="value">{todayTotalMin} dk</div></div>
           <div className="card stat"><div className="label">ÇALIŞMA SÜREM</div><div className="value">{joined ? formatStudyClock(elapsedMs) : '00:00:00'}</div></div>
           <div className="card stat"><div className="label">ODAM</div><div className="value" style={{ fontSize: 16 }}>{myRoom || '—'}</div></div>
+        </div>
+        <div className="actions" style={{ marginTop: 16, flexWrap: 'wrap' }}>
+          {joined ? (
+            <button className="btn secondary" type="button" onClick={() => void leaveRoom()}>Ayrıl</button>
+          ) : (
+            <button className="btn primary" type="button" onClick={requestJoin}>Katıl</button>
+          )}
+          {selectedEmoji ? (
+            <span className="muted" style={{ alignSelf: 'center' }}>Figür: {selectedEmoji} {LIBRARY_EMOJI_LABELS[selectedEmoji as keyof typeof LIBRARY_EMOJI_LABELS] || ''}</span>
+          ) : (
+            <span className="muted" style={{ alignSelf: 'center' }}>Önce bir figür seçebilirsin (zorunlu değil).</span>
+          )}
         </div>
       </div>
 
@@ -199,17 +218,6 @@ export function LibraryPage() {
               </>
             ) : <p className="muted">Hayır dersen anonim öğrenci adı görünür. E-posta ve hesap kimliği gösterilmez.</p>;
           })()}
-          <p className="muted">Emoji seç (odada kartında görünür):</p>
-          <div className="actions" style={{ flexWrap: 'wrap' }}>
-            {LIBRARY_EMOJIS.map((em) => (
-              <button
-                key={em}
-                className={`chip-btn${prefs.emoji === em ? ' on' : ''}`}
-                type="button"
-                onClick={() => persistPrefs({ emoji: em })}
-              >{em}</button>
-            ))}
-          </div>
           <div className="actions" style={{ marginTop: 8 }}>
             <button className="btn primary" type="button" onClick={acceptRealName}>Evet, adımı göster</button>
             <button className="btn secondary" type="button" onClick={rejectRealName}>Hayır, anonim</button>
@@ -217,27 +225,27 @@ export function LibraryPage() {
         </div>
       ) : null}
 
-      <div className="library-grid" style={{ marginTop: 16 }}>
-        {LIBRARY_EMOJIS.map((em) => {
-          const selected = prefs.emoji === em;
-          return (
-            <div className="library-card" key={em}>
-              <div className="library-emoji">{em}</div>
-              <b>{LIBRARY_EMOJI_LABELS[em]}</b>
-              <p className="muted">{selected && joined ? '🟢 Odasındasın' : 'Oda'}</p>
-              <div className="actions" style={{ justifyContent: 'center', marginTop: 8 }}>
-                {joined && selected ? (
-                  <button className="btn secondary" type="button" onClick={() => void leaveRoom()}>Ayrıl</button>
-                ) : (
-                  <button className="btn primary" type="button" onClick={() => {
-                    persistPrefs({ emoji: em });
-                    requestJoin(LIBRARY_ROOM_ID);
-                  }}>Katıl</button>
-                )}
-              </div>
-            </div>
-          );
-        })}
+      <div className="card" style={{ marginTop: 16 }}>
+        <div className="section-title"><h3>Figür seç</h3></div>
+        <p className="muted">Figür seçmek odaya katılmaz ve çalışma süresini başlatmaz.</p>
+        <div className="library-grid" style={{ marginTop: 8 }}>
+          {LIBRARY_EMOJIS.map((em) => {
+            const selected = prefs.emoji === em;
+            return (
+              <button
+                className={`library-card${selected ? ' on' : ''}`}
+                key={em}
+                type="button"
+                onClick={() => selectEmoji(em)}
+                aria-pressed={selected}
+              >
+                <div className="library-emoji">{em}</div>
+                <b>{LIBRARY_EMOJI_LABELS[em]}</b>
+                {selected ? <p className="muted">Seçili</p> : <p className="muted">Seç</p>}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {joined ? (
