@@ -34,6 +34,9 @@ describe('analiz AI tetikleyici', () => {
     expect(page).toContain('AI ANALİZİ');
     expect(page).toContain('DENEME TRENDİ');
     expect(page).toContain('requestAiCoachAnalysis');
+    expect(page).not.toMatch(/\['konu',\s*'KONU'\]/);
+    expect(page).not.toContain('KONU PERFORMANSI');
+    expect(page).not.toContain('Zayıf konular');
     expect(page).not.toMatch(/useEffect\([\s\S]{0,400}requestAiCoachAnalysis/);
     expect(page).not.toContain('askCoach(');
     const chat = readFileSync(join(process.cwd(), 'src/components/CoachChat.tsx'), 'utf8');

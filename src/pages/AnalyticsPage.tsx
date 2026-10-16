@@ -7,7 +7,6 @@ import { appendAiBlocksAsTasks, localAiCoachReport, requestAiCoachAnalysis, type
 import { QUESTION_BANK_ENABLED } from '../lib/features';
 import { eliteReport } from '../lib/elite';
 import { examCountdown, weekGoalPct, weekMinutes } from '../lib/insights';
-import { setBankJump, weakBankTopics } from '../lib/practice';
 import { examKind, examTitle } from '../lib/stage';
 import { buildAnalyticsBoard } from '../lib/studentAnalytics';
 import { formatMinutes, getStudentProgress, progressFingerprint } from '../lib/studentProgress';
@@ -25,7 +24,7 @@ export function AnalyticsPage() {
   const [aiBusy, setAiBusy] = useState(false);
   const [aiErr, setAiErr] = useState('');
   const [aiReport, setAiReport] = useState<AiCoachReport | null>(null);
-  const [tab, setTab] = useState<'genel' | 'ders' | 'konu' | 'trend' | 'calisma' | 'ai'>('genel');
+  const [tab, setTab] = useState<'genel' | 'ders' | 'trend' | 'calisma' | 'ai'>('genel');
   const localHints = useMemo(() => localAiCoachReport(data, board), [data, board]);
 
   if (!see) {
@@ -74,7 +73,6 @@ export function AnalyticsPage() {
     return { date, mins: data.sessions.filter((x) => x.date === date).reduce((a, x) => a + x.minutes, 0) };
   });
   const mx = Math.max(1, ...board.tytSeries.map((x) => x.net), ...board.aytSeries.map((x) => x.net));
-  const weak = data.topics.slice().sort((a, b) => a.level - b.level).slice(0, 5);
   const bySub: Record<string, number> = {};
   data.sessions.forEach((s) => { bySub[s.subject] = (bySub[s.subject] || 0) + s.minutes; });
   const week = weekMinutes(data);
@@ -86,7 +84,6 @@ export function AnalyticsPage() {
   const count = examCountdown(data.examDate);
   const lastCalc = data.calcs.slice(0, 4);
   const elite = eliteReport(data);
-  const bankWeak = QUESTION_BANK_ENABLED ? weakBankTopics(data, 5) : [];
   const bankCount = QUESTION_BANK_ENABLED ? bankSolved : 0;
 
   if (!board.hasData && !total && !qs && !bankCount && data.weekHours <= 0) {
@@ -108,7 +105,6 @@ export function AnalyticsPage() {
         {([
           ['genel', 'GENEL'],
           ['ders', 'DERS'],
-          ['konu', 'KONU'],
           ['trend', 'DENEME TRENDİ'],
           ['calisma', 'ÇALIŞMA'],
           ['ai', 'AI ANALİZİ'],
@@ -127,30 +123,11 @@ export function AnalyticsPage() {
           {board.lastExamDate ? <div className="card stat"><div className="label">SON DENEME</div><div className="value" style={{ fontSize: 18 }}>{board.lastExamDate}</div></div> : null}
           <div className="card stat"><div className="label">DENEME SAYISI</div><div className="value">{data.exams.length}</div></div>
           <div className="card stat"><div className="label">ÇALIŞMA</div><div className="value">{formatMinutes(progress.capacity.weekMinutes)}</div><div className="sub">7 gün</div></div>
-          <div className="card stat"><div className="label">KONU</div><div className="value">%{progress.topicRate}</div></div>
           {progress.insights.strengths[0] ? <div className="card stat"><div className="label">EN İYİ DERS</div><div className="value" style={{ fontSize: 18 }}>{progress.insights.strengths[0]}</div></div> : null}
           {progress.insights.weaknesses[0] ? <div className="card stat"><div className="label">EN ZAYIF DERS</div><div className="value" style={{ fontSize: 18 }}>{progress.insights.weaknesses[0]}</div></div> : null}
           {board.subjects.find((s) => s.trend === 'up') ? <div className="card stat"><div className="label">EN HIZLI GELİŞEN</div><div className="value" style={{ fontSize: 18 }}>{board.subjects.find((s) => s.trend === 'up')?.name}</div></div> : null}
           {board.subjects.find((s) => s.trend === 'down') ? <div className="card stat"><div className="label">GERİLEYEN DERS</div><div className="value" style={{ fontSize: 18 }}>{board.subjects.find((s) => s.trend === 'down')?.name}</div></div> : null}
         </div>
-      </div>
-
-      <div hidden={tab !== 'konu'} className="card" style={{ marginBottom: 16 }}>
-        <div className="section-title"><h3>KONU PERFORMANSI</h3></div>
-        {progress.subjects.length ? progress.subjects.slice(0, 8).map((c) => (
-          <div className="topic-row" key={c.subject}>
-            <div className="topic-head"><b>{c.subject}</b><span className="chip">%{c.progress}</span></div>
-            <p className="muted" style={{ margin: '4px 0' }}>
-              🟢 Güçlü: {c.topics.filter((t) => t.status === 'done').map((t) => t.name).slice(0, 3).join(', ') || '—'}
-            </p>
-            <p className="muted" style={{ margin: '4px 0' }}>
-              🟡 Geliştirilmeli: {c.topics.filter((t) => t.status === 'in_progress').map((t) => `${t.name} %${t.level}`).slice(0, 3).join(', ') || '—'}
-            </p>
-            <p className="muted" style={{ margin: '4px 0' }}>
-              🔴 Öncelikli: {c.topics.filter((t) => t.status === 'not_started').map((t) => t.name).slice(0, 3).join(', ') || '—'}
-            </p>
-          </div>
-        )) : <p className="muted">Konu analizi için Hesabım’da sınıf seç. Uydurma konu yok.</p>}
       </div>
 
       {progress.capacity.weekTrend.some((d) => d.minutes) ? (
@@ -321,37 +298,19 @@ export function AnalyticsPage() {
         </div>
       ) : null}
 
-      <div hidden={tab !== 'calisma'} className="grid two" style={{ marginTop: 16 }}>
-        <div className="card">
-          <div className="section-title"><h3>Zayıf konular</h3></div>
-          {bankWeak.length ? bankWeak.map((x) => (
-            <div className="plan-item" key={x.key}>
-              <span>{x.topic}<br /><small style={{ color: 'var(--muted)' }}>{x.subject} • banka %{x.acc}</small></span>
-              {QUESTION_BANK_ENABLED ? (
-                <button className="btn secondary" type="button" onClick={() => { setBankJump({ level: x.levelName, subject: x.subject, topic: x.topic }); go('questionbank'); }}>Çöz</button>
-              ) : null}
-            </div>
-          )) : weak.length ? weak.map((x) => (
-            <div className="topic-row" key={x.id}>
-              <div className="topic-head"><b>{x.name}</b><span>{x.level}%</span></div>
-              <div className="progress"><i style={{ width: `${x.level}%` }} /></div>
-            </div>
-          )) : <div className="empty">Konu takibi boş.</div>}
-        </div>
-        <div className="card">
-          <div className="section-title"><h3>Ders süreleri</h3></div>
-          {Object.keys(bySub).length ? Object.entries(bySub).sort((a, b) => b[1] - a[1]).map(([s, m]) => (
-            <div className="plan-item" key={s}><span>{s}</span><b>{m} dk</b></div>
-          )) : <div className="empty">Oturum yok.</div>}
-          {lastCalc.length ? (
-            <>
-              <div className="section-title" style={{ marginTop: 16 }}><h3>Son netler</h3></div>
-              {lastCalc.map((c) => (
-                <div className="plan-item" key={c.id}><span>{c.type} • {c.date}</span><b>{Number(c.net).toFixed(2)}</b></div>
-              ))}
-            </>
-          ) : null}
-        </div>
+      <div hidden={tab !== 'calisma'} className="card" style={{ marginTop: 16 }}>
+        <div className="section-title"><h3>Ders süreleri</h3></div>
+        {Object.keys(bySub).length ? Object.entries(bySub).sort((a, b) => b[1] - a[1]).map(([s, m]) => (
+          <div className="plan-item" key={s}><span>{s}</span><b>{m} dk</b></div>
+        )) : <div className="empty">Oturum yok.</div>}
+        {lastCalc.length ? (
+          <>
+            <div className="section-title" style={{ marginTop: 16 }}><h3>Son netler</h3></div>
+            {lastCalc.map((c) => (
+              <div className="plan-item" key={c.id}><span>{c.type} • {c.date}</span><b>{Number(c.net).toFixed(2)}</b></div>
+            ))}
+          </>
+        ) : null}
       </div>
       <div hidden={tab !== 'calisma'} className="card" style={{ marginTop: 16 }}>
         <div className="section-title"><h3>Son 7 gün çalışma</h3><span>dakika</span></div>
