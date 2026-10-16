@@ -3,6 +3,7 @@ import { AppProvider, useApp } from './context/AppContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { Layout } from './components/Layout';
 import { CoachChat } from './components/CoachChat';
+import { SupportPanel } from './components/SupportPanel';
 import { CommandPalette } from './components/CommandPalette';
 import { HomePage } from './pages/HomePage';
 import { QuestionBankPage } from './pages/QuestionBankPage';
@@ -112,6 +113,7 @@ function Shell() {
       {taskOpen && <TaskModal onClose={() => setTaskOpen(false)} />}
       <CommandPalette open={cmd} onClose={() => setCmd(false)} />
       {page === 'meeting' ? null : <CoachChat />}
+      {page === 'meeting' ? null : <SupportPanel />}
       {profile?.role === 'coach' || accessGate !== 'ok' ? null : <ExamNotifyWatcher />}
     </Layout>
   );

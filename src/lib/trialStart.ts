@@ -26,6 +26,9 @@ export function publicTrialStartMessage(raw: string) {
   if (/030|sunucuya işlenmedi|yönetici onay/i.test(msg)) {
     return 'Deneme başlatılamadı. Üyelik değişmedi.';
   }
+  if (/PGRST|sqlstate|42501|42883|row-level security/i.test(msg)) {
+    return 'Deneme başlatılamadı. Üyelik değişmedi.';
+  }
   if (!msg) return 'Deneme başlatılamadı. Üyelik değişmedi.';
   return msg;
 }

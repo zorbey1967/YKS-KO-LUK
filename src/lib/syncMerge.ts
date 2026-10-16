@@ -199,6 +199,7 @@ export function mergeAppData(local: AppData, remote: AppData): AppData {
     libraryPrefs: L.libraryPrefs?.joinedAt || L.libraryPrefs?.nameMode
       ? L.libraryPrefs
       : R.libraryPrefs,
+    supportPrefs: L.supportPrefs?.nameConsent ? L.supportPrefs : R.supportPrefs,
   };
   return next;
 }

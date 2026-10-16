@@ -29,6 +29,10 @@ export type LibraryPrefs = {
   joinedAt: string | null;
 };
 
+export type SupportPrefs = {
+  nameConsent: 'yes' | 'no' | null;
+};
+
 export type LearningNote = {
   topic: string;
   subject: string;
@@ -245,6 +249,7 @@ export type AppData = {
   tombstones: Tombstone[];
   syncRev: number;
   libraryPrefs: LibraryPrefs;
+  supportPrefs: SupportPrefs;
 };
 
 export type BankQuestion = {
@@ -339,6 +344,7 @@ export const emptyData = (): AppData => ({
   tombstones: [],
   syncRev: 0,
   libraryPrefs: { nameMode: null, joinedRoomId: null, joinedAt: null },
+  supportPrefs: { nameConsent: null },
 });
 
 export const NAV: { id: PageId; icon: string; label: string }[] = [

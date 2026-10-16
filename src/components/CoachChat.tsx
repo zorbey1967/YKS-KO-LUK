@@ -273,7 +273,7 @@ export function CoachChat() {
     <>
       {open ? null : (
         <button
-          className="fab"
+          className="fab fab-zorro"
           type="button"
           aria-label="ZORRO"
           aria-expanded={false}

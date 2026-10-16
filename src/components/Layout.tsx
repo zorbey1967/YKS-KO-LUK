@@ -72,9 +72,14 @@ export function Layout({ children }: { children: ReactNode }) {
             </button>
           ))}
           {!isCoach && user && accessGate === 'ok' ? (
-            <button type="button" onClick={() => window.dispatchEvent(new Event('yks-open-zorro'))}>
-              🦁 <span>ZORRO</span>
-            </button>
+            <>
+              <button type="button" onClick={() => window.dispatchEvent(new Event('yks-open-zorro'))}>
+                🦁 <span>ZORRO</span>
+              </button>
+              <button type="button" onClick={() => window.dispatchEvent(new Event('yks-open-support'))}>
+                ❓ <span>Destek</span>
+              </button>
+            </>
           ) : null}
         </nav>
         <div className="sidebar-bottom">

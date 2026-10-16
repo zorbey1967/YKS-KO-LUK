@@ -55,8 +55,9 @@ import { normalizePlanId } from '../lib/plans';
 import { paymentStatusLabel } from '../lib/billing';
 import { SQL_DRAFTS, draftStatusLabel } from '../lib/deployStatus';
 import { supabase, withTimeout } from '../lib/supabase';
+import { AdminSupportPanel } from '../components/AdminSupportPanel';
 
-type Tab = 'ozet' | 'basvuru' | 'uyelik' | 'kullanici' | 'koc' | 'eslesme' | 'finans' | 'randevu' | 'denetim' | 'ayar';
+type Tab = 'ozet' | 'basvuru' | 'uyelik' | 'kullanici' | 'koc' | 'eslesme' | 'finans' | 'randevu' | 'denetim' | 'mesajlar' | 'ayar';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'ozet', label: 'Genel Bakış' },
@@ -65,6 +66,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'uyelik', label: 'Üyelikler ve Denemeler' },
   { id: 'finans', label: 'Ödemeler' },
   { id: 'denetim', label: 'Görüşme Denetimi' },
+  { id: 'mesajlar', label: 'Mesajlar' },
   { id: 'ayar', label: 'Sistem Güvenliği' },
 ];
 
@@ -637,6 +639,7 @@ export function AdminPage() {
         </div>
       ) : null}
 
+      {tab === 'mesajlar' ? <AdminSupportPanel /> : null}
       {tab === 'denetim' ? (
         <SecurityInbox />
       ) : null}

@@ -249,4 +249,17 @@ describe('migration hedef şema (020 sonra 021+016; 013/017 atlanır)', () => {
     expect(sql('027_live010_no_email_admin.sql')).toContain('handle_new_user');
     expect(sql('028_coach_directory_security_invoker.sql')).toContain('security_invoker = true');
   });
+
+  it('044 destek tabloları additive; zorro ve trial RPC yok', () => {
+    const s = sql('044_support_tickets.sql');
+    expect(s).toContain('create table if not exists public.support_tickets');
+    expect(s).toContain('create table if not exists public.support_replies');
+    expect(s).toContain('user_id = auth.uid() or public.is_admin()');
+    expect(s).toContain('revoke all on table public.support_tickets from anon, public');
+    expect(s).toContain('for update using (public.is_admin())');
+    expect(s).not.toMatch(/drop table public/i);
+    expect(s).not.toMatch(/delete from public/i);
+    expect(s).not.toContain('zorro_conversations');
+    expect(s).not.toContain('start_top_plan_trial');
+  });
 });

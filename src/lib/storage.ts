@@ -71,6 +71,10 @@ export function normalizeData(raw: unknown): AppData {
     joinedRoomId: lp?.joinedRoomId ? String(lp.joinedRoomId) : null,
     joinedAt: lp?.joinedAt ? String(lp.joinedAt) : null,
   };
+  const sp = (x as AppData).supportPrefs;
+  d.supportPrefs = {
+    nameConsent: sp?.nameConsent === 'yes' || sp?.nameConsent === 'no' ? sp.nameConsent : null,
+  };
   return d;
 }
 
