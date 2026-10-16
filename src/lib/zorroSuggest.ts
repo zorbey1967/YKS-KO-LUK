@@ -1,3 +1,4 @@
+import { QUESTION_BANK_ENABLED } from './features';
 import type { AppData } from './types';
 import { lastBankTopic, weakBankTopics } from './practice';
 import { todaySchedule } from './insights';
@@ -56,7 +57,7 @@ export function zorroActions(data: AppData, route: ZorroRoute): ZorroUiAction[] 
   if (data.schedule.days.length && (route === 'plan' || route === 'simple_chat')) {
     out.push({ id: 'sch', label: 'Ders programı', kind: 'goto', page: 'schedule' });
   }
-  return out.slice(0, 4);
+  return out.filter((a) => a.page !== 'questionbank' || QUESTION_BANK_ENABLED).slice(0, 4);
 }
 
 export function workingModeChips(data: AppData, loggedIn: boolean, advanced = true): { label: string; prompt: string; display: string }[] {

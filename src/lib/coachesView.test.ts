@@ -36,8 +36,9 @@ describe('coachesView', () => {
     expect(coercePageForRole('admin', 'admin', true)).toBe('admin');
     expect(coercePageForRole('coaches', 'admin', true)).toBe('coaches');
     expect(sidebarNav('admin', true).map((x) => x.id)).toEqual(expect.arrayContaining([
-      'home', 'coaches', 'library', 'questionbank', 'analytics', 'admin',
+      'home', 'coaches', 'library', 'analytics', 'admin',
     ]));
+    expect(sidebarNav('admin', true).map((x) => x.id)).not.toContain('questionbank');
     const coachStill = coachesView(coachesAudience({ signedIn: true, role: 'coach', isAdmin: false }));
     expect(coachStill.showDirectory).toBe(false);
     expect(coercePageForRole('questionbank', 'coach', false)).toBe('coaches');
@@ -68,7 +69,7 @@ describe('analiz route ve menü', () => {
     expect(adminIds).toContain('admin');
     expect(sidebarNav('coach', false).map((x) => x.id)).not.toContain('analytics');
     expect(sidebarNav('student', false).map((x) => x.id)).not.toContain('admin');
-    expect(adminIds).toContain('questionbank');
+    expect(adminIds).not.toContain('questionbank');
     expect(adminIds).toContain('schedule');
     expect(adminIds).toContain('tasks');
     expect(coerceAppPage('analytics', 'coach', 'ok', false)).toBe('coaches');

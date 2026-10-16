@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext';
 import { curriculumForGrade, GRADES } from '../lib/curriculum';
 import { applyGradeKeepAge } from '../lib/goal';
 import { jumpFromTracker, setBankJump } from '../lib/practice';
+import { QUESTION_BANK_ENABLED } from '../lib/features';
 import { uid } from '../lib/util';
 
 export function TopicsPage() {
@@ -27,12 +28,14 @@ export function TopicsPage() {
         <p className="muted" style={{ marginTop: 0 }}>
           {subjects.length} ders • {subjects.reduce((n, s) => n + (curr[s] || []).length, 0)} konu.
           {(data.grade === 'Mezun / YKS' || data.grade.startsWith('11') || data.grade.startsWith('12'))
-            ? ' TYT ve AYT başlıkları tam listelenir; pratik için Soru Bankası’nda YKS TYT / YKS AYT’yi aç.'
+            ? ' TYT ve AYT başlıkları tam listelenir.'
             : ' Takibe aldığın konular programda öne çıkar.'}
         </p>
+        {QUESTION_BANK_ENABLED ? (
         <div className="actions" style={{ marginBottom: 12 }}>
           <button className="btn primary" type="button" onClick={() => go('questionbank')}>Soru çöz</button>
         </div>
+        ) : null}
         <div className="chip-row">
           {subjects.map((s) => (
             <button key={s} className={`chip ${s === activeSubject ? 'on' : ''}`} type="button" aria-pressed={s === activeSubject} onClick={() => setSubject(s)}>{s}</button>
@@ -48,10 +51,10 @@ export function TopicsPage() {
                   {existing ? (
                     <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                       <span className="chip">{existing.level}%</span>
-                      <button className="btn secondary" type="button" onClick={() => {
+                      {QUESTION_BANK_ENABLED ? <button className="btn secondary" type="button" onClick={() => {
                         setBankJump(jumpFromTracker(data.grade, activeSubject, name));
                         go('questionbank');
-                      }}>Çöz</button>
+                      }}>Çöz</button> : null}
                     </span>
                   ) : (
                     <span style={{ display: 'flex', gap: 8 }}>
@@ -59,10 +62,10 @@ export function TopicsPage() {
                         setData({ ...data, topics: [{ id: uid('tp_'), name, subject: activeSubject, level: 10, grade: data.grade }, ...data.topics] });
                         toast('Konu eklendi');
                       }}>Takibe al</button>
-                      <button className="btn secondary" type="button" onClick={() => {
+                      {QUESTION_BANK_ENABLED ? <button className="btn secondary" type="button" onClick={() => {
                         setBankJump(jumpFromTracker(data.grade, activeSubject, name));
                         go('questionbank');
-                      }}>Çöz</button>
+                      }}>Çöz</button> : null}
                     </span>
                   )}
                 </div>
@@ -84,10 +87,10 @@ export function TopicsPage() {
               <div className="actions">
                 <button className="btn secondary" type="button" aria-label="Seviyeyi düşür" onClick={() => setData({ ...data, topics: data.topics.map((t) => t.id === x.id ? { ...t, level: Math.max(0, t.level - 10) } : t) })}>−</button>
                 <button className="btn secondary" type="button" aria-label="Seviyeyi yükselt" onClick={() => setData({ ...data, topics: data.topics.map((t) => t.id === x.id ? { ...t, level: Math.min(100, t.level + 10) } : t) })}>+</button>
-                <button className="btn secondary" type="button" onClick={() => {
+                {QUESTION_BANK_ENABLED ? <button className="btn secondary" type="button" onClick={() => {
                   setBankJump(jumpFromTracker(data.grade, x.subject, x.name));
                   go('questionbank');
-                }}>Çöz</button>
+                }}>Çöz</button> : null}
               </div>
             </div>
           )) : <div className="empty">Soldan konu ekle.</div>}

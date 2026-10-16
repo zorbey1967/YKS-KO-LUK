@@ -20,7 +20,9 @@ describe('production audit contracts', () => {
     }
     expect(app).toContain("page === 'calculator' && <CalculatorPage");
     expect(app).toContain("page === 'exams' && <ExamsPage");
-    expect(app).toContain("page === 'questionbank' && <QuestionBankPage");
+    expect(app).toContain("page === 'questionbank'");
+    expect(app).toContain('QuestionBankPage');
+    expect(app).toContain('QUESTION_BANK_ENABLED');
     expect(app).toContain("page === 'membership' && <MembershipPage");
     expect(src('src/components/Layout.tsx')).toContain('ZORRO');
   });

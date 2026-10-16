@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Profile } from './types';
-import { sidebarNav } from './types';
+import { NAV, commandNav, sidebarNav } from './types';
+import { QUESTION_BANK_ENABLED } from './features';
 import {
   billingFromProfile,
   canStartMembershipTrial,
@@ -149,23 +150,27 @@ describe('üyelik trial + Net Hesapla menü', () => {
     expect(ids.indexOf('exams')).toBeLessThan(ids.indexOf('calculator'));
     expect(labels[ids.indexOf('calculator')]).toBe('Net Hesapla');
     expect(ids).toEqual(expect.arrayContaining([
-      'home', 'coaches', 'meetings', 'library', 'questionbank', 'analytics',
+      'home', 'coaches', 'meetings', 'library', 'analytics',
       'schedule', 'calendar', 'tasks', 'goal', 'exams', 'calculator',
       'topics', 'questions', 'timer', 'membership', 'account',
     ]));
+    expect(ids).not.toContain('questionbank');
+    expect(NAV.some((n) => n.id === 'questionbank')).toBe(true);
+    expect(QUESTION_BANK_ENABLED).toBe(false);
   });
 
   it('sidebar eski çalışma sırasını korur', () => {
     const ids = sidebarNav('student', false).map((x) => x.id);
     expect(ids).toEqual([
-      'home', 'coaches', 'meetings', 'library', 'questionbank', 'analytics',
+      'home', 'coaches', 'meetings', 'library', 'analytics',
       'schedule', 'calendar', 'tasks', 'goal', 'plan', 'exams', 'calculator',
       'topics', 'questions', 'timer', 'membership', 'account',
     ]);
     expect(ids.indexOf('home')).toBe(0);
     expect(ids.indexOf('coaches')).toBe(1);
-    expect(ids.indexOf('questionbank')).toBeLessThan(ids.indexOf('analytics'));
+    expect(ids.indexOf('library')).toBeLessThan(ids.indexOf('analytics'));
     expect(ids.indexOf('analytics')).toBeLessThan(ids.indexOf('schedule'));
+    expect(commandNav('student', false).map((x) => x.id)).not.toContain('questionbank');
     expect(ids.indexOf('calculator')).toBeGreaterThan(ids.indexOf('exams'));
     expect(ids).not.toContain('admin');
     expect(sidebarNav('coach', false).map((x) => x.id)).toEqual(['coaches', 'account', 'settings']);

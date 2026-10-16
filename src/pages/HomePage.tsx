@@ -11,6 +11,7 @@ import { displayRank } from '../lib/types';
 import { getCoachDisplayName, getPersonDisplayName } from '../lib/displayName';
 import { zorroHomeHint } from '../lib/zorroSuggest';
 import { StudySuggestCard } from '../components/StudySuggestCard';
+import { QUESTION_BANK_ENABLED } from '../lib/features';
 
 export function HomePage({ onNewTask }: { onNewTask: () => void }) {
   const { data, go, profile, user, isPlatformOwner } = useApp();
@@ -32,6 +33,10 @@ export function HomePage({ onNewTask }: { onNewTask: () => void }) {
   const hint = useMemo(() => zorroHomeHint(data), [data]);
 
   function openBank(level: string, subject?: string | null, topic?: string | null) {
+    if (!QUESTION_BANK_ENABLED) {
+      go('topics');
+      return;
+    }
     setBankJump({ level, subject, topic });
     go('questionbank');
   }
@@ -179,12 +184,14 @@ export function HomePage({ onNewTask }: { onNewTask: () => void }) {
         <div className="section-title"><h3>Sıradaki</h3></div>
         <p className="muted">{coach.msg}</p>
         <div className="actions">
-          {recs[0] ? (
+          {recs[0] && QUESTION_BANK_ENABLED ? (
             <button className="btn primary" type="button" onClick={() => openBank(recs[0].levelName, recs[0].subject, recs[0].topic)}>
               Mini çalışma
             </button>
+          ) : recs[0] ? (
+            <button className="btn primary" type="button" onClick={() => go('topics')}>Konular</button>
           ) : (
-            <button className="btn primary" type="button" onClick={() => go('questionbank')}>Soru bankası</button>
+            <button className="btn primary" type="button" onClick={() => go('tasks')}>Görevler</button>
           )}
         </div>
       </div>

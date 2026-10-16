@@ -5,6 +5,7 @@ import { ExamInsight } from '../components/ExamInsight';
 import { GoalEditor } from '../components/GoalEditor';
 import { displayRank, displayText } from '../lib/types';
 import { setBankJump, weakBankTopics } from '../lib/practice';
+import { QUESTION_BANK_ENABLED } from '../lib/features';
 
 export function GoalPage() {
   const { data, go } = useApp();
@@ -39,10 +40,10 @@ export function GoalPage() {
         {weak.length ? weak.map((w) => (
           <div className="plan-item" key={w.key}>
             <span>{w.topic}<br /><small className="muted">{w.subject} • %{w.acc}</small></span>
-            <button className="btn secondary" type="button" onClick={() => {
+            {QUESTION_BANK_ENABLED ? <button className="btn secondary" type="button" onClick={() => {
               setBankJump({ level: w.levelName, subject: w.subject, topic: w.topic });
               go('questionbank');
-            }}>Çalış</button>
+            }}>Çalış</button> : null}
           </div>
         )) : null}
       </div>

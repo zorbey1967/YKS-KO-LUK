@@ -1,3 +1,5 @@
+import { isNavPageVisible } from './features';
+
 export type PageId = 'home' | 'questionbank' | 'coaches' | 'meetings' | 'library' | 'goal' | 'schedule' | 'tasks' | 'plan' | 'exams' | 'calculator' | 'topics' | 'questions' | 'calendar' | 'timer' | 'analytics' | 'membership' | 'account' | 'settings' | 'admin' | 'meeting';
 
 export type TaskOrigin = 'student' | 'zorro' | 'coach';
@@ -19,6 +21,12 @@ export type Tombstone = {
   kind: 'session' | 'task' | 'mistake' | 'review' | 'exam';
   id: string;
   at: string;
+};
+
+export type LibraryPrefs = {
+  nameMode: 'real' | 'alias' | null;
+  joinedRoomId: string | null;
+  joinedAt: string | null;
 };
 
 export type LearningNote = {
@@ -236,6 +244,7 @@ export type AppData = {
   reviews: ReviewItem[];
   tombstones: Tombstone[];
   syncRev: number;
+  libraryPrefs: LibraryPrefs;
 };
 
 export type BankQuestion = {
@@ -329,6 +338,7 @@ export const emptyData = (): AppData => ({
   reviews: [],
   tombstones: [],
   syncRev: 0,
+  libraryPrefs: { nameMode: null, joinedRoomId: null, joinedAt: null },
 });
 
 export const NAV: { id: PageId; icon: string; label: string }[] = [
@@ -404,16 +414,16 @@ export function sidebarNav(
       const c = navItem('coaches', role);
       if (c) items.unshift(c);
     }
-    return items;
+    return items.filter((x) => isNavPageVisible(x.id));
   }
   if (isAdmin) {
     if (!items.some((x) => x.id === 'admin')) {
       const home = items[0] || NAV[0];
       const rest = items.filter((x) => x.id !== home.id);
-      return [home, ADMIN_NAV, ...rest];
+      return [home, ADMIN_NAV, ...rest].filter((x) => isNavPageVisible(x.id));
     }
   }
-  return items;
+  return items.filter((x) => isNavPageVisible(x.id));
 }
 
 /** Ctrl+K: kenar menüde olmayan çalışma sayfaları da (Konular, Sorular vb.) bulunur. */
@@ -425,7 +435,7 @@ export function commandNav(
   if (restrictedIds) return sidebarNav(role, isAdmin, restrictedIds);
   if (isAdmin) return sidebarNav(role, true, null);
   if (role === 'coach' || role === 'admin') return sidebarNav(role, isAdmin, restrictedIds);
-  return NAV.map((n) => navItem(n.id, role)).filter((x): x is NonNullable<typeof x> => Boolean(x));
+  return NAV.map((n) => navItem(n.id, role)).filter((x): x is NonNullable<typeof x> => x != null && isNavPageVisible(x.id));
 }
 
 /** Öğrenci menüsünde yok; hash ve yetkili menü için. */

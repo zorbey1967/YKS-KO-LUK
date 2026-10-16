@@ -2,38 +2,57 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { getPersonDisplayName } from '../lib/displayName';
 import {
+  LIBRARY_CLOCK_MS,
   LIBRARY_HEARTBEAT_MS,
   LIBRARY_ROOM_ID,
+  LIBRARY_ROOMS,
+  formatStudyClock,
   libraryDisplayName,
   libraryTextLeaksEmail,
-  readLibraryJoined,
-  readLibraryNameMode,
+  resolveLibraryPrefs,
+  roomLabel,
+  sanitizeLibraryPeers,
   writeLibraryJoined,
   writeLibraryNameMode,
   type LibraryNameMode,
+  type LibraryPeer,
 } from '../lib/libraryPresence';
 import { supabase, withTimeout } from '../lib/supabase';
 
-type Peer = { display_name: string; minutes: number; share_exams: boolean };
-
 export function LibraryPage() {
-  const { user, profile, go } = useApp();
-  const [peers, setPeers] = useState<Peer[]>([]);
+  const { user, profile, go, data, setData } = useApp();
+  const [peers, setPeers] = useState<LibraryPeer[]>([]);
   const [share, setShare] = useState(false);
   const [msg, setMsg] = useState('');
-  const [joined, setJoined] = useState(() => Boolean(user && readLibraryJoined(user.id)));
-  const [nameMode, setNameMode] = useState<LibraryNameMode | null>(() => (user ? readLibraryNameMode(user.id) : null));
+  const [consentOpen, setConsentOpen] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
   const tickInFlight = useRef(false);
   const profileName = getPersonDisplayName(profile?.name, '');
+
+  const prefs = useMemo(
+    () => (user ? resolveLibraryPrefs(data.libraryPrefs, user.id) : data.libraryPrefs),
+    [data.libraryPrefs, user],
+  );
+  const nameMode = prefs.nameMode;
+  const joined = Boolean(prefs.joinedRoomId);
   const display = useMemo(
     () => (user ? libraryDisplayName({ mode: nameMode, profileName, userId: user.id }) : 'Öğrenci'),
     [nameMode, profileName, user],
   );
 
+  const persistPrefs = useCallback((next: { nameMode?: LibraryNameMode | null; joinedRoomId?: string | null; joinedAt?: string | null }) => {
+    if (!user) return;
+    setData((prev) => {
+      const merged = { ...prev.libraryPrefs, ...next };
+      if (merged.nameMode === 'real' || merged.nameMode === 'alias') writeLibraryNameMode(user.id, merged.nameMode);
+      writeLibraryJoined(user.id, Boolean(merged.joinedRoomId));
+      return { ...prev, libraryPrefs: merged };
+    });
+  }, [setData, user]);
+
   const leaveRoom = useCallback(async () => {
     if (!user || !supabase) return;
-    writeLibraryJoined(user.id, false);
-    setJoined(false);
+    persistPrefs({ joinedRoomId: null, joinedAt: null });
     setPeers([]);
     try {
       await withTimeout(
@@ -42,17 +61,16 @@ export function LibraryPage() {
     } catch {
       setMsg('Ayrılma kaydı yazılamadı. Birkaç dakika içinde listeden düşersin.');
     }
-  }, [user]);
+  }, [persistPrefs, user]);
 
   useEffect(() => {
-    if (!user) {
-      setJoined(false);
-      setNameMode(null);
-      return;
-    }
-    setNameMode(readLibraryNameMode(user.id));
-    setJoined(readLibraryJoined(user.id));
-  }, [user]);
+    if (!joined) return;
+    const id = window.setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      setNow(Date.now());
+    }, LIBRARY_CLOCK_MS);
+    return () => window.clearInterval(id);
+  }, [joined]);
 
   useEffect(() => {
     const sb = supabase;
@@ -60,9 +78,12 @@ export function LibraryPage() {
     let alive = true;
     const tick = async () => {
       if (!alive || tickInFlight.current) return;
+      if (typeof document !== 'undefined' && document.hidden) return;
       tickInFlight.current = true;
       try {
-        const shown = libraryTextLeaksEmail(display) ? libraryDisplayName({ mode: 'alias', profileName: '', userId: user.id }) : display;
+        const shown = libraryTextLeaksEmail(display)
+          ? libraryDisplayName({ mode: 'alias', profileName: '', userId: user.id })
+          : display;
         const hb = await withTimeout(sb.rpc('library_heartbeat', { p_display: shown, p_share: share }));
         if (!alive) return;
         if (hb.error) {
@@ -72,16 +93,22 @@ export function LibraryPage() {
         setMsg('');
         const roster = await withTimeout(sb.rpc('library_roster'));
         if (!alive) return;
-        const raw = roster.data;
-        const list = Array.isArray(raw) ? raw as Peer[] : [];
-        setPeers(list.filter((p) => !libraryTextLeaksEmail(String(p.display_name || ''))));
+        setPeers(sanitizeLibraryPeers(roster.data));
       } finally {
         tickInFlight.current = false;
       }
     };
     void tick();
     const id = window.setInterval(() => void tick(), LIBRARY_HEARTBEAT_MS);
-    return () => { alive = false; window.clearInterval(id); };
+    const vis = () => {
+      if (typeof document !== 'undefined' && !document.hidden) void tick();
+    };
+    document.addEventListener('visibilitychange', vis);
+    return () => {
+      alive = false;
+      window.clearInterval(id);
+      document.removeEventListener('visibilitychange', vis);
+    };
   }, [user, display, share, joined, nameMode]);
 
   if (!user) {
@@ -94,74 +121,107 @@ export function LibraryPage() {
     );
   }
 
-  const uid = user.id;
-
   function acceptRealName() {
-    writeLibraryNameMode(uid, 'real');
-    setNameMode('real');
+    persistPrefs({ nameMode: 'real' });
+    setConsentOpen(false);
   }
 
   function rejectRealName() {
-    writeLibraryNameMode(uid, 'alias');
-    setNameMode('alias');
+    persistPrefs({ nameMode: 'alias' });
+    setConsentOpen(false);
   }
 
-  function joinRoom() {
-    if (!nameMode) return;
-    writeLibraryJoined(uid, true);
-    setJoined(true);
+  function requestJoin(roomId: string) {
+    if (!nameMode) {
+      setConsentOpen(true);
+      return;
+    }
+    persistPrefs({
+      joinedRoomId: roomId,
+      joinedAt: prefs.joinedAt && prefs.joinedRoomId === roomId ? prefs.joinedAt : new Date().toISOString(),
+    });
     setMsg('');
   }
 
-  return (
-    <div className="card">
-      <div className="section-title"><h3>Sessiz Kütüphane</h3></div>
-      <p className="muted">Mikrofon ve kamera kapalı. E-posta ve hesap kimliği gösterilmez.</p>
-      {msg ? <p className="notice">{msg}</p> : null}
+  const elapsedMs = joined && prefs.joinedAt ? Math.max(0, now - Date.parse(prefs.joinedAt)) : 0;
+  const myMinutes = Math.floor(elapsedMs / 60000);
+  const rosterMinutes = peers.reduce((a, p) => a + p.minutes, 0);
+  const todayTotalMin = rosterMinutes + (joined ? myMinutes : 0);
+  const activeCount = peers.length || (joined ? 1 : 0);
+  const myRoom = roomLabel(prefs.joinedRoomId);
 
-      {!nameMode ? (
-        <div style={{ marginTop: 12 }}>
-          <p>Adınızı ve soyadınızı kütüphanede kullanalım mı?</p>
+  return (
+    <>
+      <div className="card">
+        <div className="section-title"><h3>Sessiz Kütüphane</h3></div>
+        <p className="muted">Mikrofon ve kamera kapalı. E-posta ve hesap kimliği gösterilmez.</p>
+        {msg ? <p className="notice">{msg}</p> : null}
+        <div className="grid stats" style={{ marginTop: 12 }}>
+          <div className="card stat"><div className="label">AKTİF ÖĞRENCİ</div><div className="value">{activeCount}</div></div>
+          <div className="card stat"><div className="label">BUGÜN TOPLAM</div><div className="value">{todayTotalMin} dk</div></div>
+          <div className="card stat"><div className="label">ÇALIŞMA SÜREM</div><div className="value">{joined ? formatStudyClock(elapsedMs) : '00:00:00'}</div></div>
+          <div className="card stat"><div className="label">ODAM</div><div className="value" style={{ fontSize: 16 }}>{myRoom || '—'}</div></div>
+        </div>
+      </div>
+
+      {(consentOpen || (!nameMode && joined)) ? (
+        <div className="card" style={{ marginTop: 16 }}>
+          <p>Adınız ve soyadınız kütüphanede görünsün mü?</p>
           {profileName ? <p className="muted">Profilindeki ad: {profileName}</p> : (
-            <p className="muted">Profilinde ad yoksa “Evet” ile takma ad yerine sonra Hesabım’dan ad ekleyebilirsin; şimdilik güvenli görünen ad kullanılır.</p>
+            <p className="muted">Profilinde ad yoksa güvenli görünen ad kullanılır. E-posta asla gösterilmez.</p>
           )}
           <div className="actions" style={{ marginTop: 8 }}>
             <button className="btn primary" type="button" onClick={acceptRealName}>Evet, kullan</button>
-            <button className="btn secondary" type="button" onClick={rejectRealName}>Hayır</button>
+            <button className="btn secondary" type="button" onClick={rejectRealName}>Hayır, gizli isim kullan</button>
           </div>
         </div>
-      ) : (
-        <>
-          <p className="muted" style={{ marginTop: 8 }}>Listede görünen adın: {display}</p>
-          {!joined ? (
-            <div className="actions" style={{ marginTop: 8 }}>
-              <button className="btn primary" type="button" onClick={joinRoom}>Katıl</button>
-            </div>
-          ) : (
-            <>
-              <label className="muted" style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8 }}>
-                <input type="checkbox" checked={share} onChange={(e) => setShare(e.target.checked)} />
-                Deneme netlerimi diğer katılımcılara aç (varsayılan kapalı)
-              </label>
+      ) : null}
+
+      <div className="grid two" style={{ marginTop: 16 }}>
+        {LIBRARY_ROOMS.map((room) => {
+          const inThis = prefs.joinedRoomId === room.id;
+          return (
+            <div className="card" key={room.id}>
+              <div className="section-title"><h3>{room.name}</h3></div>
+              <p className="muted">{inThis ? activeCount : peers.length} öğrenci</p>
               <div className="actions" style={{ marginTop: 8 }}>
-                <button className="btn secondary" type="button" onClick={() => void leaveRoom()}>Ayrıl</button>
+                {inThis ? (
+                  <button className="btn secondary" type="button" onClick={() => void leaveRoom()}>Ayrıl</button>
+                ) : (
+                  <button className="btn primary" type="button" onClick={() => requestJoin(room.id)}>Odaya Katıl</button>
+                )}
               </div>
-              <div style={{ marginTop: 16 }}>
-                {!peers.length ? <p className="muted">Şu an başka katılımcı görünmüyor.</p> : null}
-                {peers.map((p) => (
-                  <div className="plan-item" key={`${p.display_name}-${p.minutes}`}>
-                    <span>
-                      {p.display_name}
-                      <br />
-                      <small className="muted">{p.minutes} dk • aktif • net paylaşımı {p.share_exams ? 'açık' : 'kapalı'}</small>
-                    </span>
-                  </div>
-                ))}
+            </div>
+          );
+        })}
+      </div>
+
+      {joined ? (
+        <>
+          <div className="card" style={{ marginTop: 16 }}>
+            <div className="section-title"><h3>Bugün ne kadar çalıştın?</h3></div>
+            <p style={{ marginTop: 0 }}><b>{formatStudyClock(elapsedMs)}</b></p>
+            <p className="muted">Sayaç yalnızca bu oturumda ilerler; her saniye sunucuya istek gitmez.</p>
+            <label className="muted" style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8 }}>
+              <input type="checkbox" checked={share} onChange={(e) => setShare(e.target.checked)} />
+              Deneme netlerimi diğer katılımcılara aç (varsayılan kapalı)
+            </label>
+          </div>
+          <div className="card" style={{ marginTop: 16 }}>
+            <div className="section-title"><h3>Şu anda birlikte çalışanlar</h3></div>
+            {!peers.length ? <p className="muted">Şu an başka katılımcı görünmüyor.</p> : null}
+            {peers.map((p) => (
+              <div className="plan-item" key={`${p.display_name}-${p.minutes}`}>
+                <span>
+                  {p.display_name}
+                  <br />
+                  <small className="muted">{formatStudyClock(p.minutes * 60_000)} • {p.minutes > 0 ? 'aktif' : 'pasif'}</small>
+                </span>
               </div>
-            </>
-          )}
+            ))}
+          </div>
         </>
-      )}
-    </div>
+      ) : null}
+    </>
   );
 }

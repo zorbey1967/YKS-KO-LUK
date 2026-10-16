@@ -65,6 +65,12 @@ export function normalizeData(raw: unknown): AppData {
   d.syncRev = Math.max(0, Number((x as AppData).syncRev) || 0);
   const stones = (x as AppData).tombstones;
   d.tombstones = uniqueTombstones(Array.isArray(stones) ? stones.filter((t) => t && t.id && t.kind) : []);
+  const lp = (x as AppData).libraryPrefs;
+  d.libraryPrefs = {
+    nameMode: lp?.nameMode === 'real' || lp?.nameMode === 'alias' ? lp.nameMode : null,
+    joinedRoomId: lp?.joinedRoomId ? String(lp.joinedRoomId) : null,
+    joinedAt: lp?.joinedAt ? String(lp.joinedAt) : null,
+  };
   return d;
 }
 

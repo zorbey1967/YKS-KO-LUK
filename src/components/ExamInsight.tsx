@@ -3,6 +3,7 @@ import { eliteReport } from '../lib/elite';
 import { examCountdown } from '../lib/insights';
 import { examTitle, showsKpss, showsYks } from '../lib/stage';
 import { displayAge, displayText } from '../lib/types';
+import { QUESTION_BANK_ENABLED } from '../lib/features';
 
 export function ExamInsight() {
   const { data, go } = useApp();
@@ -33,7 +34,7 @@ export function ExamInsight() {
         <div className="actions">
           <button className="btn secondary" type="button" onClick={() => go('calculator')}>Net hesap</button>
           <button className="btn secondary" type="button" onClick={() => go('exams')}>Denemeler</button>
-          <button className="btn secondary" type="button" onClick={() => go('questionbank')}>YKS soruları</button>
+          {QUESTION_BANK_ENABLED ? <button className="btn secondary" type="button" onClick={() => go('questionbank')}>YKS soruları</button> : null}
         </div>
       </div>
     );
@@ -52,7 +53,7 @@ export function ExamInsight() {
         </div>
         <div className="actions">
           <button className="btn secondary" type="button" onClick={() => go('calculator')}>GY / GK net</button>
-          <button className="btn secondary" type="button" onClick={() => go('questionbank')}>KPSS soru bankası</button>
+          {QUESTION_BANK_ENABLED ? <button className="btn secondary" type="button" onClick={() => go('questionbank')}>KPSS soru bankası</button> : null}
         </div>
       </div>
     );
@@ -65,7 +66,7 @@ export function ExamInsight() {
       </p>
       <div className="actions">
         <button className="btn secondary" type="button" onClick={() => go('topics')}>Müfredat</button>
-        <button className="btn secondary" type="button" onClick={() => go('questionbank')}>Sınıf soruları</button>
+        {QUESTION_BANK_ENABLED ? <button className="btn secondary" type="button" onClick={() => go('questionbank')}>Sınıf soruları</button> : null}
       </div>
     </div>
   );

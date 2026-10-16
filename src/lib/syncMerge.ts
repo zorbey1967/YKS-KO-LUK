@@ -196,6 +196,9 @@ export function mergeAppData(local: AppData, remote: AppData): AppData {
     questionStats: mergeStats(L.questionStats, R.questionStats),
     qbMarks: [...new Set([...L.qbMarks, ...R.qbMarks])],
     learningNotes: [...L.learningNotes, ...R.learningNotes].filter((n, i, arr) => arr.findIndex((x) => x.at === n.at && x.topic === n.topic) === i).slice(0, 24),
+    libraryPrefs: L.libraryPrefs?.joinedAt || L.libraryPrefs?.nameMode
+      ? L.libraryPrefs
+      : R.libraryPrefs,
   };
   return next;
 }

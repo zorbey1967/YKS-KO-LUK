@@ -27,6 +27,8 @@ import { MeetingsPage } from './pages/MeetingsPage';
 import { LibraryPage } from './pages/LibraryPage';
 import { ExamNotifyWatcher } from './components/ExamNotifyWatcher';
 import { FeatureLock } from './components/FeatureLock';
+import { FeatureComingSoon } from './components/FeatureComingSoon';
+import { QUESTION_BANK_ENABLED } from './lib/features';
 import { today, uid } from './lib/util';
 import { STUDY_SUBJECTS } from './lib/insights';
 import { studyPagesLocked } from './lib/subscription';
@@ -86,7 +88,7 @@ function Shell() {
       <ErrorBoundary key={page}>
       {billingLock ? <FeatureLock title="Deneme veya üyelik gerekli" /> : null}
       {!billingLock && page === 'home' && <HomePage onNewTask={() => setTaskOpen(true)} />}
-      {!billingLock && page === 'questionbank' && <QuestionBankPage />}
+      {!billingLock && page === 'questionbank' && (QUESTION_BANK_ENABLED ? <QuestionBankPage /> : <FeatureComingSoon title="Soru Bankası" />)}
       {page === 'coaches' && <CoachesPage />}
       {page === 'meetings' && <MeetingsPage />}
       {page === 'library' && <LibraryPage />}

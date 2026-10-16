@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext';
 import { STUDY_SUBJECTS, todaySchedule } from '../lib/insights';
 import { eliteReport } from '../lib/elite';
 import { setBankJump } from '../lib/practice';
+import { QUESTION_BANK_ENABLED } from '../lib/features';
 import { today, uid } from '../lib/util';
 import { commitSession, patchSession } from '../lib/studyLoop';
 import { tombstone } from '../lib/syncMerge';
@@ -415,6 +416,7 @@ export function TimerPage() {
             <p className="muted">Boş grafik yok: kayıt düşünce tempo çubuğu görünür.</p>
           </div>
         )}
+        {QUESTION_BANK_ENABLED ? (
         <button
           className="btn secondary"
           type="button"
@@ -438,6 +440,7 @@ export function TimerPage() {
         >
           Bu dersten soru çöz
         </button>
+        ) : null}
         {todayS.length ? todayS.map((s) => (
           <div className="plan-item" key={s.id}>
             <span>

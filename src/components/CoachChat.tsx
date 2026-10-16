@@ -5,6 +5,7 @@ import { formatCoachHtml } from '../lib/aiTutor';
 import { compressQuestionImage } from '../lib/chatImage';
 import { today, uid } from '../lib/util';
 import { lastBankTopic, setBankJump, weakBankTopics } from '../lib/practice';
+import { QUESTION_BANK_ENABLED } from '../lib/features';
 import { paidAccessLocked } from '../lib/subscription';
 import { isAffirmative, parseExamAddIntent, publicSourceLabel } from '../lib/zoroText';
 import { emptyExamTarget, upsertExam } from '../lib/examTargets';
@@ -256,6 +257,7 @@ export function CoachChat() {
   function runAction(a: ZorroUiAction) {
     if (a.kind === 'send' && a.prompt) void send(a.prompt, a.label);
     if (a.kind === 'goto' && a.page) {
+      if (a.page === 'questionbank' && !QUESTION_BANK_ENABLED) return;
       if (a.page === 'questionbank' && (weak || lastQ)) {
         const t = weak || lastQ;
         if (t) setBankJump({ level: t.levelName, subject: t.subject, topic: t.topic });
@@ -361,7 +363,7 @@ export function CoachChat() {
             {lastActions.map((a) => (
               <button key={a.id} className="chip zorro-tool" type="button" onClick={() => runAction(a)}>{a.label}</button>
             ))}
-            {weak || lastQ ? (
+            {QUESTION_BANK_ENABLED && (weak || lastQ) ? (
               <button
                 className="chip zorro-tool"
                 type="button"

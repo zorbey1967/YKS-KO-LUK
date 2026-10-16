@@ -6,6 +6,7 @@ import { setBankJump } from '../lib/practice';
 import { jumpFromTracker } from '../lib/practice';
 import { snoozeReview } from '../lib/spacedReview';
 import { today } from '../lib/util';
+import { QUESTION_BANK_ENABLED } from '../lib/features';
 import { kindLabel, type StudyKind } from '../lib/studyTimer';
 
 export function StudySuggestCard() {
@@ -15,10 +16,14 @@ export function StudySuggestCard() {
 
   function start() {
     if (rec.action === 'onboard') {
-      go('questionbank');
+      go(QUESTION_BANK_ENABLED ? 'questionbank' : 'topics');
       return;
     }
     if (rec.action === 'bank') {
+      if (!QUESTION_BANK_ENABLED) {
+        go('topics');
+        return;
+      }
       const jump = rec.level
         ? { level: rec.level, subject: rec.subject || null, topic: rec.topic || null, mode: rec.questionId ? 'wrong' as const : 'normal' as const }
         : jumpFromTracker(data.grade, rec.subject, rec.topic);
