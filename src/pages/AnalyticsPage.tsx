@@ -24,7 +24,7 @@ export function AnalyticsPage() {
   const [aiBusy, setAiBusy] = useState(false);
   const [aiErr, setAiErr] = useState('');
   const [aiReport, setAiReport] = useState<AiCoachReport | null>(null);
-  const [tab, setTab] = useState<'genel' | 'ders' | 'trend' | 'calisma' | 'ai'>('genel');
+  const [tab, setTab] = useState<'genel' | 'trend' | 'calisma' | 'ai'>('genel');
   const localHints = useMemo(() => localAiCoachReport(data, board), [data, board]);
 
   if (!see) {
@@ -73,8 +73,6 @@ export function AnalyticsPage() {
     return { date, mins: data.sessions.filter((x) => x.date === date).reduce((a, x) => a + x.minutes, 0) };
   });
   const mx = Math.max(1, ...board.tytSeries.map((x) => x.net), ...board.aytSeries.map((x) => x.net));
-  const bySub: Record<string, number> = {};
-  data.sessions.forEach((s) => { bySub[s.subject] = (bySub[s.subject] || 0) + s.minutes; });
   const week = weekMinutes(data);
   const weekGoal = weekGoalPct(data);
   const weekPct = weekGoal.pct;
@@ -82,7 +80,6 @@ export function AnalyticsPage() {
   const n1 = kind === 'KPSS' ? 'GY' : kind === 'YKS' ? 'TYT' : 'Deneme-1';
   const n2 = kind === 'KPSS' ? 'GK' : kind === 'YKS' ? 'AYT' : 'Deneme-2';
   const count = examCountdown(data.examDate);
-  const lastCalc = data.calcs.slice(0, 4);
   const elite = eliteReport(data);
   const bankCount = QUESTION_BANK_ENABLED ? bankSolved : 0;
 
@@ -104,7 +101,6 @@ export function AnalyticsPage() {
       <div className="actions analytics-tabs" style={{ marginBottom: 12 }}>
         {([
           ['genel', 'GENEL'],
-          ['ders', 'DERS'],
           ['trend', 'DENEME TRENDİ'],
           ['calisma', 'ÇALIŞMA'],
           ['ai', 'AI ANALİZİ'],
@@ -269,49 +265,6 @@ export function AnalyticsPage() {
       ) : null}
       </div>
 
-      {board.subjects.length ? (
-        <div hidden={tab !== 'ders'} className="card" style={{ marginTop: 16 }}>
-          <div className="section-title"><h3>DERS PERFORMANSI</h3></div>
-          {board.subjects.map((s) => (
-            <div className="plan-item" key={s.name}>
-              <span>
-                {s.name}
-                <br />
-                <small className="muted">
-                  Son: {s.last ?? '—'} · Ort: {s.avg != null ? s.avg.toFixed(1) : '—'} · En yüksek: {s.high ?? '—'}
-                  {s.trend === 'up' ? ' · Trend: ↑' : s.trend === 'down' ? ' · Trend: ↓' : s.trend === 'flat' ? ' · Trend: →' : ''}
-                  {s.band ? ` · ${s.band}` : ''}
-                  {s.status ? ` · ${s.status}` : ''}
-                </small>
-              </span>
-            </div>
-          ))}
-        </div>
-      ) : null}
-
-      {board.weakAreas.length ? (
-        <div hidden={tab !== 'ders'} className="card" style={{ marginTop: 16 }}>
-          <div className="section-title"><h3>En çok geliştirmen gereken alanlar</h3></div>
-          <ol>
-            {board.weakAreas.map((w) => <li key={w}>{w}</li>)}
-          </ol>
-        </div>
-      ) : null}
-
-      <div hidden={tab !== 'calisma'} className="card" style={{ marginTop: 16 }}>
-        <div className="section-title"><h3>Ders süreleri</h3></div>
-        {Object.keys(bySub).length ? Object.entries(bySub).sort((a, b) => b[1] - a[1]).map(([s, m]) => (
-          <div className="plan-item" key={s}><span>{s}</span><b>{m} dk</b></div>
-        )) : <div className="empty">Oturum yok.</div>}
-        {lastCalc.length ? (
-          <>
-            <div className="section-title" style={{ marginTop: 16 }}><h3>Son netler</h3></div>
-            {lastCalc.map((c) => (
-              <div className="plan-item" key={c.id}><span>{c.type} • {c.date}</span><b>{Number(c.net).toFixed(2)}</b></div>
-            ))}
-          </>
-        ) : null}
-      </div>
       <div hidden={tab !== 'calisma'} className="card" style={{ marginTop: 16 }}>
         <div className="section-title"><h3>Son 7 gün çalışma</h3><span>dakika</span></div>
         <div className="chart">

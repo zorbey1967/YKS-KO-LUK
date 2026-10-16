@@ -184,13 +184,29 @@ function fieldSubjectAllowed(subject: string, kind: StudentTrackKind): boolean {
   return false;
 }
 
-/** Okul dersleri (TYT/AYT dışı) alan filtresinden düşmez; yalnızca alan AYT/YDT süzülür. */
+function schoolSubjectAllowed(subject: string, kind: StudentTrackKind, gradeNum: number): boolean {
+  // İlkokul / ortaokul / LGS: alan filtresi yok
+  if (gradeNum > 0 && gradeNum <= 8) return true;
+  if (kind === 'other' || kind === 'tyt' || kind === 'kpss') return true;
+  const s = subject.toLocaleLowerCase('tr-TR');
+  if (/türk|din|ingiliz|hayat|sosyal|inkılap|inkilap/.test(s)) return true;
+  if (kind === 'say') return /matematik|fizik|kimya|biyoloji|geometri/.test(s);
+  if (kind === 'ea') return /matematik|edebiyat|tarih|coğrafya|cografya|geometri|felsefe/.test(s);
+  if (kind === 'soz') return /edebiyat|tarih|coğrafya|cografya|felsefe|din/.test(s);
+  if (kind === 'dil') return /ingiliz|edebiyat|türk|almanca|fransız|fransiz/.test(s);
+  return false;
+}
+
+/** TYT her zaman; AYT/YDT alana göre; lise okul dersleri alana göre. */
 export function filterCurriculumByTrack(
   curr: Record<string, string[]>,
   track: string,
+  grade = '',
 ): Record<string, string[]> {
   const kind = normalizeStudentTrack(track);
   if (kind === 'kpss') return curr;
+  const gm = grade.match(/^(\d+)/);
+  const n = gm ? Number(gm[1]) : (grade.includes('Mezun') || /yks/i.test(grade) ? 13 : 0);
   const out: Record<string, string[]> = {};
   for (const [subject, topics] of Object.entries(curr)) {
     if (isTytSubject(subject)) {
@@ -201,14 +217,14 @@ export function filterCurriculumByTrack(
       if (fieldSubjectAllowed(subject, kind)) out[subject] = topics;
       continue;
     }
-    out[subject] = topics;
+    if (schoolSubjectAllowed(subject, kind, n)) out[subject] = topics;
   }
   return out;
 }
 
-/** Sınıf müfredatı + öğrencinin `data.track` alan filtresi. */
+/** Sınıf müfredatı + öğrencinin `data.track` alan filtresi. 9–10’da YKS ağacı yok. */
 export function curriculumForStudent(grade: string, track: string) {
-  return filterCurriculumByTrack(curriculumForGrade(grade), track);
+  return filterCurriculumByTrack(curriculumForGrade(grade), track, grade);
 }
 
 export const CALC_CONFIG = {

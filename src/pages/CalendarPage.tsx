@@ -4,7 +4,6 @@ import { TaskRows } from '../components/TaskRows';
 import { ExamForm } from '../components/ExamForm';
 import { monthCells, monthTitle, WEEKDAYS } from '../lib/calendar';
 import { emptyExamTarget, examDateForLegacy, upsertExam } from '../lib/examTargets';
-import { remainingClock } from '../lib/countdown';
 import { istanbulToday, listMyAppointments, type MyAppointment } from '../lib/meeting';
 import { getCoachDisplayName, getPersonDisplayName } from '../lib/displayName';
 import { fetchMyCoach } from '../lib/cloudPlatform';
@@ -72,7 +71,7 @@ export function CalendarPage() {
       <div className="card">
         <div className="section-title">
           <h3>{monthTitle(cursor.y, cursor.m)}</h3>
-          <button className="btn primary" type="button" onClick={openNew}>+ Sınav Ekle</button>
+          <button className="btn primary" type="button" onClick={openNew}>Bugün sınavım var</button>
         </div>
         <p className="muted">Sınavlar Sınav Merkezi ile aynı kayıttır. Tarih Türkiye takvimine göredir.</p>
         <div className="actions" style={{ marginTop: 0 }}>
@@ -99,21 +98,18 @@ export function CalendarPage() {
       </div>
       <div className="card">
         <div className="section-title"><h3>{fmtDate(selected)}</h3><span>{weekday}</span></div>
-        {dayExams.length ? dayExams.map((t) => {
-          const clock = remainingClock(t.date, t.startTime, Date.now(), t.endTime);
-          return (
-            <div className="exam-row" key={t.id}>
-              <div>
-                <b>{t.title}</b>
-                <small className="muted">{t.origin === 'official' || t.isPrimary ? 'Resmi / ana sınav' : 'Senin eklediğin'} • {t.kind}{t.subject ? ` • ${t.subject}` : ''} • {t.startTime || 'saat yok'}{t.durationMin ? ` • ${t.durationMin} dk` : ''} • {clock.headline}</small>
-              </div>
-              <div className="exam-row-actions">
-                <button className="btn" type="button" onClick={() => setModal(t)}>Düzenle</button>
-                <button className="btn danger" type="button" onClick={() => setConfirmId(t.id)}>Sil</button>
-              </div>
+        {dayExams.length ? dayExams.map((t) => (
+          <div className="exam-row" key={t.id}>
+            <div>
+              <b>{t.title}</b>
+              <small className="muted">{t.date}</small>
             </div>
-          );
-        }) : <p className="muted">Bu günde sınav yok. <button className="btn" type="button" onClick={openNew}>Sınav ekle</button></p>}
+            <div className="exam-row-actions">
+              <button className="btn" type="button" onClick={() => setModal(t)}>Düzenle</button>
+              <button className="btn danger" type="button" onClick={() => setConfirmId(t.id)}>Sil</button>
+            </div>
+          </div>
+        )) : <p className="muted">Bu günde sınav yok. <button className="btn" type="button" onClick={openNew}>Bugün sınavım var</button></p>}
 
         {dayAppts.length ? (
           <div style={{ marginTop: 14 }}>
@@ -140,7 +136,7 @@ export function CalendarPage() {
 
         {coachDayBlocks.length ? (
           <div style={{ marginTop: 14 }}>
-            <h4 style={{ margin: '0 0 8px' }}>Koçumun Yaptığı Program</h4>
+            <h4 style={{ margin: '0 0 8px' }}>Koçun Programı</h4>
             {coachDayBlocks.map((b, i) => (
               <div className="plan-item" key={`c-${b.title}-${i}`}><span>{b.icon} {[b.start, b.title, b.topic].filter(Boolean).join(' ')}</span><b>{b.minutes} dk</b></div>
             ))}

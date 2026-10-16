@@ -532,7 +532,7 @@ export function CoachesPage() {
               ) : null}
               {planStudent ? (
                 <div style={{ marginTop: 16 }}>
-                  <div className="section-title"><h3>Koçumun Yaptığı Program</h3><span>{(linked.find((s) => s.id === planStudent) || desk.students.find((s) => s.id === planStudent))?.name || 'Öğrenci'}</span></div>
+                  <div className="section-title"><h3>Koçun Programı</h3><span>{(linked.find((s) => s.id === planStudent) || desk.students.find((s) => s.id === planStudent))?.name || 'Öğrenci'}</span></div>
                   <WeekPlanEditor
                     key={planStudent + week.updatedAt}
                     plan={week}
@@ -573,9 +573,9 @@ export function CoachesPage() {
               {desk.homeworks.length ? desk.homeworks.map((h) => (
                 <div className="plan-item" key={h.id}>
                   <span>
-                    {h.title}
+                    {h.done ? '☑' : '☐'} {h.title}
                     <br />
-                    <small className="muted">{studentName(h.studentId)} • {h.due}{h.updatedAt && h.createdAt && h.updatedAt !== h.createdAt ? ' • güncellendi' : ''}</small>
+                    <small className="muted">{studentName(h.studentId)} • {h.due || 'tarih yok'} • {h.done ? 'Yapıldı' : 'Yapılmadı'}{h.updatedAt && h.createdAt && h.updatedAt !== h.createdAt ? ' • güncellendi' : ''}</small>
                   </span>
                   <button className="btn secondary" type="button" onClick={() => {
                     void setCoachHomeworkDone(h.id, !h.done).then((res) => {
@@ -583,7 +583,7 @@ export function CoachesPage() {
                       setDesk((d) => ({ ...d, homeworks: d.homeworks.map((x) => x.id === h.id ? { ...x, done: !x.done } : x) }));
                     });
                   }}>
-                    {h.done ? 'Aç' : 'Tamam'}
+                    {h.done ? 'Yapılmadı' : 'Yapıldı'}
                   </button>
                 </div>
               )) : <div className="empty">Ödev yok.</div>}

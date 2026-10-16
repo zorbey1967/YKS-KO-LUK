@@ -450,6 +450,8 @@ h1{font-size:28px;margin:3px 0 0}h2{margin:0 0 7px}h3{margin:0}
 }
 .ai-flow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px}
 .ai-flow-arrow{opacity:.55;font-weight:700}
+.coach-program-card{border-left:3px solid var(--accent,#2563eb)}
+.student-program-card{border-left:3px solid #0d9488}
 .library-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(140px,100%),1fr));gap:12px;margin-top:8px}
 .library-card{border:1px solid var(--line);border-radius:16px;padding:12px;text-align:center;background:var(--bg);color:inherit;font:inherit;cursor:default}
 button.library-card{cursor:pointer;width:100%;appearance:none;-webkit-appearance:none}

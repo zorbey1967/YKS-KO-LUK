@@ -1,10 +1,32 @@
 import type { Task } from '../lib/types';
 import { useApp } from '../context/AppContext';
 import { tombstone } from '../lib/syncMerge';
+import { setCoachHomeworkDone } from '../lib/cloudPlatform';
+
+function homeworkIdOf(task: Task) {
+  if (task.homeworkId) return task.homeworkId;
+  if (task.id.startsWith('hw:')) return task.id.slice(3);
+  return '';
+}
 
 export function TaskRows({ tasks }: { tasks: Task[] }) {
   const { setData, toast, go } = useApp();
   if (!tasks.length) return <div className="empty">Henüz bir kayıt yok.</div>;
+
+  function toggleDone(x: Task) {
+    const nextDone = !x.done;
+    setData((d) => ({
+      ...d,
+      tasks: d.tasks.map((t) => (t.id === x.id ? { ...t, done: nextDone, updatedAt: new Date().toISOString() } : t)),
+    }));
+    const hw = homeworkIdOf(x);
+    if (hw) {
+      void setCoachHomeworkDone(hw, nextDone).then((res) => {
+        if (!res.ok) toast(res.error || 'Koç paneline yazılamadı.');
+      });
+    }
+  }
+
   return (
     <>
       {tasks.map((x) => (
@@ -14,21 +36,26 @@ export function TaskRows({ tasks }: { tasks: Task[] }) {
           role="button"
           tabIndex={0}
           aria-pressed={x.done}
-          aria-label={`${x.title}${x.done ? ', tamamlandı' : ''}`}
+          aria-label={`${x.title}${x.done ? ', yapıldı' : ', yapılmadı'}`}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault();
-              setData((d) => ({ ...d, tasks: d.tasks.map((t) => (t.id === x.id ? { ...t, done: !t.done, updatedAt: new Date().toISOString() } : t)) }));
+              toggleDone(x);
             }
           }}
-          onClick={() => {
-              setData((d) => ({ ...d, tasks: d.tasks.map((t) => (t.id === x.id ? { ...t, done: !t.done, updatedAt: new Date().toISOString() } : t)) }));
-          }}
+          onClick={() => toggleDone(x)}
         >
-          <div className={`check ${x.done ? 'done' : ''}`}>{x.done ? '✓' : ''}</div>
+          <div className={`check ${x.done ? 'done' : ''}`} aria-hidden>{x.done ? '☑' : '☐'}</div>
           <div className="task-main">
             <strong>{x.title}</strong>
-            <small>{x.origin === 'zorro' ? 'ZORRO' : x.origin === 'coach' ? 'Koç' : 'Sen'} • {x.subject} • {x.minutes} dk{x.date ? ` • ${x.date}` : ''}</small>
+            <small>
+              {x.origin === 'zorro' ? 'ZORRO' : x.origin === 'coach' ? 'Koç' : 'Sen'}
+              {x.subject ? ` • ${x.subject}` : ''}
+              {x.minutes ? ` • ${x.minutes} dk` : ''}
+              {x.date ? ` • ${x.date}` : ''}
+              {' · '}
+              {x.done ? 'Yapıldı' : 'Yapılmadı'}
+            </small>
           </div>
           {!x.done ? (
             <button

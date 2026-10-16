@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { applyScheduleNotes, generateWeeklySchedule } from '../lib/schedule';
+import { generateWeeklySchedule } from '../lib/schedule';
 import { buildScheduleFromPdf, buildScheduleWithAi } from '../lib/aiSchedule';
 import { blocksToTasks, todaySchedule } from '../lib/insights';
 import { suggestedDailyMinutes, examKind } from '../lib/stage';
@@ -18,10 +18,10 @@ export function SchedulePage() {
   const { data, setData, toast, user, profile } = useApp();
   const age = data.age > 0 ? data.age : 0;
   const kind = examKind(data);
-  const [daily, setDaily] = useState(() => (age > 0 ? suggestedDailyMinutes(age, kind) : 150));
-  const [days, setDays] = useState(age > 0 && age <= 13 ? 5 : 6);
-  const [focus, setFocus] = useState(() => (kind === 'KPSS' ? 'KPSS GY + GK' : kind === 'YKS' ? 'Dengeli TYT + AYT' : 'Okul programı'));
-  const [notes, setNotes] = useState(data.schedule.notes || '');
+  const daily = age > 0 ? suggestedDailyMinutes(age, kind) : 150;
+  const days = age > 0 && age <= 13 ? 5 : 6;
+  const focus = kind === 'KPSS' ? 'KPSS GY + GK' : kind === 'YKS' ? 'Dengeli TYT + AYT' : 'Okul programı';
+  const notes = data.schedule.notes || '';
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState('');
   const [preview, setPreview] = useState('');
@@ -199,41 +199,10 @@ export function SchedulePage() {
           {preview ? <p className="pdf-preview">{preview}…</p> : null}
         </div>
         <div className="card">
-          <div className="section-title"><h3>Ayarlar</h3><span>{data.track}</span></div>
-          <div className="form-grid">
-            <div className="field"><label>Günlük hedef (dk)</label><input type="number" min={60} value={daily} onChange={(e) => setDaily(Number(e.target.value) || 0)} /></div>
-            <div className="field">
-              <label>Haftalık gün</label>
-              <select value={days} onChange={(e) => setDays(Number(e.target.value))}>
-                <option value={5}>5 gün</option>
-                <option value={6}>6 gün</option>
-                <option value={7}>7 gün</option>
-              </select>
-            </div>
-            <div className="field" style={{ gridColumn: '1 / -1' }}>
-              <label>Odak</label>
-              <select value={focus} onChange={(e) => setFocus(e.target.value)}>
-                <option>Okul programı</option>
-                <option>KPSS GY + GK</option>
-                <option>Dengeli TYT + AYT</option>
-                <option>TYT ağırlıklı</option>
-                <option>AYT ağırlıklı</option>
-                <option>Zayıf konular</option>
-                <option>Deneme + analiz</option>
-              </select>
-            </div>
-          </div>
-          <div className="field" style={{ marginTop: 12 }}>
-            <label>Koç / AI notu</label>
-            <textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="ör. Pazar tatil, Cumartesi deneme, Pazartesi matematik 90 dk" />
-          </div>
+          <div className="section-title"><h3>Haftalık program üret</h3><span>{data.grade}{data.track ? ` · ${data.track}` : ''}</span></div>
+          <p className="muted">Günlük hedef ve odak profilinden gelir. PDF yükle veya yerel üret.</p>
           <div className="actions">
             <button className="btn" type="button" onClick={() => generateLocal(file || sch.pdfName ? 'school_pdf_local' : 'yerel üretici')}>Yerel üret</button>
-            <button className="btn" type="button" onClick={() => {
-              if (!sch.days.length) return toast('Önce bir program üret.');
-              writeStudentSchedule(applyScheduleNotes({ ...sch, notes }, notes));
-              toast('Not uygulandı');
-            }}>Notu uygula</button>
             <button className="btn secondary" type="button" onClick={() => {
               const day = todaySchedule({ ...data, schedule: sch });
               if (!day?.blocks.length) return toast('Bugün için blok yok.');
@@ -263,7 +232,7 @@ export function SchedulePage() {
       </div>
       {data.coachSchedule.days.some((d) => d.blocks.length) ? (
         <>
-          <div className="section-title" style={{ marginTop: 16 }}><h3>Koçumun Yaptığı Program</h3></div>
+          <div className="section-title" style={{ marginTop: 16 }}><h3>Koçun Programı</h3></div>
           <div className="week-grid">
             {data.coachSchedule.days.map((d) => (
               <div className="card week-day" key={`coach-${d.day}`}>

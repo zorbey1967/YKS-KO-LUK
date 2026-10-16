@@ -10,7 +10,8 @@ export function ExamNotifyWatcher() {
   useEffect(() => {
     if (profile?.role === 'coach') return;
     const day = istanbulToday();
-    const key = `${day}:${(data.examTargets || []).map((t) => t.id).join(',')}`;
+    const hour = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Istanbul', hour: 'numeric', hour12: false }).format(new Date());
+    const key = `${day}:${hour}:${(data.examTargets || []).map((t) => `${t.id}:${data.examNotifyLog?.[`${t.id}:r0`] || ''}`).join(',')}`;
     if (ran.current === key) return;
     const due = dueExamNotices(data, data.examTargets || []);
     if (!due.length) {
@@ -20,7 +21,7 @@ export function ExamNotifyWatcher() {
     ran.current = key;
     const log = { ...data.examNotifyLog };
     for (const n of due) {
-      log[n.key] = day;
+      log[n.key] = new Date().toISOString();
       toast(n.text);
       showBrowserNotify('Sınav', n.text);
     }

@@ -57,10 +57,11 @@ describe('ana sayfa öğrenci merkezi', () => {
     expect(page).toContain('Bugün Nasılsın?');
     expect(page).toContain('Yaptıkların');
     expect(page).toContain('Hesabıma göre bugün ne yapmalıyım?');
-    expect(page).toContain('Koçumun Yaptığı Program');
+    expect(page).toContain('Koçun Programı');
     expect(page).toContain('Bugünkü Programım');
     expect(page).toContain('Ders Programım');
-    expect(page).toContain('Koçumun Benden İstedikleri');
+    expect(page).toContain('Koçun verdiği görevler');
+    expect(page).toContain('TaskRows');
     expect(page).toContain('BUGÜN NE KADAR ÇALIŞTIM?');
     expect(page).toContain('SESSİZ KÜTÜPHANEDE NE KADAR KALDIM?');
     expect(page).toContain('Güçlü Olduğun Alanlar');
@@ -83,7 +84,8 @@ describe('Akıllı Plan AI tetikleyici', () => {
     expect(page).not.toMatch(/useEffect\(/);
     expect(page).toContain('getStudentProgress');
     expect(page).toContain('Şimdilik Değiştirme');
-    expect(page).toContain('Koçumun Yaptığı Program');
+    expect(page).toContain('Koçun Programı');
+    expect(page).toContain('Bu plan deneme sonuçların');
     const topics = readFileSync(join(process.cwd(), 'src/pages/TopicsPage.tsx'), 'utf8');
     expect(topics).not.toMatch(/yaşın kaç/i);
     expect(topics).toContain('buildSubjectCards');
@@ -115,7 +117,9 @@ describe('production kaynak dosyaları', () => {
     expect(readFileSync(join(root, 'src/styles.css'), 'utf8')).not.toContain('min-width:761px');
     const schedule = readFileSync(join(root, 'src/pages/SchedulePage.tsx'), 'utf8');
     expect(schedule).toContain('<h3>Ders Programım</h3>');
+    expect(schedule).toContain('<h3>Koçun Programı</h3>');
     expect(schedule).not.toContain("coachLocked ? 'Koçumun Yaptığı Program'");
+    expect(schedule).not.toContain('Koçumun Yaptığı Program');
     expect(schedule).not.toContain("saveStudentWeekPlan({ studentId: user.id");
     expect(schedule).toContain('studentOwnedSchedule');
     expect(readFileSync(join(root, 'src/context/AppContext.tsx'), 'utf8')).toContain('flushLibraryForUser');

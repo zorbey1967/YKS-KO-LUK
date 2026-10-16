@@ -31,13 +31,12 @@ describe('sessiz kütüphane görünür ad ve katılım', () => {
     expect(page).toContain('Ayrıl');
     expect(page).toContain('LIBRARY_EMOJI_LABELS');
     expect(readFileSync(join(process.cwd(), 'src/lib/libraryPresence.ts'), 'utf8')).toContain('Aslan');
-    expect(page).toContain('Adınız ve soyadınız olarak görünmek ister misiniz?');
-    expect(page).toContain('Evet, adımı göster');
+    expect(page).not.toContain('Adınız ve soyadınız olarak görünmek ister misiniz?');
     expect(page).toContain('LIBRARY_EMOJIS');
     expect(page).toContain('library-card');
     expect(page).toContain('appendLibrarySession');
-    expect(page).toContain('pendingJoin');
     expect(page).toContain('selectEmoji');
+    expect(page).toContain('Figür seç');
     expect(page).toContain('LIBRARY_HEARTBEAT_MS');
     expect(page).toContain('document.hidden');
     expect(page).toContain('visibilitychange');

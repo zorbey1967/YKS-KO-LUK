@@ -59,13 +59,18 @@ export function TasksPage({ onNewTask }: { onNewTask: () => void }) {
           <div className="section-title"><h3>Koç ödevi</h3></div>
           {hwView.map((h) => (
             <div className="plan-item" key={h.id}>
-              <span>{h.title}<br /><small className="muted">Koç • {h.due || 'tarih yok'}{h.updatedAt && h.createdAt && h.updatedAt !== h.createdAt ? ' • güncellendi' : ''}</small></span>
+              <span>{h.done ? '☑' : '☐'} {h.title}<br /><small className="muted">Koç • {h.due || 'tarih yok'} • {h.done ? 'Yapıldı' : 'Yapılmadı'}{h.updatedAt && h.createdAt && h.updatedAt !== h.createdAt ? ' • güncellendi' : ''}</small></span>
               <button className="btn secondary" type="button" onClick={() => {
-                void setCoachHomeworkDone(h.id, !h.done).then((res) => {
+                const nextDone = !h.done;
+                void setCoachHomeworkDone(h.id, nextDone).then((res) => {
                   if (!res.ok) return toast(res.error);
-                  setCoachHw((rows) => rows.map((x) => x.id === h.id ? { ...x, done: !x.done } : x));
+                  setCoachHw((rows) => {
+                    const next = rows.map((x) => x.id === h.id ? { ...x, done: nextDone } : x);
+                    setData((d) => applyCoachHomeworks(d, next));
+                    return next;
+                  });
                 });
-              }}>{h.done ? 'Aç' : 'Tamam'}</button>
+              }}>{h.done ? 'Yapılmadı' : 'Yapıldı'}</button>
             </div>
           ))}
         </>

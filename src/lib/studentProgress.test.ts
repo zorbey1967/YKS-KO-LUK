@@ -213,7 +213,7 @@ describe('Akıllı Plan birleşimi', () => {
     expect(prep.days.length).toBeGreaterThan(0);
     expect(prep.days.length).toBeLessThanOrEqual(5);
     expect(prep.kind).toBe('yazili');
-    expect(prep.period).toMatch(/dönem/);
+    expect(prep.period).toMatch(/dönem/i);
   });
 
   it('AI içgörüsü ve koç görevi duruma eklenir', () => {

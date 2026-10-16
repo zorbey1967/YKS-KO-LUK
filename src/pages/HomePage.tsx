@@ -8,6 +8,7 @@ import { displayRank } from '../lib/types';
 import { getCoachDisplayName, getPersonDisplayName } from '../lib/displayName';
 import { StudySuggestCard } from '../components/StudySuggestCard';
 import { requestAiCoachAnalysis } from '../lib/aiCoachAnalysis';
+import { TaskRows } from '../components/TaskRows';
 import { formatMinutes, getStudentProgress, progressFingerprint } from '../lib/studentProgress';
 
 export function HomePage({ onNewTask }: { onNewTask: () => void }) {
@@ -226,8 +227,8 @@ export function HomePage({ onNewTask }: { onNewTask: () => void }) {
         {aiErr ? <p className="muted" style={{ marginTop: 12 }}>{aiErr}</p> : null}
       </div>
 
-      <div className="card" style={{ marginTop: 16 }}>
-        <div className="section-title"><h3>Koçumun Yaptığı Program</h3></div>
+      <div className="card coach-program-card" style={{ marginTop: 16 }}>
+        <div className="section-title"><h3>Koçun Programı</h3></div>
         {state.coachToday.length || state.coachWeekFocus.some((d) => d.minutes) ? (
           <>
             {state.coachToday.length ? <p>Bugün: {state.coachToday.map((b) => `${b.title} ${b.minutes} dk`).join(' · ')}</p> : <p className="muted">Bugün için koç bloğu yok.</p>}
@@ -238,7 +239,7 @@ export function HomePage({ onNewTask }: { onNewTask: () => void }) {
         ) : <p className="muted">Koç henüz program yazmadı. Uydurma program yok.</p>}
       </div>
 
-      <div className="card" style={{ marginTop: 16 }}>
+      <div className="card student-program-card" style={{ marginTop: 16 }}>
         <div className="section-title"><h3>Bugünkü Programım</h3></div>
         {state.scheduleToday.length || state.weekFocus.some((d) => d.minutes) ? (
           <>
@@ -251,11 +252,9 @@ export function HomePage({ onNewTask }: { onNewTask: () => void }) {
       </div>
 
       <div className="card" style={{ marginTop: 16 }}>
-        <div className="section-title"><h3>Koçumun Benden İstedikleri</h3></div>
-        {state.coachTasks.length ? (
-          <ul className="muted" style={{ marginTop: 0 }}>
-            {state.coachTasks.map((t) => <li key={t}>{t}</li>)}
-          </ul>
+        <div className="section-title"><h3>Koçun verdiği görevler</h3></div>
+        {data.tasks.some((t) => t.origin === 'coach') ? (
+          <TaskRows tasks={data.tasks.filter((t) => t.origin === 'coach')} />
         ) : <p className="muted">Açık koç görevi yok.</p>}
       </div>
 

@@ -29,8 +29,8 @@ describe('sessiz kütüphane sadeleştirme (regresyon D–H)', () => {
 
   it('E) Figür seçmek → heartbeat başlatmıyor', () => {
     const src = pageSrc();
-    // Heartbeat yalnızca joined && nameMode ile; emoji seçimi join etmez.
-    expect(src).toMatch(/if\s*\(!user\s*\|\|\s*!sb\s*\|\|\s*!joined\s*\|\|\s*!nameMode\)\s*return/);
+    // Heartbeat yalnızca joined iken; emoji seçimi join etmez.
+    expect(src).toMatch(/if\s*\(!user\s*\|\|\s*!sb\s*\|\|\s*!joined\)\s*return/);
     expect(src).toMatch(/LIBRARY_HEARTBEAT_MS/);
     const selectBlock = src.slice(src.indexOf('selectEmoji'), src.indexOf('leaveRoom'));
     expect(selectBlock).not.toMatch(/library_heartbeat|joinedRoomId|appendLibrarySession/);
@@ -39,7 +39,6 @@ describe('sessiz kütüphane sadeleştirme (regresyon D–H)', () => {
   it('F) Tek Katıl → joinedRoomId oluşturuyor', () => {
     const src = pageSrc();
     expect(src).toMatch(/joinedRoomId:\s*LIBRARY_ROOM_ID/);
-    expect(src).toMatch(/function requestJoin\(/);
     expect(src).toMatch(/function joinRoom\(/);
     const d = emptyData();
     d.libraryPrefs = {
@@ -81,17 +80,16 @@ describe('sessiz kütüphane sadeleştirme (regresyon D–H)', () => {
     expect(src).toMatch(/>Ayrıl</);
     const gridStart = src.indexOf('<h3>Figür seç</h3>');
     expect(gridStart).toBeGreaterThan(0);
-    const gridEnd = src.indexOf('Bugün ne kadar çalıştın');
-    const grid = gridEnd > gridStart ? src.slice(gridStart, gridEnd) : src.slice(gridStart);
+    const grid = src.slice(gridStart);
     expect(grid).not.toMatch(/>Katıl</);
     expect(grid).not.toMatch(/>Ayrıl</);
     expect(grid).toMatch(/LIBRARY_EMOJIS\.map/);
     expect(grid).toMatch(/selectEmoji\(em\)/);
     expect(LIBRARY_EMOJIS).toHaveLength(10);
-    expect(src).not.toMatch(/persistPrefs\(\{\s*emoji:\s*em\s*\}\);\s*requestJoin/);
-    // Ana Katıl/Ayrıl figür grid'inden önce (tek aksiyon)
-    const mainJoin = src.indexOf('onClick={requestJoin}>Katıl<');
+    expect(src).not.toMatch(/persistPrefs\(\{\s*emoji:\s*em\s*\}\);\s*joinRoom/);
+    const mainJoin = src.indexOf('onClick={joinRoom}>Katıl<');
     expect(mainJoin).toBeGreaterThan(0);
     expect(mainJoin).toBeLessThan(gridStart);
   });
 });
+

@@ -4,12 +4,11 @@ import type { ExamPlanRecord, ExamTarget } from '../lib/types';
 import { ExamCountdownCard } from './ExamCountdownCard';
 import { ExamForm } from './ExamForm';
 import { monthCells, monthTitle, WEEKDAYS } from '../lib/calendar';
-import { countdownKindLabel, remainingClock } from '../lib/countdown';
+import { remainingClock } from '../lib/countdown';
 import { emptyExamTarget, examDateForLegacy, primaryExam, splitExams, upsertExam, withPrimary, clearAiExamPlan } from '../lib/examTargets';
 import { istanbulToday } from '../lib/meeting';
 import { askExamPlan } from '../lib/coachAi';
 import { examPlanInstruction, localExamPlanDraft } from '../lib/studyPlanner';
-import { canUseBrowserNotify, requestBrowserNotify } from '../lib/examNotify';
 import { buildScheduleWithAi } from '../lib/aiSchedule';
 import { generateWeeklySchedule } from '../lib/schedule';
 
@@ -54,10 +53,9 @@ export function ExamCenter() {
     <section className="exam-hub">
       <div className="hero exam-hub-hero">
         <div className="eyebrow" style={{ color: '#cfe1ff' }}>Sınav Merkezim</div>
-        <h2>Sınavlarını, hedeflerini ve çalışma planını tek yerden yönet.</h2>
-        <p>Tarihler Türkiye saatine göre. Ana sınav countdown’u gerçek zamanlıdır. AI mevcut programı onaysız değiştirmez.</p>
+        <h2>Yaklaşan sınavların ve sayaçların burada.</h2>
+        <p>Profilindeki sınıf ve alana göre uygun seçenekler gelir. Saat veya süre sormuyoruz.</p>
         <div className="hero-actions">
-          <button className="btn primary" type="button" onClick={openNew}>+ Sınav Ekle</button>
           <button className="btn" type="button" onClick={() => setTab('takvim')}>Takvim</button>
           <button className="btn" type="button" onClick={() => setTab('ai')}>AI Planım</button>
         </div>
@@ -73,20 +71,19 @@ export function ExamCenter() {
         <>
           {primary ? <ExamCountdownCard exam={primary} /> : (
             <div className="card exam-empty">
-              <h3>İlk sınavını ekle</h3>
-              <p className="muted">YKS, LGS, KPSS veya kendi sınavını seç. Tarih sende; şablon tarih dayatılmaz.</p>
-              <button className="btn primary" type="button" onClick={openNew}>Sınav Ekle</button>
+              <h3>Henüz hedef sınavın yok</h3>
+              <p className="muted">Aşağıdan “Bugün sınavım var” ile tarih ekle; sayaç otomatik oluşur.</p>
             </div>
           )}
           {upcoming.length > 1 ? (
             <div className="exam-mini-grid">
               <h3 className="exam-subh">Yaklaşan sınavların</h3>
               {upcoming.map((t) => {
-                const c = remainingClock(t.date, t.startTime, Date.now(), t.endTime);
+                const c = remainingClock(t.date, undefined, Date.now());
                 return (
                   <button key={t.id} type="button" className={`exam-mini ${t.isPrimary ? 'is-primary' : ''} exam-mini--${c.phase}`} onClick={() => setDetail(t)}>
                     <strong>{t.title}</strong>
-                    <span>{c.headline}</span>
+                    <span>{t.date}</span>
                     {t.isPrimary ? <em>Ana sınav</em> : null}
                   </button>
                 );
@@ -100,37 +97,23 @@ export function ExamCenter() {
               <div className="exam-seg">
                 <button type="button" className={listTab === 'upcoming' ? 'active' : ''} onClick={() => setListTab('upcoming')}>Yaklaşan</button>
                 <button type="button" className={listTab === 'past' ? 'active' : ''} onClick={() => setListTab('past')}>Geçmiş</button>
+                <button type="button" className="btn primary" style={{ marginLeft: 8 }} onClick={openNew}>Bugün sınavım var</button>
               </div>
             </div>
             {(listTab === 'upcoming' ? upcoming : past).length === 0 ? (
               <div className="empty">{listTab === 'upcoming' ? 'Yaklaşan sınav yok.' : 'Geçmiş sınav yok. Silinmez; arşiv burada.'}</div>
-            ) : (listTab === 'upcoming' ? upcoming : past).map((t) => {
-              const c = remainingClock(t.date, t.startTime, Date.now(), t.endTime);
-              return (
-                <div className="exam-row" key={t.id}>
-                  <div>
-                    <b>{t.title}</b>
-                    <small className="muted">{t.kind} • {t.date}{t.startTime ? ` ${t.startTime}` : ''} • {c.headline}</small>
-                  </div>
-                  <div className="exam-row-actions">
-                    <button className="btn secondary" type="button" onClick={() => setDetail(t)}>Detay</button>
-                    <button className="btn" type="button" onClick={() => setModal(t)}>Düzenle</button>
-                    <button className="btn danger" type="button" onClick={() => setConfirmId(t.id)}>Sil</button>
-                  </div>
+            ) : (listTab === 'upcoming' ? upcoming : past).map((t) => (
+              <div className="exam-row" key={t.id}>
+                <div>
+                  <b>{t.title}</b>
+                  <small className="muted">{t.date}</small>
                 </div>
-              );
-            })}
-          </div>
-
-          <div className="card" style={{ marginTop: 16 }}>
-            <div className="section-title"><h3>Bildirimler</h3></div>
-            <p className="muted">Web Push sunucusu yok. Açık sekmede uygulama içi uyarı (7 / 3 / 1 gün ve sınav günü) çalışır. Tarayıcı izni varsa aynı metin gösterilir; gizli VAPID kurulumu yok.</p>
-            <label className="exam-check"><input type="checkbox" checked={data.examNotifyPrefs.exams} onChange={(e) => setData({ ...data, examNotifyPrefs: { ...data.examNotifyPrefs, exams: e.target.checked } })} /> Sınav bildirimleri</label>
-            <label className="exam-check"><input type="checkbox" checked={data.examNotifyPrefs.ai} onChange={(e) => setData({ ...data, examNotifyPrefs: { ...data.examNotifyPrefs, ai: e.target.checked } })} /> AI plan bildirimleri (uygulama içi)</label>
-            <label className="exam-check"><input type="checkbox" checked={data.examNotifyPrefs.tasks} onChange={(e) => setData({ ...data, examNotifyPrefs: { ...data.examNotifyPrefs, tasks: e.target.checked } })} /> Görev hatırlatmaları (kayıt; ayrı push yok)</label>
-            {canUseBrowserNotify() ? (
-              <button className="btn" type="button" onClick={() => void requestBrowserNotify().then((r) => toast(r === 'granted' ? 'Tarayıcı bildirimi açık' : r === 'unsupported' ? 'Bu tarayıcı bildirim desteklemiyor' : 'İzin verilmedi'))}>Tarayıcı izni iste</button>
-            ) : null}
+                <div className="exam-row-actions">
+                  <button className="btn" type="button" onClick={() => setModal(t)}>Düzenle</button>
+                  <button className="btn danger" type="button" onClick={() => setConfirmId(t.id)}>Sil</button>
+                </div>
+              </div>
+            ))}
           </div>
         </>
       )}
@@ -414,7 +397,7 @@ function ExamMonth({
           <button className="btn" type="button" onClick={onPrev}>Önceki</button>
           <button className="btn secondary" type="button" onClick={onToday}>Bugün</button>
           <button className="btn" type="button" onClick={onNext}>Sonraki</button>
-          <button className="btn primary" type="button" onClick={onAdd}>+ Sınav Ekle</button>
+          <button className="btn primary" type="button" onClick={onAdd}>Bugün sınavım var</button>
         </div>
       </div>
       <div className="calendar-head">{WEEKDAYS.map((d) => <div key={d}>{d}</div>)}</div>
@@ -425,7 +408,7 @@ function ExamMonth({
             <button key={c.iso} type="button" className={`cal-cell ${c.muted ? 'muted' : ''} ${c.iso === today ? 'today' : ''} ${c.iso === selected ? 'selected' : ''}`} onClick={() => onSelect(c.iso)}>
               <div className="cal-num">{c.day}</div>
               <div className="exam-badges">
-                {hits.slice(0, 2).map((h) => <span key={h.id} className="exam-badge">{h.kind.slice(0, 8)}</span>)}
+                {hits.slice(0, 2).map((h) => <span key={h.id} className="exam-badge">{h.title.slice(0, 10)}</span>)}
               </div>
             </button>
           );
@@ -435,7 +418,7 @@ function ExamMonth({
         <h4 style={{ margin: '0 0 8px' }}>{selected}</h4>
         {dayExams.length ? dayExams.map((t) => (
           <button key={t.id} className="exam-row" type="button" onClick={() => onOpen(t)}>
-            <div><b>{t.title}</b><small className="muted">{t.kind} • {remainingClock(t.date, t.startTime).headline}</small></div>
+            <div><b>{t.title}</b><small className="muted">{t.date}</small></div>
           </button>
         )) : <div className="empty">Bu günde sınav yok.</div>}
         {tasks.length ? <p className="muted">{tasks.length} görev kaydı</p> : null}
@@ -449,16 +432,14 @@ function ExamDetail({ exam, plan, onClose, onEdit, onPrimary }: {
   exam: ExamTarget; plan: ExamPlanRecord | null;
   onClose: () => void; onEdit: () => void; onPrimary: () => void;
 }) {
-  const c = remainingClock(exam.date, exam.startTime, Date.now(), exam.endTime);
+  const c = remainingClock(exam.date, undefined, Date.now());
   return (
     <div className="modal" role="dialog">
       <div className="modal-box">
         <h3>{exam.title}</h3>
-        <p className="muted">{countdownKindLabel(exam.kind, exam.title)}</p>
-        <p>{exam.kind} • {exam.date}{exam.startTime ? ` ${exam.startTime}` : ''}{exam.endTime ? `–${exam.endTime}` : ''}</p>
+        <p className="muted">{exam.date}</p>
         <p><b>{c.headline}</b></p>
-        <p>Öncelik: {exam.priority} • Bildirim: {exam.notify ? 'açık' : 'kapalı'}</p>
-        <p>AI plan: {plan && plan.examId === exam.id ? (plan.source === 'ai' ? 'model planı var' : 'yerel taslak var') : 'bu sınav için kayıt yok'}</p>
+        {plan && plan.examId === exam.id ? <p className="muted">Bu sınav için çalışma planın var.</p> : null}
         {exam.note ? <p>{exam.note}</p> : null}
         <div className="actions">
           <button className="btn primary" type="button" onClick={onEdit}>Düzenle</button>

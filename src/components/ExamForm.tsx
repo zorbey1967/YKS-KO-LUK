@@ -1,60 +1,134 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { useApp } from '../context/AppContext';
 import type { ExamTarget } from '../lib/types';
-import { EXAM_KIND_OPTIONS, addMinutesToTime, withExamTimes } from '../lib/examTargets';
+import { withExamTimes } from '../lib/examTargets';
 import { istanbulToday } from '../lib/meeting';
+import {
+  academicPeriodLabel,
+  autoExamTitle,
+  calendarExamEntryOptions,
+  getStudentEducationContext,
+  writtenSubjectOptions,
+  type ExamEntryOption,
+} from '../lib/studentEducation';
+
+function matchOption(options: ExamEntryOption[], kind: string, title: string): ExamEntryOption {
+  const hit = options.find((o) => o.kind === kind || title.includes(o.kind) || o.label === kind);
+  return hit || options[0];
+}
 
 export function ExamForm({ draft, onClose, onSave }: { draft: ExamTarget; onClose: () => void; onSave: (row: ExamTarget) => void }) {
+  const { data } = useApp();
+  const ctx = useMemo(() => getStudentEducationContext(data), [data]);
+  const options = useMemo(() => calendarExamEntryOptions(ctx), [ctx]);
+  const subjects = useMemo(() => writtenSubjectOptions(data), [data]);
   const [row, setRow] = useState(draft);
-  const [customKind, setCustomKind] = useState(() => EXAM_KIND_OPTIONS.includes(draft.kind as typeof EXAM_KIND_OPTIONS[number]) ? '' : draft.kind);
+  const [optionId, setOptionId] = useState(() => matchOption(options, draft.kind, draft.title).id);
+  const option = options.find((o) => o.id === optionId) || options[0];
   const today = istanbulToday();
   const past = row.date && row.date < today;
-  function patch(p: Partial<ExamTarget>) { setRow((r) => ({ ...r, ...p })); }
+  const period = academicPeriodLabel(row.date ? new Date(`${row.date}T12:00:00`) : new Date());
+
+  function patch(p: Partial<ExamTarget>) {
+    setRow((r) => ({ ...r, ...p }));
+  }
+
+  function selectOption(id: string) {
+    const next = options.find((o) => o.id === id) || options[0];
+    setOptionId(next.id);
+    const subject = next.needsSubject ? (row.subject || subjects[0] || '') : '';
+    patch({
+      kind: next.kind,
+      subject: next.needsSubject ? subject : '',
+      title: autoExamTitle(ctx, next, subject),
+      startTime: '',
+      endTime: '',
+      durationMin: 0,
+    });
+  }
+
+  function selectSubject(subject: string) {
+    if (!option) return;
+    patch({
+      subject,
+      title: autoExamTitle(ctx, option, subject),
+      kind: option.kind,
+    });
+  }
+
   return (
     <div className="modal" role="dialog">
-      <div className="modal-box" style={{ width: 'min(640px,100%)' }}>
-        <h3>{draft.id ? 'Sınavı düzenle' : 'Sınav ekle'}</h3>
+      <div className="modal-box" style={{ width: 'min(560px,100%)' }}>
+        <h3>{draft.id ? 'Sınavı düzenle' : 'Sınavımı kaydet'}</h3>
+        <p className="muted" style={{ marginTop: 0 }}>
+          {ctx.gradeLabel || 'Profil'}{ctx.fieldShort ? ` · ${ctx.fieldShort}` : ''}
+          {period ? ` · ${period}` : ''}
+        </p>
         <div className="form-grid">
-          <div className="field"><label>Sınav adı</label><input value={row.title} onChange={(e) => patch({ title: e.target.value })} placeholder="AYT Matematik Denemesi" /></div>
-          <div className="field">
-            <label>Sınav türü</label>
-            <select value={customKind ? 'Diğer' : row.kind} onChange={(e) => {
-              if (e.target.value === 'Diğer') { setCustomKind(row.kind === 'Diğer' ? '' : row.kind); patch({ kind: 'Diğer' }); }
-              else { setCustomKind(''); patch({ kind: e.target.value, title: row.title || e.target.value }); }
-            }}>
-              {EXAM_KIND_OPTIONS.map((k) => <option key={k} value={k}>{k}</option>)}
-            </select>
+          <div className="field" style={{ gridColumn: '1 / -1' }}>
+            <label>Ne sınavın var?</label>
+            <div className="actions" style={{ flexWrap: 'wrap', marginTop: 4 }}>
+              {options.map((o) => (
+                <button
+                  key={o.id}
+                  type="button"
+                  className={`chip-btn${optionId === o.id ? ' on' : ''}`}
+                  onClick={() => selectOption(o.id)}
+                >{o.label}</button>
+              ))}
+            </div>
           </div>
-          {customKind || row.kind === 'Diğer' ? (
-            <div className="field" style={{ gridColumn: '1 / -1' }}><label>Özel tür</label><input value={customKind} onChange={(e) => { setCustomKind(e.target.value); patch({ kind: e.target.value || 'Diğer' }); }} /></div>
+          {option?.needsSubject ? (
+            <div className="field" style={{ gridColumn: '1 / -1' }}>
+              <label>Ders</label>
+              <select value={row.subject || ''} onChange={(e) => selectSubject(e.target.value)}>
+                <option value="">Ders seç</option>
+                {subjects.map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
           ) : null}
-          <div className="field"><label>Tarih</label><input type="date" value={row.date} onChange={(e) => patch({ date: e.target.value })} /></div>
-          <div className="field"><label>Saat (opsiyonel)</label><input type="time" value={row.startTime} onChange={(e) => patch({ startTime: e.target.value })} /></div>
-          <div className="field" style={{ gridColumn: '1 / -1' }}><label>Ders / alan (opsiyonel)</label><input value={row.subject || ''} onChange={(e) => patch({ subject: e.target.value })} placeholder="Matematik" /></div>
-          <div className="field"><label>Süre (dakika)</label><input type="number" min={0} max={600} value={row.durationMin || ''} placeholder="ör. 165" onChange={(e) => {
-            const durationMin = Math.max(0, Math.min(600, Number(e.target.value) || 0));
-            const endTime = durationMin && row.startTime ? addMinutesToTime(row.startTime, durationMin) : row.endTime;
-            patch({ durationMin, endTime });
-          }} /></div>
-          <div className="field"><label>Bitiş saati</label><input type="time" value={row.endTime} onChange={(e) => patch({ endTime: e.target.value })} /></div>
-          <div className="field">
-            <label>Öncelik</label>
-            <select value={row.priority} onChange={(e) => patch({ priority: e.target.value as ExamTarget['priority'] })}>
-              <option value="dusuk">Düşük</option>
-              <option value="normal">Normal</option>
-              <option value="yuksek">Yüksek</option>
-            </select>
+          <div className="field" style={{ gridColumn: '1 / -1' }}>
+            <label>Sınav</label>
+            <input
+              value={row.title || (option ? autoExamTitle(ctx, option, row.subject) : '')}
+              readOnly
+              aria-readonly
+            />
           </div>
-          <div className="field" style={{ gridColumn: '1 / -1' }}><label>Açıklama</label><textarea rows={2} value={row.note} onChange={(e) => patch({ note: e.target.value })} /></div>
+          <div className="field" style={{ gridColumn: '1 / -1' }}>
+            <label>Tarih</label>
+            <input type="date" value={row.date} onChange={(e) => patch({ date: e.target.value })} />
+          </div>
         </div>
         {past ? <p className="muted">Bu tarih geçmiş. Kayıt arşivde görünür.</p> : null}
-        <label className="exam-check"><input type="checkbox" checked={row.origin === 'official' || row.isPrimary} onChange={(e) => patch({ origin: e.target.checked ? 'official' : 'user', isPrimary: e.target.checked })} /> Resmi / ana sınav (YKS, LGS, KPSS — denemelerden ayrı)</label>
-        <label className="exam-check"><input type="checkbox" checked={row.notify} onChange={(e) => patch({ notify: e.target.checked })} /> Bildirimler (7 / 3 / 1 gün ve sınav günü)</label>
+        <label className="exam-check">
+          <input
+            type="checkbox"
+            checked={row.origin === 'official' || row.isPrimary}
+            onChange={(e) => patch({ origin: e.target.checked ? 'official' : 'user', isPrimary: e.target.checked })}
+          />
+          Ana hedef sınavım (sayaç)
+        </label>
         <div className="actions">
           <button className="btn primary" type="button" onClick={() => {
-            const kind = (customKind || row.kind).trim() || 'Diğer';
-            const title = row.title.trim() || kind;
-            if (!row.date) return;
-            onSave(withExamTimes({ ...row, kind, title, origin: row.origin || (row.isPrimary ? 'official' : 'user') }));
+            if (!option || !row.date) return;
+            if (option.needsSubject && !String(row.subject || '').trim()) return;
+            const title = autoExamTitle(ctx, option, row.subject);
+            const note = period && !String(row.note || '').includes(period)
+              ? [row.note, period].filter(Boolean).join(' · ')
+              : row.note;
+            onSave(withExamTimes({
+              ...row,
+              kind: option.kind,
+              title,
+              note,
+              subject: option.needsSubject ? row.subject : '',
+              startTime: '',
+              endTime: '',
+              durationMin: 0,
+              notify: true,
+              origin: row.origin || (row.isPrimary ? 'official' : 'user'),
+            }));
           }}>Kaydet</button>
           <button className="btn" type="button" onClick={onClose}>Vazgeç</button>
         </div>

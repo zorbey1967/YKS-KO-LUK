@@ -1,6 +1,7 @@
 import type { AppData, ExamTarget, PlanBlock, Schedule, Session, Topic } from './types';
 import { emptySchedule } from './types';
 import { curriculumForStudent } from './curriculum';
+import { academicPeriodLabel, aytFieldHint, getStudentEducationContext } from './studentEducation';
 import { generatePlan, iconForTopic } from './coach';
 import { weekdayName, weekdayNameIstanbul, weekGoalPct } from './insights';
 import { calendarDaysUntil, istanbulDateKey } from './countdown';
@@ -417,7 +418,7 @@ export function planChangeProposal(data: AppData): PlanChangeProposal {
   if (tempoDrop >= 10) parts.push(`Bu hafta ayırdığın süre önceki günlere göre %${tempoDrop} azalmış.`);
   const conflictsCoach = Boolean(downs[0] && coachTitles.length && !coachTitles.some((t) => norm(t).includes(norm(downs[0].name))));
   if (conflictsCoach && downs[0]) {
-    parts.push(`Koçumun Yaptığı Program bugün ${coachTitles.join(', ')} diyor; ${downs[0].name} eklemek koç programıyla çelişebilir. Koç programı otomatik değişmez.`);
+    parts.push(`Koçun Programı bugün ${coachTitles.join(', ')} diyor; ${downs[0].name} eklemek koç programıyla çelişebilir. Koç programı otomatik değişmez.`);
   }
   if (parts.length) {
     parts.push('Programınızda değişiklik yapılmasını öneriyoruz.');
@@ -450,8 +451,8 @@ export function examPrepPlan(data: AppData, exam: ExamTarget): ExamPrepPlan {
     const kind = i === horizon - 1 ? 'Mini deneme / karma tekrar' : i % 2 === 0 ? 'Konu tekrarı' : 'Soru çözümü';
     return { title: `${i + 1}. Gün — ${topic}`, body: kind };
   });
-  const month = Number(String(exam.date).slice(5, 7));
-  const period = month >= 9 || month === 1 ? '1. dönem' : month >= 2 && month <= 6 ? '2. dönem' : 'dönem belirtilmedi';
+  const at = /^\d{4}-\d{2}-\d{2}$/.test(exam.date) ? new Date(`${exam.date}T12:00:00`) : new Date();
+  const period = academicPeriodLabel(at) || 'dönem belirtilmedi';
   return {
     examId: exam.id,
     title: exam.title,
@@ -630,14 +631,18 @@ export function getStudentProgress(data: AppData, live?: number): StudentState {
 
 export function studentStateLines(data: AppData): string[] {
   const s = getStudentProgress(data);
+  const edu = getStudentEducationContext(data);
+  const fieldHint = aytFieldHint(edu);
   const lines = [
-    `Sınıf: ${s.grade || 'belirtilmedi'}. Alan: ${s.track || 'belirtilmedi'}. Hedef: ${s.dept || 'belirtilmedi'}${s.rank > 0 ? ` sıra ${s.rank}` : ''}.`,
+    `Sınıf: ${s.grade || 'belirtilmedi'}. Alan: ${s.track || 'belirtilmedi'}${edu.fieldShort ? ` (${edu.fieldShort})` : ''}. Hedef: ${s.dept || 'belirtilmedi'}${s.rank > 0 ? ` sıra ${s.rank}` : ''}.`,
     `Tipik günlük kapasite: ${s.capacity.typicalDayMinutes} dk. Bugün çalışma saati ${s.capacity.todayTimer} dk, kütüphane ${s.capacity.todayLibrary} dk.`,
   ];
+  if (fieldHint) lines.push(`Alanına uygun odak: ${fieldHint}. Başka alanın AYT konularını önerme.`);
+  if (edu.periodLabel) lines.push(`Okul dönemi (tarihten): ${edu.periodLabel}.`);
   if (s.lastExam) lines.push(`Son deneme ${s.lastExam.name} (${s.lastExam.date}): TYT ${s.lastExam.tyt}${s.lastExam.delta != null ? ` (Δ ${s.lastExam.delta > 0 ? '+' : ''}${s.lastExam.delta})` : ''}.`);
   if (s.gaps[0]) lines.push(`Öncelikli eksik: ${s.gaps.slice(0, 4).map((g) => `${g.subject}/${g.name} %${g.level}`).join(', ')}.`);
   if (s.scheduleToday.length) lines.push(`Ders Programım bugün: ${s.scheduleToday.map((b) => `${b.title} ${b.minutes} dk`).join(', ')}.`);
-  if (s.coachToday.length) lines.push(`Koçumun Yaptığı Program bugün: ${s.coachToday.map((b) => `${b.title} ${b.minutes} dk`).join(', ')}. Koç programını sessizce değiştirme.`);
+  if (s.coachToday.length) lines.push(`Koçun Programı bugün: ${s.coachToday.map((b) => `${b.title} ${b.minutes} dk`).join(', ')}. Koç programını sessizce değiştirme.`);
   if (s.planChange.conflictsCoach) lines.push(`Uyarı: öneri koç programıyla çelişebilir. ${s.planChange.reason}`);
   if (s.activity[0]) lines.push(`Son işlem: ${s.activity.slice(0, 3).map((a) => a.text).join('; ')}.`);
   if (s.coachTasks.length) lines.push(`Koç görevleri: ${s.coachTasks.join('; ')}.`);
@@ -726,7 +731,7 @@ export function buildTodayFocus(data: AppData, cards?: SubjectCard[]): TodayFocu
   const board = buildAnalyticsBoard(data);
   const unit = Math.max(25, Math.min(60, Math.round(cap.typicalDayMinutes / 4) || 40));
   const own = focusFromBlocks(data, subjects, studentOwnedSchedule(data), 'Ders Programım');
-  const coachBlocks = focusFromBlocks(data, subjects, coachOwnedSchedule(data), 'Koçumun Yaptığı Program');
+  const coachBlocks = focusFromBlocks(data, subjects, coachOwnedSchedule(data), 'Koçun Programı');
   if (own.length || coachBlocks.length) {
     return [...own, ...coachBlocks.filter((c) => !own.some((o) => norm(o.subject) === norm(c.subject) && norm(o.topic) === norm(c.topic)))]
       .map((x, i) => ({ ...x, order: i + 1 }));

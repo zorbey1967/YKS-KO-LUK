@@ -59,6 +59,12 @@ describe('alan bazlı müfredat (regresyon A–C)', () => {
     }
   });
 
+  it('10. sınıf öğrencisine YKS/AYT konu ağacı ana sistem olarak gelmez', () => {
+    const keys = Object.keys(curriculumForStudent('10. Sınıf', 'Eşit Ağırlık'));
+    expect(keys.some((k) => /^TYT\b|^AYT\b|^YDT\b/.test(k))).toBe(false);
+    expect(keys.length).toBeGreaterThan(3);
+  });
+
   it('SÖZ ve DİL alan dersleri doğru filtrelenir', () => {
     const soz = Object.keys(curriculumForStudent('Mezun / YKS', 'Sözel'));
     expect(soz).toContain('AYT Edebiyat');

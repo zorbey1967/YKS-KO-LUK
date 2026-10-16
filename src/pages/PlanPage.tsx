@@ -82,9 +82,15 @@ export function PlanPage() {
       <div>
         <div className="card">
           <div className="section-title">
-            <h3>Bugün</h3>
+            <h3>Akıllı Plan</h3>
             <span>{data.grade}{data.track ? ` · ${data.track}` : ''}{data.dept ? ` · ${data.dept}` : ''}</span>
           </div>
+          <p style={{ marginTop: 0 }}>
+            Bu plan deneme sonuçların, günlük/haftalık ne kadar çalışmak istediğin ve hedefin doğrultusunda hazırlanır.
+          </p>
+          <p className="muted">
+            Ayrıca sınıfın, alanın, konu ilerlemen, koç programı ve yaklaşan sınavların dikkate alınır. Koç programı varsa kendi planın onunla çakışmayacak şekilde üretilir; onayın olmadan değişmez.
+          </p>
           <p className="muted" style={{ marginTop: 0 }}>
             Bugün {state.capacity.todayTotal} dk (program {state.capacity.todaySchedule} · çalışma saati {state.capacity.todayTimer} · kütüphane {state.capacity.todayLibrary}).
             Tipik tempo {state.capacity.typicalDayMinutes} dk.
@@ -161,7 +167,7 @@ export function PlanPage() {
             <>
               <p><span className="chip">Öneriliyor</span> Programınızda değişiklik yapılmasını öneriyoruz.</p>
               <p className="muted">{state.planChange.reason}</p>
-              {state.planChange.conflictsCoach ? <p className="notice">Koçumun Yaptığı Program otomatik değişmez.</p> : null}
+              {state.planChange.conflictsCoach ? <p className="notice">Koçun Programı otomatik değişmez.</p> : null}
               <div className="actions">
                 <button className="btn primary" type="button" onClick={() => {
                   setData(acceptPlanChange(data, state.capacity.typicalDayMinutes));
@@ -197,13 +203,13 @@ export function PlanPage() {
 
         {state.coachWeekFocus.some((d) => d.minutes) ? (
           <div className="card" style={{ marginTop: 16 }}>
-            <div className="section-title"><h3>Koçumun Yaptığı Program</h3></div>
+            <div className="section-title"><h3>Koçun Programı</h3></div>
             {state.coachToday.length ? <p className="muted">Bugün: {state.coachToday.map((b) => `${b.title} ${b.minutes} dk`).join(' · ')}</p> : null}
             {state.coachWeekFocus.map((d) => (
               <div className="kpi" key={`c-${d.day}`}><div>{d.day}<br /><small className="muted">{d.titles.join(', ') || 'boş'}</small></div><b>{d.minutes} dk</b></div>
             ))}
           </div>
-        ) : <div className="card" style={{ marginTop: 16 }}><div className="section-title"><h3>Koçumun Yaptığı Program</h3></div><p className="muted">Koç henüz program yazmadı. Uydurma program yok.</p></div>}
+        ) : <div className="card" style={{ marginTop: 16 }}><div className="section-title"><h3>Koçun Programı</h3></div><p className="muted">Koç henüz program yazmadı. Uydurma program yok.</p></div>}
 
         <div className="card" style={{ marginTop: 16 }}>
           <div className="section-title"><h3>Haftalık tempo</h3></div>
