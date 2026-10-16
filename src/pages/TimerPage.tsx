@@ -416,11 +416,11 @@ export function TimerPage() {
       <div className="card timer-side">
         <div className="section-title"><h3>Çalışma Sürem</h3></div>
         <div className="grid stats">
-          <div className="card stat"><div className="label">BUGÜN</div><div className="value">{formatMinutes(progress.capacity.todayTotal)}</div><div className="sub">Timer {formatMinutes(progress.capacity.todayTimer)} · Kütüphane {formatMinutes(progress.capacity.todayLibrary)}</div></div>
-          <div className="card stat"><div className="label">BU HAFTA</div><div className="value">{formatMinutes(progress.capacity.weekMinutes)}</div><div className="sub">Timer {formatMinutes(progress.capacity.weekTimer)} · Kütüphane {formatMinutes(progress.capacity.weekLibrary)}</div></div>
-          <div className="card stat"><div className="label">BU AY</div><div className="value">{formatMinutes(progress.capacity.monthTotal)}</div><div className="sub">Timer {formatMinutes(progress.capacity.monthTimer)} · Kütüphane {formatMinutes(progress.capacity.monthLibrary)}</div></div>
+          <div className="card stat"><div className="label">BUGÜN</div><div className="value">{formatMinutes(progress.capacity.todayTotal)}</div><div className="sub">Çalışma saati {formatMinutes(progress.capacity.todayTimer)} · Kütüphane {formatMinutes(progress.capacity.todayLibrary)}</div></div>
+          <div className="card stat"><div className="label">BU HAFTA</div><div className="value">{formatMinutes(progress.capacity.weekMinutes)}</div><div className="sub">Çalışma saati {formatMinutes(progress.capacity.weekTimer)} · Kütüphane {formatMinutes(progress.capacity.weekLibrary)}</div></div>
+          <div className="card stat"><div className="label">BU AY</div><div className="value">{formatMinutes(progress.capacity.monthTotal)}</div><div className="sub">Çalışma saati {formatMinutes(progress.capacity.monthTimer)} · Kütüphane {formatMinutes(progress.capacity.monthLibrary)}</div></div>
         </div>
-        <p className="muted">Koçumun programı bugün {formatMinutes(progress.coachToday.reduce((a, b) => a + b.minutes, 0))} · hafta {formatMinutes(progress.coachWeekFocus.reduce((a, d) => a + d.minutes, 0))}. Timer ve kütüphane ayrı sayılır.</p>
+        <p className="muted">Koçumun programı bugün {formatMinutes(progress.coachToday.reduce((a, b) => a + b.minutes, 0))} · hafta {formatMinutes(progress.coachWeekFocus.reduce((a, d) => a + d.minutes, 0))}. Çalışma saati ve kütüphane ayrı sayılır.</p>
         {progress.capacity.weekTrend.map((d) => (
           <div className="kpi" key={d.date}><div>{d.day}</div><b>{formatMinutes(d.minutes)}</b></div>
         ))}

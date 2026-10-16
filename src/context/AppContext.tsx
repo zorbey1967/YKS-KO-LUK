@@ -13,6 +13,7 @@ import { mergeAppData } from '../lib/syncMerge';
 import { resolveAccessGate, type AccessGate } from '../lib/accessGate';
 import { consumeOAuthRedirect, noteOAuthAuthEvent, oauthExchangeInFlight, urlHasOAuthCallback } from '../lib/authCallback';
 import { appendLibrarySession, invalidateStudentProgress } from '../lib/studentProgress';
+import { resetAiCoachCache } from '../lib/aiCoachAnalysis';
 import { emptyLibraryPrefs } from '../lib/libraryPresence';
 
 type Ctx = {
@@ -104,6 +105,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     saveData(next, uid ?? userRef.current?.id ?? null);
   }, []);
 
+  const bumpCaches = useCallback(() => {
+    invalidateStudentProgress();
+    resetAiCoachCache();
+  }, []);
+
   const pushCloud = useCallback(async (payload: AppData) => {
     const u = userRef.current;
     if (!supabase || !u || !cloudReady.current) return;
@@ -122,14 +128,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (!res.ok && res.data) {
         body = { ...mergeAppData(body, res.data), syncRev: res.rev };
         persistLocal(body, u.id);
-        invalidateStudentProgress();
+        bumpCaches();
         setDataState(body);
         res = await pushStudentData(body);
       }
       if (res.ok) {
         const next = { ...body, syncRev: res.rev };
         persistLocal(next, u.id);
-        invalidateStudentProgress();
+        bumpCaches();
         setDataState(next);
         setCloudStatus('Bulut senkron');
         return;
@@ -139,18 +145,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setCloudStatus('Yerel (bulut yok)');
       console.warn(e);
     }
-  }, [persistLocal]);
+  }, [bumpCaches, persistLocal]);
 
   const setData = useCallback((next: AppData | ((prev: AppData) => AppData)) => {
     setDataState((prev) => {
       const value = typeof next === 'function' ? next(prev) : next;
-      invalidateStudentProgress();
+      bumpCaches();
       persistLocal(value);
       window.clearTimeout(pushTimer.current);
       pushTimer.current = window.setTimeout(() => void pushCloud(value), 700);
       return value;
     });
-  }, [persistLocal, pushCloud]);
+  }, [bumpCaches, persistLocal, pushCloud]);
 
   const loadCloudProfile = useCallback(async (u: User) => {
     if (!supabase) return null;
@@ -220,7 +226,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (cloudProfile?.target_rank != null) next = { ...next, rank: Number(cloudProfile.target_rank) };
       next = applyProfileSeed(next, cloudProfile);
       cloudReady.current = true;
-      invalidateStudentProgress();
+      bumpCaches();
       setDataState(next);
       persistLocal(next, u.id);
       if (shouldPush) void pushCloud(next);
@@ -229,11 +235,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       cloudReady.current = false;
       setCloudStatus('Bağlantı hatası');
       const local = loadData(u.id);
-      invalidateStudentProgress();
+      bumpCaches();
       setDataState(local);
       persistLocal(local, u.id);
     }
-  }, [persistLocal, pushCloud]);
+  }, [bumpCaches, persistLocal, pushCloud]);
 
   const flushLibraryForUser = useCallback((leaving: User | null) => {
     if (!leaving?.id) return;
@@ -259,7 +265,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setServerOwner(null);
         setCloudStatus(isSupabaseConfigured() ? 'Giriş yok' : 'Yapılandırılmadı');
         setProfile({ name: readLocal('yks_guest_name'), email: '', plan: '' });
-        invalidateStudentProgress();
+        bumpCaches();
         setDataState(loadData(null));
         setAuthReady(true);
         return;
@@ -286,7 +292,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const queued = hydrateChain.current.then(run, run);
     hydrateChain.current = queued.catch(() => undefined);
     await queued;
-  }, [flushLibraryForUser, loadCloudProfile, pullCloud]);
+  }, [bumpCaches, flushLibraryForUser, loadCloudProfile, pullCloud]);
 
   const refreshAuth = useCallback(async () => {
     if (!supabase) {

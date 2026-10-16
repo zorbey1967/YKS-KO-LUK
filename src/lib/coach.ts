@@ -144,7 +144,7 @@ export function generatePlan(data: AppData, minutes: number, focus: string): Pla
     remain -= mm;
   };
   if (!weakName) {
-    add('Kayıtlı zayıf konu yok — Hedefim veya soru bankasından veri gir', Math.min(20, unit));
+    add('Kayıtlı zayıf konu yok — Hesabım ve Konular’dan durumunu işaretle', Math.min(20, unit));
   }
 
   if (focus === 'Programdan bugün') {

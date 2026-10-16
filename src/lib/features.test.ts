@@ -17,6 +17,7 @@ describe('soru bankası feature flag', () => {
     expect(readFileSync(join(process.cwd(), 'src/pages/AccountPage.tsx'), 'utf8')).not.toMatch(/soru bankası/i);
     expect(readFileSync(join(process.cwd(), 'src/pages/MembershipPage.tsx'), 'utf8')).toContain('QUESTION_BANK_ENABLED');
     expect(readFileSync(join(process.cwd(), 'src/lib/site.ts'), 'utf8')).not.toMatch(/soru bankası/i);
+    expect(readFileSync(join(process.cwd(), 'index.html'), 'utf8')).not.toMatch(/soru bankası/i);
     const app = readFileSync(join(process.cwd(), 'src/App.tsx'), 'utf8');
     expect(app).toContain('QuestionBankPage');
     expect(app).toContain('QUESTION_BANK_ENABLED');
@@ -115,5 +116,7 @@ describe('production kaynak dosyaları', () => {
     expect(schedule).not.toContain("saveStudentWeekPlan({ studentId: user.id");
     expect(schedule).toContain('studentOwnedSchedule');
     expect(readFileSync(join(root, 'src/context/AppContext.tsx'), 'utf8')).toContain('flushLibraryForUser');
+    expect(readFileSync(join(root, 'src/context/AppContext.tsx'), 'utf8')).toContain('resetAiCoachCache');
+    expect(readFileSync(join(root, 'src/lib/aiCoachAnalysis.ts'), 'utf8')).toContain('export function resetAiCoachCache');
   });
 });

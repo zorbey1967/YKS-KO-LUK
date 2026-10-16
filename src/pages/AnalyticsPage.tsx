@@ -86,9 +86,10 @@ export function AnalyticsPage() {
   const count = examCountdown(data.examDate);
   const lastCalc = data.calcs.slice(0, 4);
   const elite = eliteReport(data);
-  const bankWeak = weakBankTopics(data, 5);
+  const bankWeak = QUESTION_BANK_ENABLED ? weakBankTopics(data, 5) : [];
+  const bankCount = QUESTION_BANK_ENABLED ? bankSolved : 0;
 
-  if (!board.hasData && !total && !qs && !bankSolved && data.weekHours <= 0) {
+  if (!board.hasData && !total && !qs && !bankCount && data.weekHours <= 0) {
     return (
       <div className="card notice">
         <h3>GENEL PERFORMANS</h3>
@@ -218,10 +219,10 @@ export function AnalyticsPage() {
       )}
 
       <div hidden={tab !== 'genel'}>
-      {total || data.exams.length || qs || bankSolved || data.weekHours > 0 ? (
+      {total || data.exams.length || qs || bankCount || data.weekHours > 0 ? (
         <div className="grid stats">
           {total ? <div className="card stat"><div className="label">TOPLAM ÇALIŞMA</div><div className="value">{(total / 60).toFixed(1)}s</div><div className="sub">Kayıtlı oturumlar</div></div> : null}
-          {(qs || bankSolved) ? <div className="card stat"><div className="label">SORU</div><div className="value">{qs + bankSolved}</div><div className="sub">{bankSolved ? `Banka doğruluk %${acc}` : 'Kayıtlı set'}</div></div> : null}
+          {(qs || bankCount) ? <div className="card stat"><div className="label">SORU</div><div className="value">{qs + bankCount}</div><div className="sub">{QUESTION_BANK_ENABLED && bankSolved ? `Doğruluk %${acc}` : 'Kayıtlı set'}</div></div> : null}
           {data.weekHours > 0 ? <div className="card stat"><div className="label">HAFTA</div><div className="value">{weekPct}%</div><div className="sub">{(week / 60).toFixed(1)} / {weekGoal.hoursLabel}</div></div> : null}
         </div>
       ) : null}
@@ -229,7 +230,7 @@ export function AnalyticsPage() {
       {data.examDate ? (
         <div className="notice banner" style={{ marginBottom: 16 }}>{count.past ? 'Sınav tarihi geçti.' : `${examTitle(data)}’ye ${count.label}.`}{data.tasks.length ? ` Görev tamamlanma %${Math.round((done / data.tasks.length) * 100)}.` : ''}</div>
       ) : null}
-      {(data.examDate || bankSolved || data.exams.length) ? (
+      {(data.examDate || bankCount || data.exams.length) ? (
       <div className="card" style={{ marginBottom: 16 }}>
         <div className="section-title"><h3>Sınav temposu</h3><span>{elite.phase}</span></div>
         {elite.lines.map((ln) => <p key={ln.slice(0, 40)} className="muted" style={{ margin: '6px 0' }}>{ln}</p>)}
@@ -335,7 +336,7 @@ export function AnalyticsPage() {
               <div className="topic-head"><b>{x.name}</b><span>{x.level}%</span></div>
               <div className="progress"><i style={{ width: `${x.level}%` }} /></div>
             </div>
-          )) : <div className="empty">Konu takibi ve banka çözümü boş.</div>}
+          )) : <div className="empty">Konu takibi boş.</div>}
         </div>
         <div className="card">
           <div className="section-title"><h3>Ders süreleri</h3></div>

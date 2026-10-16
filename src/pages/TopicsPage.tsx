@@ -70,7 +70,7 @@ export function TopicsPage() {
                   <div className="progress"><i style={{ width: `${t.level}%` }} /></div>
                   <div className="actions" style={{ marginTop: 6 }}>
                     <button className="btn secondary" type="button" onClick={() => setStatus(card.subject, t.name, 'done')}>🟢 BİTTİ</button>
-                    <button className="btn secondary" type="button" onClick={() => setStatus(card.subject, t.name, 'in_progress', Math.max(40, t.level || 50))}>🟡 DEVAM EDİYOR</button>
+                    <button className="btn secondary" type="button" onClick={() => setStatus(card.subject, t.name, 'in_progress', Math.max(40, t.level || 50))}>🟡 DEVAM EDİYORUM</button>
                     <button className="btn secondary" type="button" onClick={() => setStatus(card.subject, t.name, 'not_started')}>⚪ BAŞLAMADIM</button>
                     {QUESTION_BANK_ENABLED ? <button className="btn secondary" type="button" onClick={() => {
                       setBankJump(jumpFromTracker(data.grade, card.subject, t.name));

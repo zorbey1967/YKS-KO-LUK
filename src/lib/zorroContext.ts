@@ -6,6 +6,7 @@ import { todaySchedule, weekdayNameIstanbul } from './insights';
 import { addCalendarDays } from './calendar';
 import { istanbulToday } from './meeting';
 import { detectSubject } from './aiTutor';
+import { QUESTION_BANK_ENABLED } from './features';
 import { lastBankTopic, weakBankTopics } from './practice';
 import { type ZorroRoute } from './zorroIntent';
 import { masteryLine, topicMastery } from './zorroMastery';
@@ -42,10 +43,10 @@ export function selectZorroContext(data: AppData, q: string, route: ZorroRoute):
     if (subject) lines.push(`Ders ipucu: ${subject}.`);
     const master = topicMastery(data, subject || q).slice(0, 3);
     if (master.length) lines.push(master.map(masteryLine).join(' | '));
-    else lines.push('Bu konu için soru bankası denemesi yok.');
+    else lines.push('Bu konu için kayıtlı çalışma veya deneme yok.');
     const mem = learningLines(data, subject || q, 3);
     if (mem.length) lines.push(`Öğrenme notu (kalıcı, öğrencinin belirttiği): ${mem.join(' | ')}`);
-    const weak = weakBankTopics(data, 2);
+    const weak = QUESTION_BANK_ENABLED ? weakBankTopics(data, 2) : [];
     if (weak.length) lines.push(`Kayıtlı zayıf: ${weak.map((w) => `${w.topic} %${w.acc} (${w.answered} soru)`).join(', ')}.`);
     return lines.join('\n');
   }
@@ -73,8 +74,8 @@ export function selectZorroContext(data: AppData, q: string, route: ZorroRoute):
       ? `Açık görev: ${open.slice(0, 5).map((t) => `${t.title} (${t.origin === 'zorro' ? 'Zorro' : t.origin === 'coach' ? 'Koç' : 'Öğrenci'} • ${t.date})`).join('; ')}.`
       : `Açık görev: ${MISSING}`);
     if (s.todayStudy > 0) lines.push(`Bugün kayıtlı çalışma: ${s.todayStudy} dk.`);
-    const weak = weakBankTopics(data, 3);
-    if (weak.length) lines.push(`Zayıf banka: ${weak.map((w) => w.topic).join(', ')}.`);
+    const weak = QUESTION_BANK_ENABLED ? weakBankTopics(data, 3) : [];
+    if (weak.length) lines.push(`Kayıtlı zayıf konular: ${weak.map((w) => w.topic).join(', ')}.`);
     if (primary) lines.push(`Ana sınav ${primary.title} ${clock.days} gün (hesaplanmış).`);
     lines.push('Çakışan randevu saati uydurma; randevu listesi bu istekte yoksa yok de.');
     return lines.join('\n');

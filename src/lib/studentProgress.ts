@@ -562,7 +562,7 @@ export function recentStudentActivity(data: AppData, limit = 12): { at: string; 
     const at = s.createdAt || s.date;
     const mins = formatMinutes(sessionMinutes(s));
     if (isLibrarySession(s)) items.push({ at, text: `${mins} Sessiz Kütüphane’de çalışıldı` });
-    else items.push({ at, text: `${s.subject}${s.topic ? ` / ${s.topic}` : ''} çalışıldı · ${mins} timer` });
+    else items.push({ at, text: `${s.subject}${s.topic ? ` / ${s.topic}` : ''} çalışıldı · ${mins}` });
   }
   for (const e of data.exams) {
     items.push({ at: e.date, text: `Deneme eklendi: ${e.name}` });
@@ -633,7 +633,7 @@ export function studentStateLines(data: AppData): string[] {
   const s = getStudentProgress(data);
   const lines = [
     `Sınıf: ${s.grade || 'belirtilmedi'}. Alan: ${s.track || 'belirtilmedi'}. Hedef: ${s.dept || 'belirtilmedi'}${s.rank > 0 ? ` sıra ${s.rank}` : ''}.`,
-    `Tipik günlük kapasite: ${s.capacity.typicalDayMinutes} dk. Bugün timer ${s.capacity.todayTimer} dk, kütüphane ${s.capacity.todayLibrary} dk.`,
+    `Tipik günlük kapasite: ${s.capacity.typicalDayMinutes} dk. Bugün çalışma saati ${s.capacity.todayTimer} dk, kütüphane ${s.capacity.todayLibrary} dk.`,
   ];
   if (s.lastExam) lines.push(`Son deneme ${s.lastExam.name} (${s.lastExam.date}): TYT ${s.lastExam.tyt}${s.lastExam.delta != null ? ` (Δ ${s.lastExam.delta > 0 ? '+' : ''}${s.lastExam.delta})` : ''}.`);
   if (s.gaps[0]) lines.push(`Öncelikli eksik: ${s.gaps.slice(0, 4).map((g) => `${g.subject}/${g.name} %${g.level}`).join(', ')}.`);

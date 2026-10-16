@@ -1,6 +1,6 @@
 import { askZorroPlain } from './coachAi';
 import { buildAnalyticsBoard, type AnalyticsBoard } from './studentAnalytics';
-import { MIN_EXAMS_FOR_TREND, progressFingerprint, studentStateLines, writtenExamFeedback } from './studentProgress';
+import { MIN_EXAMS_FOR_TREND, getStudentProgress, progressFingerprint, studentStateLines, writtenExamFeedback } from './studentProgress';
 import type { AppData, Task } from './types';
 import { today, uid } from './util';
 
@@ -68,7 +68,7 @@ export function localAiCoachReport(data: AppData, board = buildAnalyticsBoard(da
 function factsForModel(data: AppData, board: AnalyticsBoard) {
   const done = data.tasks.filter((t) => t.done).length;
   const open = data.tasks.filter((t) => !t.done).slice(0, 6).map((t) => t.title);
-  const weekMin = data.sessions.reduce((a, s) => a + (s.minutes || 0), 0);
+  const progress = getStudentProgress(data);
   return {
     lastTyt: board.lastTyt,
     lastAyt: board.lastAyt,
@@ -78,16 +78,24 @@ function factsForModel(data: AppData, board: AnalyticsBoard) {
     aytSeries: board.aytSeries.slice(-5),
     subjects: board.subjects.map((s) => ({ name: s.name, last: s.last, avg: s.avg, trend: s.trend, band: s.band })),
     weakAreas: board.weakAreas,
-    goal: { dept: data.dept, rank: data.rank, examDate: data.examDate, weekHours: data.weekHours },
+    goal: { dept: data.dept, rank: data.rank, examDate: data.examDate, weekHours: data.weekHours, grade: data.grade, track: data.track },
     scheduleDays: data.schedule?.days?.length || 0,
     tasksDone: done,
     openTasks: open,
-    recordedStudyMinutes: weekMin,
+    todayTimer: progress.capacity.todayTimer,
+    todayLibrary: progress.capacity.todayLibrary,
+    weekTimer: progress.capacity.weekTimer,
+    weekLibrary: progress.capacity.weekLibrary,
+    topicGaps: progress.gaps.slice(0, 6).map((g) => `${g.subject} / ${g.name}`),
     studentState: studentStateLines(data),
   };
 }
 
 let aiReportCache: { fp: string; report: AiCoachReport } | null = null;
+
+export function resetAiCoachCache() {
+  aiReportCache = null;
+}
 
 export async function requestAiCoachAnalysis(data: AppData): Promise<AiCoachReport> {
   const fp = progressFingerprint(data);
@@ -100,8 +108,8 @@ export async function requestAiCoachAnalysis(data: AppData): Promise<AiCoachRepo
   }
   const facts = factsForModel(data, board);
   const cloud = await askZorroPlain(
-    'Öğrencinin kayıtlı deneme ve net verisini analiz et. Sayı uydurma. Verilmeyen dersi zayıf sayma.',
-    `SADECE bu JSON’daki gerçek kayıtlar:\n${JSON.stringify(facts)}\nKısa Türkçe değerlendirme yaz (en fazla 8 cümle). Yeni net icat etme.`,
+    'Öğrencinin kayıtlı deneme, konu, çalışma ve kütüphane verisini doğal bir koç gibi değerlendir. Sayı uydurma. Verilmeyen dersi zayıf sayma. Olmayan deneme, süre veya görevi yazma.',
+    `SADECE bu JSON’daki gerçek kayıtlar:\n${JSON.stringify(facts)}\nEn fazla 8 kısa Türkçe cümle. Örnek üslup: “Bu konuda oldukça iyi durumdasın.” “Burada son iki denemende düşüş var.” “Matematikte şu konuyu tamamlaman şu anda daha öncelikli.” Yeni net icat etme.`,
   );
   const report = cloud.source === 'ai' && cloud.text && !/yanıt veremiyor|üye/i.test(cloud.text)
     ? { ...local, narrative: cloud.text, source: 'ai' as const }

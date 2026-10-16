@@ -69,7 +69,7 @@ export function MeetingWhiteboard({ room }: { room: Room | null }) {
     if (liveRef.current) drawStroke(ctx, liveRef.current, c.width, c.height);
   }
 
-  function send(kind: 'stroke' | 'clear', stroke?: Stroke) {
+  function send(kind: 'stroke' | 'clear' | 'undo', stroke?: Stroke) {
     if (!room) return;
     const payload = JSON.stringify({ board: true, kind, stroke });
     void room.localParticipant.publishData(new TextEncoder().encode(payload), { reliable: true });
@@ -108,6 +108,15 @@ export function MeetingWhiteboard({ room }: { room: Room | null }) {
           paint();
           return;
         }
+        if (msg.kind === 'undo') {
+          const last = strokesRef.current[strokesRef.current.length - 1];
+          if (last) {
+            strokesRef.current = strokesRef.current.slice(0, -1);
+            redoRef.current = [...redoRef.current, last];
+            paint();
+          }
+          return;
+        }
         if (msg.stroke) {
           strokesRef.current = [...strokesRef.current, msg.stroke];
           paint();
@@ -139,6 +148,7 @@ export function MeetingWhiteboard({ room }: { room: Room | null }) {
           if (!last) return;
           strokesRef.current = strokesRef.current.slice(0, -1);
           redoRef.current = [...redoRef.current, last];
+          send('undo');
           paint();
         }}>Geri</button>
         <button className="chip-btn" type="button" onClick={() => {

@@ -110,7 +110,7 @@ export function HomePage({ onNewTask }: { onNewTask: () => void }) {
       <div className="card" style={{ marginTop: 16 }}>
         <div className="section-title"><h3>Bugün Nasılsın?</h3></div>
         <div className="grid stats">
-          <div className="card stat"><div className="label">BUGÜN NE KADAR ÇALIŞTIM?</div><div className="value">{formatMinutes(state.capacity.todayTotal)}</div><div className="sub">timer {formatMinutes(state.capacity.todayTimer)}</div></div>
+          <div className="card stat"><div className="label">BUGÜN NE KADAR ÇALIŞTIM?</div><div className="value">{formatMinutes(state.capacity.todayTotal)}</div><div className="sub">çalışma saati {formatMinutes(state.capacity.todayTimer)}</div></div>
           <div className="card stat"><div className="label">SESSİZ KÜTÜPHANEDE NE KADAR KALDIM?</div><div className="value">{formatMinutes(state.capacity.todayLibrary)}</div><div className="sub">hafta {formatMinutes(state.capacity.weekLibrary)}</div></div>
           <div className="card stat"><div className="label">GÖREVLER</div><div className="value">{state.todayTaskTitles.filter((t) => t.startsWith('✓')).length}</div><div className="sub">{state.todayTaskTitles.length ? `${state.todayTaskTitles.length} bugün` : `${state.tasks.open} açık`}</div></div>
           <div className="card stat"><div className="label">BUGÜN KONU</div><div className="value" style={{ fontSize: 18 }}>{state.todayTopics[0] ? state.todayTopics.length : '—'}</div><div className="sub">{state.todayTopics.slice(0, 2).join(' · ') || 'kayıt yok'}</div></div>
