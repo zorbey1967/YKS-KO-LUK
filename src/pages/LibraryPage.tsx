@@ -1,14 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { getPersonDisplayName } from '../lib/displayName';
+import { getPersonDisplayName, splitPersonName } from '../lib/displayName';
 import {
   LIBRARY_CLOCK_MS,
+  LIBRARY_EMOJI_LABELS,
+  LIBRARY_EMOJIS,
   LIBRARY_HEARTBEAT_MS,
   LIBRARY_ROOM_ID,
-  LIBRARY_ROOMS,
   formatStudyClock,
   libraryDisplayName,
+  libraryShownLabel,
   libraryTextLeaksEmail,
+  pickLibraryEmoji,
   resolveLibraryPrefs,
   roomLabel,
   sanitizeLibraryPeers,
@@ -18,6 +21,7 @@ import {
   type LibraryPeer,
 } from '../lib/libraryPresence';
 import { supabase, withTimeout } from '../lib/supabase';
+import { appendLibrarySession } from '../lib/studentProgress';
 
 export function LibraryPage() {
   const { user, profile, go, data, setData } = useApp();
@@ -25,6 +29,7 @@ export function LibraryPage() {
   const [share, setShare] = useState(false);
   const [msg, setMsg] = useState('');
   const [consentOpen, setConsentOpen] = useState(false);
+  const [pendingRoom, setPendingRoom] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const tickInFlight = useRef(false);
   const profileName = getPersonDisplayName(profile?.name, '');
@@ -40,7 +45,7 @@ export function LibraryPage() {
     [nameMode, profileName, user],
   );
 
-  const persistPrefs = useCallback((next: { nameMode?: LibraryNameMode | null; joinedRoomId?: string | null; joinedAt?: string | null }) => {
+  const persistPrefs = useCallback((next: { nameMode?: LibraryNameMode | null; joinedRoomId?: string | null; joinedAt?: string | null; emoji?: string | null }) => {
     if (!user) return;
     setData((prev) => {
       const merged = { ...prev.libraryPrefs, ...next };
@@ -51,9 +56,14 @@ export function LibraryPage() {
   }, [setData, user]);
 
   const leaveRoom = useCallback(async () => {
-    if (!user || !supabase) return;
-    persistPrefs({ joinedRoomId: null, joinedAt: null });
+    if (!user) return;
+    setData((prev) => {
+      const closed = appendLibrarySession(prev, prev.libraryPrefs.joinedAt);
+      writeLibraryJoined(user.id, false);
+      return { ...closed, libraryPrefs: { ...closed.libraryPrefs, joinedRoomId: null, joinedAt: null } };
+    });
     setPeers([]);
+    if (!supabase) return;
     try {
       await withTimeout(
         supabase.from('study_presence').delete().eq('room_id', LIBRARY_ROOM_ID).eq('user_id', user.id),
@@ -61,7 +71,7 @@ export function LibraryPage() {
     } catch {
       setMsg('Ayrılma kaydı yazılamadı. Birkaç dakika içinde listeden düşersin.');
     }
-  }, [persistPrefs, user]);
+  }, [setData, user]);
 
   useEffect(() => {
     if (!joined) return;
@@ -81,9 +91,10 @@ export function LibraryPage() {
       if (typeof document !== 'undefined' && document.hidden) return;
       tickInFlight.current = true;
       try {
-        const shown = libraryTextLeaksEmail(display)
+        const safeName = libraryTextLeaksEmail(display)
           ? libraryDisplayName({ mode: 'alias', profileName: '', userId: user.id })
           : display;
+        const shown = libraryShownLabel(pickLibraryEmoji(user.id, prefs.emoji), safeName);
         const hb = await withTimeout(sb.rpc('library_heartbeat', { p_display: shown, p_share: share }));
         if (!alive) return;
         if (hb.error) {
@@ -109,7 +120,7 @@ export function LibraryPage() {
       window.clearInterval(id);
       document.removeEventListener('visibilitychange', vis);
     };
-  }, [user, display, share, joined, nameMode]);
+  }, [user, display, share, joined, nameMode, prefs.emoji]);
 
   if (!user) {
     return (
@@ -121,26 +132,38 @@ export function LibraryPage() {
     );
   }
 
+  function joinRoom(roomId: string, mode: LibraryNameMode = nameMode || 'alias') {
+    if (!user) return;
+    persistPrefs({
+      nameMode: mode,
+      emoji: pickLibraryEmoji(user.id, prefs.emoji),
+      joinedRoomId: roomId,
+      joinedAt: prefs.joinedAt && prefs.joinedRoomId === roomId ? prefs.joinedAt : new Date().toISOString(),
+    });
+    setPendingRoom(null);
+    setConsentOpen(false);
+    setMsg('');
+  }
+
   function acceptRealName() {
-    persistPrefs({ nameMode: 'real' });
+    if (pendingRoom) joinRoom(pendingRoom, 'real');
+    else persistPrefs({ nameMode: 'real' });
     setConsentOpen(false);
   }
 
   function rejectRealName() {
-    persistPrefs({ nameMode: 'alias' });
+    if (pendingRoom) joinRoom(pendingRoom, 'alias');
+    else persistPrefs({ nameMode: 'alias' });
     setConsentOpen(false);
   }
 
   function requestJoin(roomId: string) {
     if (!nameMode) {
+      setPendingRoom(roomId);
       setConsentOpen(true);
       return;
     }
-    persistPrefs({
-      joinedRoomId: roomId,
-      joinedAt: prefs.joinedAt && prefs.joinedRoomId === roomId ? prefs.joinedAt : new Date().toISOString(),
-    });
-    setMsg('');
+    joinRoom(roomId);
   }
 
   const elapsedMs = joined && prefs.joinedAt ? Math.max(0, now - Date.parse(prefs.joinedAt)) : 0;
@@ -166,29 +189,50 @@ export function LibraryPage() {
 
       {(consentOpen || (!nameMode && joined)) ? (
         <div className="card" style={{ marginTop: 16 }}>
-          <p>Adınız ve soyadınız kütüphanede görünsün mü?</p>
-          {profileName ? <p className="muted">Profilindeki ad: {profileName}</p> : (
-            <p className="muted">Profilinde ad yoksa güvenli görünen ad kullanılır. E-posta asla gösterilmez.</p>
-          )}
+          <p>Adınız ve soyadınız olarak görünmek ister misiniz?</p>
+          {(() => {
+            const parts = splitPersonName(profileName);
+            return parts.firstName ? (
+              <>
+                <p>Ad: {parts.firstName}</p>
+                {parts.lastName ? <p>Soyad: {parts.lastName}</p> : null}
+              </>
+            ) : <p className="muted">Hayır dersen anonim öğrenci adı görünür. E-posta ve hesap kimliği gösterilmez.</p>;
+          })()}
+          <p className="muted">Emoji seç (odada kartında görünür):</p>
+          <div className="actions" style={{ flexWrap: 'wrap' }}>
+            {LIBRARY_EMOJIS.map((em) => (
+              <button
+                key={em}
+                className={`chip-btn${prefs.emoji === em ? ' on' : ''}`}
+                type="button"
+                onClick={() => persistPrefs({ emoji: em })}
+              >{em}</button>
+            ))}
+          </div>
           <div className="actions" style={{ marginTop: 8 }}>
-            <button className="btn primary" type="button" onClick={acceptRealName}>Evet, kullan</button>
-            <button className="btn secondary" type="button" onClick={rejectRealName}>Hayır, gizli isim kullan</button>
+            <button className="btn primary" type="button" onClick={acceptRealName}>Evet, adımı göster</button>
+            <button className="btn secondary" type="button" onClick={rejectRealName}>Hayır, anonim</button>
           </div>
         </div>
       ) : null}
 
-      <div className="grid two" style={{ marginTop: 16 }}>
-        {LIBRARY_ROOMS.map((room) => {
-          const inThis = prefs.joinedRoomId === room.id;
+      <div className="library-grid" style={{ marginTop: 16 }}>
+        {LIBRARY_EMOJIS.map((em) => {
+          const selected = prefs.emoji === em;
           return (
-            <div className="card" key={room.id}>
-              <div className="section-title"><h3>{room.name}</h3></div>
-              <p className="muted">{inThis ? activeCount : peers.length} öğrenci</p>
-              <div className="actions" style={{ marginTop: 8 }}>
-                {inThis ? (
+            <div className="library-card" key={em}>
+              <div className="library-emoji">{em}</div>
+              <b>{LIBRARY_EMOJI_LABELS[em]}</b>
+              <p className="muted">{selected && joined ? '🟢 Odasındasın' : 'Oda'}</p>
+              <div className="actions" style={{ justifyContent: 'center', marginTop: 8 }}>
+                {joined && selected ? (
                   <button className="btn secondary" type="button" onClick={() => void leaveRoom()}>Ayrıl</button>
                 ) : (
-                  <button className="btn primary" type="button" onClick={() => requestJoin(room.id)}>Odaya Katıl</button>
+                  <button className="btn primary" type="button" onClick={() => {
+                    persistPrefs({ emoji: em });
+                    requestJoin(LIBRARY_ROOM_ID);
+                  }}>Katıl</button>
                 )}
               </div>
             </div>
@@ -209,16 +253,22 @@ export function LibraryPage() {
           </div>
           <div className="card" style={{ marginTop: 16 }}>
             <div className="section-title"><h3>Şu anda birlikte çalışanlar</h3></div>
-            {!peers.length ? <p className="muted">Şu an başka katılımcı görünmüyor.</p> : null}
-            {peers.map((p) => (
-              <div className="plan-item" key={`${p.display_name}-${p.minutes}`}>
-                <span>
-                  {p.display_name}
-                  <br />
-                  <small className="muted">{formatStudyClock(p.minutes * 60_000)} • {p.minutes > 0 ? 'aktif' : 'pasif'}</small>
-                </span>
+            <div className="library-grid">
+              <div className="library-card">
+                <div className="library-emoji">{pickLibraryEmoji(user.id, prefs.emoji)}</div>
+                <b>{display}</b>
+                <p className="muted">🟢 Çalışıyor</p>
+                <p>⏱ {myMinutes} dk</p>
               </div>
-            ))}
+              {peers.filter((p) => p.display_name !== display).map((p) => (
+                <div className="library-card" key={p.display_name}>
+                  <div className="library-emoji">{p.emoji || '🦁'}</div>
+                  <b>{p.display_name}</b>
+                  <p className="muted">{p.minutes > 0 ? '🟢 Çalışıyor' : '⚪ Pasif'}</p>
+                  <p>⏱ {p.minutes} dk</p>
+                </div>
+              ))}
+            </div>
           </div>
         </>
       ) : null}

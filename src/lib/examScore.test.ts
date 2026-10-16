@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { examById, searchExamCatalog } from '../data/examCatalog';
 import { scoreCatalogExam } from './examScore';
-import { canCoachEditPlan, canStudentEditPlan, tytNet } from './weekPlan';
+import { canCoachEditPlan, canStudentEditPlan, tytNet, weekPlanFromSchedule } from './weekPlan';
+import { emptySchedule } from './types';
 
 describe('deneme katalog ve net', () => {
   it('bilinmeyen sınav adı eşleşmez; anahtar uydurulmaz', () => {
@@ -30,5 +31,13 @@ describe('haftalık program kilidi', () => {
     expect(canStudentEditPlan('self', false)).toBe(true);
     expect(canCoachEditPlan({ coachId: 'c1', assignedStudent: true, coachActive: true })).toBe(true);
     expect(canCoachEditPlan({ coachId: 'c1', assignedStudent: false, coachActive: true })).toBe(false);
+  });
+
+  it('öğrenci programı koç kaynağından ayrılır', () => {
+    const sch = { ...emptySchedule(), days: [{ day: 'Pazartesi', blocks: [{ title: 'Mat', minutes: 40, icon: '📘' }] }], source: 'self', notes: 'ev' };
+    const plan = weekPlanFromSchedule(sch, 12);
+    expect(plan.lock).toBe('self');
+    expect(plan.days[0].blocks[0].title).toBe('Mat');
+    expect(plan.weekHours).toBe(12);
   });
 });

@@ -17,11 +17,12 @@ export function WeekPlanEditor({
   const [weekHours, setWeekHours] = useState(String(plan.weekHours || ''));
   const [notes, setNotes] = useState(plan.notes);
 
-  function setBlock(di: number, field: 'title' | 'minutes', value: string) {
+  function setBlock(di: number, field: 'title' | 'minutes' | 'start' | 'topic' | 'note', value: string) {
     setDays((prev) => prev.map((d, i) => {
       if (i !== di) return d;
       const block = d.blocks[0] || { title: '', minutes: 0, icon: '📘' };
-      return { ...d, blocks: [{ ...block, [field]: field === 'minutes' ? Number(value) || 0 : value }] };
+      const next = field === 'minutes' ? Number(value) || 0 : value;
+      return { ...d, blocks: [{ ...block, [field]: next }] };
     }));
   }
 
@@ -32,8 +33,11 @@ export function WeekPlanEditor({
       <div className="field"><label>Eksikler ve kısa not</label><textarea value={notes} disabled={!editable} onChange={(e) => setNotes(e.target.value)} /></div>
       {days.map((d, i) => (
         <div className="form-grid" key={d.day} style={{ marginTop: 8 }}>
-          <div className="field"><label>{d.day}</label><input value={d.blocks[0]?.title || ''} disabled={!editable} onChange={(e) => setBlock(i, 'title', e.target.value)} placeholder="Ders / konu" /></div>
+          <div className="field"><label>{d.day}</label><input value={d.blocks[0]?.title || ''} disabled={!editable} onChange={(e) => setBlock(i, 'title', e.target.value)} placeholder="Ders" /></div>
+          <div className="field"><label>Saat</label><input type="time" value={d.blocks[0]?.start || ''} disabled={!editable} onChange={(e) => setBlock(i, 'start', e.target.value)} /></div>
+          <div className="field"><label>Konu</label><input value={d.blocks[0]?.topic || ''} disabled={!editable} onChange={(e) => setBlock(i, 'topic', e.target.value)} placeholder="Konu" /></div>
           <div className="field"><label>Hedef dk</label><input type="number" min={0} max={600} value={d.blocks[0]?.minutes || 0} disabled={!editable} onChange={(e) => setBlock(i, 'minutes', e.target.value)} /></div>
+          <div className="field"><label>Görev / not</label><input value={d.blocks[0]?.note || ''} disabled={!editable} onChange={(e) => setBlock(i, 'note', e.target.value)} placeholder="Kısa not" /></div>
         </div>
       ))}
       {editable ? (

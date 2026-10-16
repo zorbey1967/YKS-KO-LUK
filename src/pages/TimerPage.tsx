@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { STUDY_SUBJECTS, todaySchedule } from '../lib/insights';
+import { curriculumForGrade } from '../lib/curriculum';
 import { eliteReport } from '../lib/elite';
 import { setBankJump } from '../lib/practice';
 import { QUESTION_BANK_ENABLED } from '../lib/features';
@@ -8,6 +9,7 @@ import { today, uid } from '../lib/util';
 import { commitSession, patchSession } from '../lib/studyLoop';
 import { tombstone } from '../lib/syncMerge';
 import { StudySuggestCard } from '../components/StudySuggestCard';
+import { formatMinutes, getStudentProgress } from '../lib/studentProgress';
 import {
   STUDY_KINDS,
   canPersist,
@@ -91,7 +93,10 @@ export function TimerPage() {
       commitLive(synced);
       toast(synced.kind === 'pomodoro' ? 'Blok bitti. 5 dk mola önerilir.' : 'Süre doldu. Çalışılan süreyi kaydedebilirsin.');
     }, 250);
-    return () => window.clearInterval(id);
+    return () => {
+      window.clearInterval(id);
+      writeLive(syncFromClock(liveRef.current, Date.now()));
+    };
   }, [commitLive, toast]);
 
   useEffect(() => {
@@ -116,6 +121,7 @@ export function TimerPage() {
     window.addEventListener('online', onOnline);
     window.addEventListener('offline', onOffline);
     return () => {
+      writeLive(syncFromClock(liveRef.current, Date.now()));
       document.removeEventListener('visibilitychange', onVis);
       window.removeEventListener('beforeunload', onLeave);
       window.removeEventListener('hashchange', onHash);
@@ -131,7 +137,13 @@ export function TimerPage() {
   const gate = canPersist(live, now);
   const todayS = data.sessions.filter((x) => x.date === today()).slice().reverse();
   const totals = dailyTotals(data.sessions, today());
+  const progress = useMemo(() => getStudentProgress(data), [data]);
   const firstBlock = todaySchedule(data)?.blocks[0];
+  const curr = useMemo(() => curriculumForGrade(data.grade), [data.grade]);
+  const subjectOpts = Object.keys(curr).length
+    ? Array.from(new Set([live.subject, ...Object.keys(curr)].filter(Boolean)))
+    : STUDY_SUBJECTS;
+  const topicOpts = curr[live.subject] || [];
   const elite = eliteReport(data);
   const targetMin = elite.dailyMin;
   const alreadySaved = data.sessions.some((s) => s.id === live.id);
@@ -266,20 +278,34 @@ export function TimerPage() {
             value={live.subject}
             onChange={(e) => commitLive(changeSubject(live, e.target.value))}
           >
-            {STUDY_SUBJECTS.map((s) => <option key={s}>{s}</option>)}
+            {subjectOpts.map((s) => <option key={s}>{s}</option>)}
           </select>
         </div>
         <div className="field" style={{ maxWidth: 280, margin: '8px auto 0', textAlign: 'left' }}>
-          <label htmlFor="timer-topic">Konu (isteğe bağlı)</label>
-          <input
-            id="timer-topic"
-            value={topic}
-            onChange={(e) => {
-              setTopic(e.target.value);
-              commitLive({ ...live, topic: e.target.value.trim() });
-            }}
-            placeholder="Örn. Fonksiyonlar"
-          />
+          <label htmlFor="timer-topic">Konu</label>
+          {topicOpts.length ? (
+            <select
+              id="timer-topic"
+              value={topicOpts.includes(topic) ? topic : ''}
+              onChange={(e) => {
+                setTopic(e.target.value);
+                commitLive({ ...live, topic: e.target.value.trim() });
+              }}
+            >
+              <option value="">Konu seç</option>
+              {topicOpts.map((n) => <option key={n} value={n}>{n}</option>)}
+            </select>
+          ) : (
+            <input
+              id="timer-topic"
+              value={topic}
+              onChange={(e) => {
+                setTopic(e.target.value);
+                commitLive({ ...live, topic: e.target.value.trim() });
+              }}
+              placeholder="Örn. Fonksiyonlar"
+            />
+          )}
         </div>
 
         {live.kind === 'custom' && !live.startedAt ? (
@@ -317,7 +343,7 @@ export function TimerPage() {
         </div>
         <div className="actions" style={{ justifyContent: 'center' }}>
           <button className="btn secondary" type="button" disabled={!gate.ok || alreadySaved} onClick={finishAndSave}>
-            Oturumu bitir
+            Tamamla
           </button>
         </div>
         {saveUi === 'error' && saveErr ? <p className="muted">{saveErr}</p> : null}
@@ -388,6 +414,19 @@ export function TimerPage() {
       </div>
 
       <div className="card timer-side">
+        <div className="section-title"><h3>Çalışma Sürem</h3></div>
+        <div className="grid stats">
+          <div className="card stat"><div className="label">BUGÜN</div><div className="value">{formatMinutes(progress.capacity.todayTotal)}</div><div className="sub">Timer {formatMinutes(progress.capacity.todayTimer)} · Kütüphane {formatMinutes(progress.capacity.todayLibrary)}</div></div>
+          <div className="card stat"><div className="label">BU HAFTA</div><div className="value">{formatMinutes(progress.capacity.weekMinutes)}</div><div className="sub">Timer {formatMinutes(progress.capacity.weekTimer)} · Kütüphane {formatMinutes(progress.capacity.weekLibrary)}</div></div>
+          <div className="card stat"><div className="label">BU AY</div><div className="value">{formatMinutes(progress.capacity.monthTotal)}</div><div className="sub">Timer {formatMinutes(progress.capacity.monthTimer)} · Kütüphane {formatMinutes(progress.capacity.monthLibrary)}</div></div>
+        </div>
+        <p className="muted">Koçumun programı bugün {formatMinutes(progress.coachToday.reduce((a, b) => a + b.minutes, 0))} · hafta {formatMinutes(progress.coachWeekFocus.reduce((a, d) => a + d.minutes, 0))}. Timer ve kütüphane ayrı sayılır.</p>
+        {progress.capacity.weekTrend.map((d) => (
+          <div className="kpi" key={d.date}><div>{d.day}</div><b>{formatMinutes(d.minutes)}</b></div>
+        ))}
+        {progress.studyBreakdown.slice(0, 8).map((s) => (
+          <div className="plan-item" key={s.name}><span>{s.name}</span><b>{formatMinutes(s.minutes)}</b></div>
+        ))}
         <StudySuggestCard />
         <div className="section-title" style={{ marginTop: 16 }}><h3>Bugünkü kayıtlar</h3></div>
         <div className="kpi">

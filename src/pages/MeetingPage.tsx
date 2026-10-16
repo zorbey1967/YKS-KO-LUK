@@ -20,6 +20,7 @@ import {
   type MeetingSessionState,
   type MyAppointment,
 } from '../lib/meeting';
+import { MeetingWhiteboard } from '../components/MeetingWhiteboard';
 import {
   attachLocalCamera,
   createMeetingRoom,
@@ -88,6 +89,7 @@ export function MeetingPage() {
   const joinLockRef = useRef(false);
   const [endArmed, setEndArmed] = useState(false);
   const [peopleOpen, setPeopleOpen] = useState(false);
+  const [boardOpen, setBoardOpen] = useState(false);
   const endArmTimerRef = useRef(0);
 
   function applyRemote(lk: Room) {
@@ -734,6 +736,8 @@ export function MeetingPage() {
         </div>
       </div>
 
+      {boardOpen && connected && !ended ? <MeetingWhiteboard room={sessionRef.current} /> : null}
+
       <div className="meeting-dock">
         <div className="meeting-ctrl">
           {showRetry ? (
@@ -772,6 +776,16 @@ export function MeetingPage() {
             {sharing ? '⏹ Paylaşımı durdur' : '🖥 Ekranımı paylaş'}
           </button>
           <button
+            className={`meeting-ctrl-btn${boardOpen ? ' is-on' : ''}`}
+            type="button"
+            disabled={!connected || ended}
+            aria-pressed={boardOpen}
+            aria-label="Ortak tahta"
+            onClick={() => setBoardOpen((v) => !v)}
+          >
+            🖊 Tahta
+          </button>
+          <button
             className="meeting-ctrl-btn"
             type="button"
             disabled={!connected || ended}
@@ -802,6 +816,7 @@ export function MeetingPage() {
           >
             📞 Ayrıl
           </button>
+          <span className="meeting-chip">Kayıt altyapısı yok; otomatik kayıt yok</span>
           <button
             className={`meeting-ctrl-end${endArmed ? ' is-armed' : ''}`}
             type="button"

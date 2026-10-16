@@ -203,9 +203,10 @@ export function CoachesPage() {
   }, [session]);
 
   useEffect(() => {
+    if (!session) return;
     const id = window.setInterval(() => setNowTick((n) => n + 1), 20_000);
     return () => window.clearInterval(id);
-  }, []);
+  }, [session]);
 
   useEffect(() => {
     if (!session) {
@@ -513,7 +514,7 @@ export function CoachesPage() {
                     setBriefErr('');
                     void fetchCoachStudentBrief(s.id, today()).then((res) => {
                       if (!res.ok) {
-                        setBriefErr(res.missing ? 'Özet RPC (025) yok veya yetkisiz.' : res.error);
+                        setBriefErr(res.missing ? 'Öğrenci özeti şu an alınamadı.' : res.error);
                         return;
                       }
                       setBrief(res.brief);
@@ -531,7 +532,7 @@ export function CoachesPage() {
               ) : null}
               {planStudent ? (
                 <div style={{ marginTop: 16 }}>
-                  <div className="section-title"><h3>7 günlük program</h3><span>{(linked.find((s) => s.id === planStudent) || desk.students.find((s) => s.id === planStudent))?.name || 'Öğrenci'}</span></div>
+                  <div className="section-title"><h3>Koçumun Yaptığı Program</h3><span>{(linked.find((s) => s.id === planStudent) || desk.students.find((s) => s.id === planStudent))?.name || 'Öğrenci'}</span></div>
                   <WeekPlanEditor
                     key={planStudent + week.updatedAt}
                     plan={week}
@@ -541,7 +542,7 @@ export function CoachesPage() {
                       setWeekBusy(true);
                       void saveStudentWeekPlan({ studentId: planStudent, days: next.days, weekHours: next.weekHours, notes: next.notes, lock: 'coach' }).then((res) => {
                         setWeekBusy(false);
-                        toast(res.ok ? 'Öğrenci programı kaydedildi.' : res.error);
+                        toast(res.ok ? 'Koç programı kaydedildi.' : res.error);
                         if (res.ok) setWeek({ ...next, lock: 'coach' });
                       });
                     }}

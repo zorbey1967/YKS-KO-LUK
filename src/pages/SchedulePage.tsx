@@ -9,9 +9,10 @@ import { assertPdfFile, clearSchedulePdf, loadSchedulePdf, saveSchedulePdf } fro
 
 import { ExamCenter } from '../components/ExamCenter';
 import { WeekPlanEditor } from '../components/WeekPlanEditor';
-import { emptyWeekPlan, scheduleFromWeekPlan, type WeekPlan } from '../lib/weekPlan';
-import { fetchStudentWeekPlan, saveStudentWeekPlan } from '../lib/cloudPlatform';
-import type { ScheduleDay } from '../lib/types';
+import { emptyWeekPlan, scheduleFromWeekPlan, weekPlanFromSchedule, type WeekPlan } from '../lib/weekPlan';
+import { fetchStudentWeekPlan } from '../lib/cloudPlatform';
+import { studentOwnedSchedule } from '../lib/studentProgress';
+import type { AppData, Schedule, ScheduleDay } from '../lib/types';
 
 export function SchedulePage() {
   const { data, setData, toast, user, profile } = useApp();
@@ -24,10 +25,24 @@ export function SchedulePage() {
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState('');
   const [preview, setPreview] = useState('');
-  const [week, setWeek] = useState<WeekPlan>(() => emptyWeekPlan());
+  const [week, setWeek] = useState<WeekPlan>(() => weekPlanFromSchedule(studentOwnedSchedule(data), data.weekHours));
   const [weekBusy, setWeekBusy] = useState(false);
-  const sch = data.schedule;
-  const coachLocked = week.lock === 'coach' || sch.source === 'coach';
+  const sch = studentOwnedSchedule(data);
+
+  function preserveCoach(prev: AppData): Schedule {
+    if (prev.coachSchedule.days.some((d) => d.blocks.length)) return prev.coachSchedule;
+    if (prev.schedule.source === 'coach') return prev.schedule;
+    return prev.coachSchedule;
+  }
+
+  function writeStudentSchedule(next: Schedule, extra?: Partial<AppData>) {
+    setData((prev) => ({
+      ...prev,
+      ...extra,
+      coachSchedule: preserveCoach(prev),
+      schedule: { ...next, source: next.source === 'coach' ? 'self' : (next.source || 'self') },
+    }));
+  }
 
   useEffect(() => {
     void loadSchedulePdf().then((f) => { if (f) setFile(f); }).catch(() => undefined);
@@ -38,16 +53,33 @@ export function SchedulePage() {
     void fetchStudentWeekPlan(user.id).then((row) => {
       if (!row || typeof row !== 'object') return;
       const rec = row as { days?: ScheduleDay[]; week_hours?: number; notes?: string; lock?: string; coach_id?: string; updated_at?: string };
+      const recDays = Array.isArray(rec.days) ? rec.days as ScheduleDay[] : [];
+      const hasBlocks = recDays.some((d) => d.blocks?.length);
       const next: WeekPlan = {
-        days: Array.isArray(rec.days) && rec.days.length ? rec.days as ScheduleDay[] : emptyWeekPlan().days,
+        days: hasBlocks ? recDays : emptyWeekPlan().days,
         weekHours: Number(rec.week_hours) || 0,
         notes: String(rec.notes || ''),
         lock: rec.lock === 'coach' ? 'coach' : 'self',
         coachId: rec.coach_id ? String(rec.coach_id) : null,
         updatedAt: String(rec.updated_at || ''),
       };
-      setWeek(next);
-      if (next.days.length) setData((prev) => ({ ...prev, schedule: scheduleFromWeekPlan(next, prev.schedule), weekHours: next.weekHours || prev.weekHours }));
+      if (next.lock === 'coach') {
+        if (!hasBlocks) return;
+        setData((prev) => ({
+          ...prev,
+          coachSchedule: scheduleFromWeekPlan(next, prev.coachSchedule),
+        }));
+        return;
+      }
+      if (hasBlocks) {
+        setWeek(weekPlanFromSchedule(scheduleFromWeekPlan({ ...next, lock: 'self' }, sch), data.weekHours || next.weekHours));
+        setData((prev) => ({
+          ...prev,
+          coachSchedule: preserveCoach(prev),
+          schedule: scheduleFromWeekPlan({ ...next, lock: 'self' }, studentOwnedSchedule(prev)),
+          weekHours: next.weekHours || prev.weekHours,
+        }));
+      }
     });
   }, [user?.id]);
 
@@ -57,7 +89,7 @@ export function SchedulePage() {
       assertPdfFile(next);
       await saveSchedulePdf(next);
       setFile(next);
-      setData({ ...data, schedule: { ...sch, pdfName: next.name, pdfSize: next.size, source: sch.source || 'school_teacher_pdf', updatedAt: new Date().toISOString() } });
+      writeStudentSchedule({ ...sch, pdfName: next.name, pdfSize: next.size, source: sch.source || 'school_teacher_pdf', updatedAt: new Date().toISOString() });
       toast('PDF kaydedildi');
     } catch (e) {
       toast(e instanceof Error ? e.message : 'PDF yüklenemedi');
@@ -66,7 +98,7 @@ export function SchedulePage() {
 
   function generateLocal(source: string) {
     const next = generateWeeklySchedule(data, daily, days, focus, source, notes);
-    setData({ ...data, schedule: { ...next, pdfName: sch.pdfName, pdfSize: sch.pdfSize } });
+    writeStudentSchedule({ ...next, pdfName: sch.pdfName, pdfSize: sch.pdfSize, source: next.source === 'coach' ? 'self' : (next.source || 'self') });
     toast('Haftalık program oluşturuldu');
   }
 
@@ -81,7 +113,7 @@ export function SchedulePage() {
       setPreview(text.slice(0, 500));
       setBusy('AI programı hazırlıyor…');
       const res = await buildScheduleFromPdf({ data, text, daily, focus, notes, filename: pdf.name });
-      setData({ ...data, schedule: { ...res.schedule, pdfName: pdf.name, pdfSize: pdf.size, notes } });
+      writeStudentSchedule({ ...res.schedule, pdfName: pdf.name, pdfSize: pdf.size, notes, source: res.schedule.source === 'coach' ? 'self' : (res.schedule.source || 'self') });
       toast(res.usedAi ? 'AI programı hazır' : res.summary);
     } catch (e) {
       toast(e instanceof Error ? e.message : 'PDF analizi başarısız');
@@ -100,7 +132,7 @@ export function SchedulePage() {
         notes,
         makeLocal: () => generateWeeklySchedule(data, daily, days, focus, 'ekoc_local', notes),
       });
-      setData({ ...data, schedule: { ...res.schedule, pdfName: sch.pdfName, pdfSize: sch.pdfSize, notes } });
+      writeStudentSchedule({ ...res.schedule, pdfName: sch.pdfName, pdfSize: sch.pdfSize, notes, source: res.schedule.source === 'coach' ? 'self' : (res.schedule.source || 'self') });
       toast(res.usedAi ? 'AI programı hazır' : res.summary);
     } finally {
       setBusy('');
@@ -112,22 +144,19 @@ export function SchedulePage() {
       <ExamCenter />
       {profile?.role !== 'coach' ? (
         <div className="card" style={{ marginTop: 16 }}>
-          <div className="section-title"><h3>7 günlük çalışma programı</h3><span>{coachLocked ? 'Koç planı' : 'Senin planın'}</span></div>
+          <div className="section-title"><h3>Ders Programım</h3><span>Senin planın</span></div>
           <WeekPlanEditor
             key={week.updatedAt || 'empty'}
             plan={week}
-            editable={!coachLocked}
+            editable
             busy={weekBusy}
             onSave={(next) => {
-              if (!user?.id) return;
+              const saved: WeekPlan = { ...next, lock: 'self', updatedAt: new Date().toISOString() };
               setWeekBusy(true);
-              void saveStudentWeekPlan({ studentId: user.id, days: next.days, weekHours: next.weekHours, notes: next.notes, lock: 'self' }).then((res) => {
-                setWeekBusy(false);
-                toast(res.ok ? 'Program kaydedildi.' : res.error);
-                if (!res.ok) return;
-                setWeek({ ...next, lock: 'self' });
-                setData({ ...data, schedule: scheduleFromWeekPlan({ ...next, lock: 'self' }, sch), weekHours: next.weekHours });
-              });
+              setWeek(saved);
+              writeStudentSchedule(scheduleFromWeekPlan(saved, sch), { weekHours: next.weekHours });
+              setWeekBusy(false);
+              toast('Program kaydedildi.');
             }}
           />
         </div>
@@ -155,17 +184,14 @@ export function SchedulePage() {
             <button className="btn danger" type="button" onClick={() => {
               if (!sch.days.length) return toast('Silinecek program yok.');
               if (!confirm('AI / çalışma programı silinsin mi? Sınavlar, randevular ve hesabın durur.')) return;
-              setData({
-                ...data,
-                schedule: { ...sch, days: [], source: '', notes: '', updatedAt: new Date().toISOString() },
-              });
+              writeStudentSchedule({ ...sch, days: [], source: '', notes: '', updatedAt: new Date().toISOString() });
               toast('Çalışma programı silindi');
             }}>Programı sil</button>
             <button className="btn danger" type="button" onClick={() => {
               void clearSchedulePdf();
               setFile(null);
               setPreview('');
-              setData({ ...data, schedule: { ...sch, pdfName: '', pdfSize: 0 } });
+              writeStudentSchedule({ ...sch, pdfName: '', pdfSize: 0 });
               toast('PDF silindi');
             }}>PDF’yi kaldır</button>
           </div>
@@ -205,7 +231,7 @@ export function SchedulePage() {
             <button className="btn" type="button" onClick={() => generateLocal(file || sch.pdfName ? 'school_pdf_local' : 'yerel üretici')}>Yerel üret</button>
             <button className="btn" type="button" onClick={() => {
               if (!sch.days.length) return toast('Önce bir program üret.');
-              setData({ ...data, schedule: applyScheduleNotes({ ...sch, notes }, notes) });
+              writeStudentSchedule(applyScheduleNotes({ ...sch, notes }, notes));
               toast('Not uygulandı');
             }}>Notu uygula</button>
             <button className="btn secondary" type="button" onClick={() => {
@@ -233,8 +259,23 @@ export function SchedulePage() {
               <div className="plan-item" key={`${d.day}-${i}`}><span>{b.icon} {b.title}</span><b>{b.minutes} dk</b></div>
             ))}
           </div>
-        )) : <div className="card empty">PDF yükleyip program üret, veya soldan yerel üret.</div>}
+        )) : <div className="card empty">PDF yükleyip program üret, veya soldan yerel üret. Bu Ders Programım’dır; koç programı ayrıdır.</div>}
       </div>
+      {data.coachSchedule.days.some((d) => d.blocks.length) ? (
+        <>
+          <div className="section-title" style={{ marginTop: 16 }}><h3>Koçumun Yaptığı Program</h3></div>
+          <div className="week-grid">
+            {data.coachSchedule.days.map((d) => (
+              <div className="card week-day" key={`coach-${d.day}`}>
+                <div className="section-title"><h3>{d.day}</h3><span>{d.blocks.reduce((a, b) => a + b.minutes, 0)} dk</span></div>
+                {d.blocks.map((b, i) => (
+                  <div className="plan-item" key={`coach-${d.day}-${i}`}><span>{b.icon} {b.title}</span><b>{b.minutes} dk</b></div>
+                ))}
+              </div>
+            ))}
+          </div>
+        </>
+      ) : null}
     </>
   );
 }

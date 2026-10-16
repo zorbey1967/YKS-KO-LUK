@@ -11,6 +11,7 @@ import { fetchMyCoach } from '../lib/cloudPlatform';
 import { weekdayNameIstanbul } from '../lib/insights';
 import { fmtDate } from '../lib/util';
 import type { ExamTarget } from '../lib/types';
+import { getStudentProgress } from '../lib/studentProgress';
 
 export function CalendarPage() {
   const { data, setData, toast, go, user } = useApp();
@@ -27,7 +28,9 @@ export function CalendarPage() {
   const dayTasks = data.tasks.filter((x) => x.date === selected);
   const daySessions = data.sessions.filter((x) => x.date === selected);
   const weekday = weekdayNameIstanbul(selected);
-  const dayBlocks = data.schedule.days.find((d) => d.day === weekday)?.blocks || [];
+  const progress = useMemo(() => getStudentProgress(data), [data]);
+  const dayBlocks = data.schedule.source === 'coach' ? [] : (data.schedule.days.find((d) => d.day === weekday)?.blocks || []);
+  const coachDayBlocks = (data.coachSchedule?.days || []).find((d) => d.day === weekday)?.blocks || [];
   const mins = daySessions.reduce((a, x) => a + x.minutes, 0);
 
   useEffect(() => {
@@ -128,9 +131,34 @@ export function CalendarPage() {
 
         {dayBlocks.length ? (
           <div style={{ marginTop: 14 }}>
-            <h4 style={{ margin: '0 0 8px' }}>Ders programı</h4>
+            <h4 style={{ margin: '0 0 8px' }}>Ders Programım</h4>
             {dayBlocks.map((b, i) => (
-              <div className="plan-item" key={`${b.title}-${i}`}><span>{b.icon} {b.title}</span><b>{b.minutes} dk</b></div>
+              <div className="plan-item" key={`${b.title}-${i}`}><span>{b.icon} {[b.start, b.title, b.topic].filter(Boolean).join(' ')}</span><b>{b.minutes} dk</b></div>
+            ))}
+          </div>
+        ) : null}
+
+        {coachDayBlocks.length ? (
+          <div style={{ marginTop: 14 }}>
+            <h4 style={{ margin: '0 0 8px' }}>Koçumun Yaptığı Program</h4>
+            {coachDayBlocks.map((b, i) => (
+              <div className="plan-item" key={`c-${b.title}-${i}`}><span>{b.icon} {[b.start, b.title, b.topic].filter(Boolean).join(' ')}</span><b>{b.minutes} dk</b></div>
+            ))}
+          </div>
+        ) : null}
+
+        {progress.upcomingExams.length ? (
+          <div style={{ marginTop: 14 }}>
+            <h4 style={{ margin: '0 0 8px' }}>Yaklaşan sınav hazırlığı</h4>
+            <p className="muted">Ana ders programının yerine geçmez.</p>
+            {progress.upcomingExams.map((e) => (
+              <div key={e.examId} className="plan-item">
+                <span>
+                  {e.title} · {e.daysLeft} gün
+                  <br />
+                  <small className="muted">Eksik: {e.missing.slice(0, 3).join(', ') || '—'} · {e.days[0]?.title}</small>
+                </span>
+              </div>
             ))}
           </div>
         ) : null}

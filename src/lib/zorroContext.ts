@@ -10,6 +10,7 @@ import { lastBankTopic, weakBankTopics } from './practice';
 import { type ZorroRoute } from './zorroIntent';
 import { masteryLine, topicMastery } from './zorroMastery';
 import { learningLines } from './zorroMemory';
+import { studentStateLines } from './studentProgress';
 
 const MISSING = 'Bu bilgi henüz hesabında bulunmuyor.';
 
@@ -34,7 +35,7 @@ export function selectZorroContext(data: AppData, q: string, route: ZorroRoute):
     return [...rules, 'Kısa selam. Dosyanın tamamı ekli değil.'].join('\n');
   }
 
-  const lines = [...rules];
+  const lines = [...rules, ...studentStateLines(data)];
 
   if (route === 'tutor' || route === 'question_solving' || route === 'review' || route === 'quiz' || route === 'photo') {
     lines.push(`Sınıf: ${s.grade || MISSING}. Alan: ${s.track || MISSING}.`);

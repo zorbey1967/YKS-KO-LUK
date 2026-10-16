@@ -7,6 +7,7 @@ import { asCancelDecision, asCancelReason, COACH_TRACKS, emptyDesk } from './coa
 import { getCoachDisplayName, getPersonDisplayName } from './displayName';
 import { SESSION_REQUIRED, SUPABASE_UNAVAILABLE, publicCloudError, requireUserSession, supabase, withTimeout } from './supabase';
 import { interpretStartTopPlanTrialRpc } from './trialStart';
+import { isMissingRelation } from './postgrestError';
 
 type LedgerKind = 'odeme' | 'iade';
 type LedgerStatus = 'bekliyor' | 'odendi' | 'iade';
@@ -82,11 +83,6 @@ export type CloudAdminBundle = {
   finance: LedgerEntry[];
   notes: { id: string; coachId: string; text: string; at: string }[];
 };
-
-function isMissingRelation(e: unknown) {
-  const msg = e instanceof Error ? e.message : String(e);
-  return /schema cache|does not exist|Could not find the table|Could not find the function/i.test(msg);
-}
 
 function asTrack(s: unknown): CoachTrack {
   return COACH_TRACKS.includes(s as CoachTrack) ? (s as CoachTrack) : 'Okul';

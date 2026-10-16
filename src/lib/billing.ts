@@ -80,7 +80,7 @@ export async function requestCancel(): Promise<CancelResult> {
       if (/does not exist|schema cache|42883/i.test(error.message || '')) {
         return { ok: false, error: 'İptal kaydı bu ortamda yok. Sahte iptal oluşturulmadı.' };
       }
-      return { ok: false, error: error.message || 'İptal isteği gönderilemedi.' };
+      return { ok: false, error: 'İptal isteği gönderilemedi.' };
     }
     const rec = (data && typeof data === 'object') ? data as Record<string, unknown> : {};
     if (rec.ok === false) return { ok: false, error: String(rec.error || 'İptal isteği reddedildi.') };

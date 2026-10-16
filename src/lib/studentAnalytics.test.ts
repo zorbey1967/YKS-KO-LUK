@@ -57,8 +57,23 @@ describe('öğrenci analiz paneli', () => {
     expect(mat?.last).toBe(27);
     expect(mat?.trend).toBe('up');
     expect(board.weakAreas[0]).toBe('Edebiyat');
+    const withExamSubjects = emptyData();
+    withExamSubjects.exams = [{ id: 'e', name: 'D', date: '2026-10-01', tyt: 20, ayt: 0, note: '', subjects: [{ name: 'Tarih', net: 4 }] }];
+    expect(buildAnalyticsBoard(withExamSubjects).subjects.some((s) => s.name === 'Tarih')).toBe(true);
     expect(localAiCoachReport(data).empty).toBe(false);
     expect(analyticsFingerprint(data)).not.toBe(analyticsFingerprint(emptyData()));
+    const onlyExam = emptyData();
+    onlyExam.exams = [{
+      id: 'x', name: 'Foto', date: '2026-10-02', tyt: 40, ayt: 12, note: '',
+      correct: 90, wrong: 8, blank: 2,
+      subjects: [{ name: 'Matematik', net: 31 }],
+    }];
+    const rows = buildAnalyticsBoard(onlyExam).examRows;
+    expect(rows[0].correct).toBe(90);
+    expect(rows[0].subjects[0].net).toBe(31);
+    const edited = { ...onlyExam, exams: [{ ...onlyExam.exams[0], subjects: [{ name: 'Matematik', net: 20 }] }] };
+    expect(analyticsFingerprint(edited)).not.toBe(analyticsFingerprint(onlyExam));
+    expect(buildAnalyticsBoard(edited).subjects.find((s) => s.name === 'Matematik')?.last).toBe(20);
   });
 
   it('veri yokken AI istek atmaz', async () => {

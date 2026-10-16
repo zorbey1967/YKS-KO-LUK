@@ -27,6 +27,7 @@ export type LibraryPrefs = {
   nameMode: 'real' | 'alias' | null;
   joinedRoomId: string | null;
   joinedAt: string | null;
+  emoji: string | null;
 };
 
 export type SupportPrefs = {
@@ -41,6 +42,14 @@ export type LearningNote = {
   at: string;
 };
 
+export type ExamSubjectNet = {
+  name: string;
+  net: number;
+  correct?: number;
+  wrong?: number;
+  blank?: number;
+};
+
 export type Exam = {
   id: string;
   name: string;
@@ -48,6 +57,10 @@ export type Exam = {
   tyt: number;
   ayt: number;
   note: string;
+  correct?: number;
+  wrong?: number;
+  blank?: number;
+  subjects?: ExamSubjectNet[];
 };
 
 export type ExamPriority = 'dusuk' | 'normal' | 'yuksek';
@@ -102,7 +115,7 @@ export type Topic = {
   grade?: string;
 };
 
-export type ScheduleBlock = { title: string; minutes: number; icon: string };
+export type ScheduleBlock = { title: string; minutes: number; icon: string; start?: string; topic?: string; note?: string };
 export type ScheduleDay = { day: string; blocks: ScheduleBlock[] };
 export type Schedule = {
   days: ScheduleDay[];
@@ -112,6 +125,10 @@ export type Schedule = {
   notes: string;
   updatedAt: string;
 };
+
+export function emptySchedule(): Schedule {
+  return { days: [], source: '', pdfName: '', pdfSize: 0, notes: '', updatedAt: '' };
+}
 
 export type CalcSubject = {
   subject: string;
@@ -240,6 +257,7 @@ export type AppData = {
   planDate?: string;
   calcs: CalcRecord[];
   schedule: Schedule;
+  coachSchedule: Schedule;
   qb: Record<string, TopicProgress>;
   questionStats: Record<string, QuestionStat>;
   qbMarks: string[];
@@ -250,6 +268,7 @@ export type AppData = {
   syncRev: number;
   libraryPrefs: LibraryPrefs;
   supportPrefs: SupportPrefs;
+  meetingAiConsent: boolean;
 };
 
 export type BankQuestion = {
@@ -334,7 +353,8 @@ export const emptyData = (): AppData => ({
   sessions: [],
   plan: [],
   calcs: [],
-  schedule: { days: [], source: '', pdfName: '', pdfSize: 0, notes: '', updatedAt: '' },
+  schedule: emptySchedule(),
+  coachSchedule: emptySchedule(),
   qb: {},
   questionStats: {},
   qbMarks: [],
@@ -343,8 +363,9 @@ export const emptyData = (): AppData => ({
   reviews: [],
   tombstones: [],
   syncRev: 0,
-  libraryPrefs: { nameMode: null, joinedRoomId: null, joinedAt: null },
+  libraryPrefs: { nameMode: null, joinedRoomId: null, joinedAt: null, emoji: null },
   supportPrefs: { nameConsent: null },
+  meetingAiConsent: false,
 });
 
 export const NAV: { id: PageId; icon: string; label: string }[] = [

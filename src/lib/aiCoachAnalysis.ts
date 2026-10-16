@@ -1,5 +1,6 @@
 import { askZorroPlain } from './coachAi';
 import { buildAnalyticsBoard, type AnalyticsBoard } from './studentAnalytics';
+import { MIN_EXAMS_FOR_TREND, progressFingerprint, studentStateLines, writtenExamFeedback } from './studentProgress';
 import type { AppData, Task } from './types';
 import { today, uid } from './util';
 
@@ -38,16 +39,19 @@ export function localAiCoachReport(data: AppData, board = buildAnalyticsBoard(da
   if (strengths[0] && strengths[0] !== weaknesses[0]) todayBlocks.push({ minutes: 30, subject: strengths[0] });
   else if (weaknesses[1]) todayBlocks.push({ minutes: 30, subject: weaknesses[1] });
 
+  const feedback = writtenExamFeedback(data);
   const series = board.tytSeries.slice(-3).map((x) => x.net);
-  const tytLine = series.length >= 2
-    ? `Son denemelerde TYT netin ${series.join(' → ')}.`
+  const tytLine = series.length >= MIN_EXAMS_FOR_TREND
+    ? `Kayıtlı TYT netlerin ${series.join(' → ')}.`
     : board.lastTyt != null
-      ? `Son TYT netin ${board.lastTyt}.`
+      ? `Kayıtlı son TYT netin ${board.lastTyt}. Trend için en az ${MIN_EXAMS_FOR_TREND} deneme gerekir.`
       : '';
-  const aytLine = board.lastAyt != null ? `Son AYT netin ${board.lastAyt}.` : '';
+  const aytLine = board.lastAyt != null ? `Kayıtlı son AYT netin ${board.lastAyt}.` : '';
   const weakLine = weaknesses.length ? `${weaknesses.join(', ')} alanında kayıtlı net daha düşük.` : '';
-  const strongLine = strengths.length ? `${strengths.join(', ')} görece güçlü.` : '';
-  const narrative = [tytLine, aytLine, strongLine, weakLine].filter(Boolean).join(' ');
+  const strongLine = strengths.length ? `${strengths.join(', ')} kayıtlı netlere göre görece güçlü.` : '';
+  const narrative = feedback.ready
+    ? [feedback.text, tytLine, aytLine, strongLine, weakLine].filter(Boolean).join(' ')
+    : feedback.text;
 
   return {
     empty: false,
@@ -79,22 +83,31 @@ function factsForModel(data: AppData, board: AnalyticsBoard) {
     tasksDone: done,
     openTasks: open,
     recordedStudyMinutes: weekMin,
+    studentState: studentStateLines(data),
   };
 }
 
+let aiReportCache: { fp: string; report: AiCoachReport } | null = null;
+
 export async function requestAiCoachAnalysis(data: AppData): Promise<AiCoachReport> {
+  const fp = progressFingerprint(data);
+  if (aiReportCache?.fp === fp) return aiReportCache.report;
   const board = buildAnalyticsBoard(data);
   const local = localAiCoachReport(data, board);
-  if (local.empty) return local;
+  if (local.empty) {
+    aiReportCache = { fp, report: local };
+    return local;
+  }
   const facts = factsForModel(data, board);
   const cloud = await askZorroPlain(
     'Öğrencinin kayıtlı deneme ve net verisini analiz et. Sayı uydurma. Verilmeyen dersi zayıf sayma.',
     `SADECE bu JSON’daki gerçek kayıtlar:\n${JSON.stringify(facts)}\nKısa Türkçe değerlendirme yaz (en fazla 8 cümle). Yeni net icat etme.`,
   );
-  if (cloud.source === 'ai' && cloud.text && !/yanıt veremiyor|üye/i.test(cloud.text)) {
-    return { ...local, narrative: cloud.text, source: 'ai' };
-  }
-  return local;
+  const report = cloud.source === 'ai' && cloud.text && !/yanıt veremiyor|üye/i.test(cloud.text)
+    ? { ...local, narrative: cloud.text, source: 'ai' as const }
+    : local;
+  aiReportCache = { fp, report };
+  return report;
 }
 
 export function appendAiBlocksAsTasks(data: AppData, blocks: AiStudyBlock[]): AppData {

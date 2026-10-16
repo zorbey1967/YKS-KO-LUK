@@ -76,6 +76,23 @@ describe('koç planı ve yetki modeli (istemci)', () => {
   });
 });
 
+describe('kütüphane birleştirme', () => {
+  it('yerelde ayrılmış odayı buluttaki eski katılımla geri açmaz', () => {
+    const local: AppData = {
+      ...emptyData(),
+      libraryPrefs: { nameMode: 'alias', joinedRoomId: null, joinedAt: null, emoji: '🦊' },
+    };
+    const remote: AppData = {
+      ...emptyData(),
+      libraryPrefs: { nameMode: 'alias', joinedRoomId: 'r1', joinedAt: '2026-10-16T10:00:00.000Z', emoji: '🦊' },
+    };
+    const m = mergeAppData(local, remote);
+    expect(m.libraryPrefs.joinedRoomId).toBeNull();
+    expect(m.libraryPrefs.joinedAt).toBeNull();
+    expect(m.libraryPrefs.emoji).toBe('🦊');
+  });
+});
+
 describe('koç özeti uydurmaz', () => {
   it('oturum yokken çalışmadı demez; süre null', () => {
     const b = coachStudyBrief(emptyData(), '2026-10-12');

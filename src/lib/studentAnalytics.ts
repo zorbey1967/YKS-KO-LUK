@@ -139,6 +139,14 @@ export function buildAnalyticsBoard(data: AppData): AnalyticsBoard {
   const lastExamDate = [...exams.map((e) => e.date), ...calcs.map((c) => String(c.date))].sort().at(-1) || null;
 
   const bySubject: Record<string, { nets: number[]; max: number }> = {};
+  for (const e of exams) {
+    for (const s of e.subjects || []) {
+      const name = String(s.name || '').trim();
+      if (!name) continue;
+      if (!bySubject[name]) bySubject[name] = { nets: [], max: 40 };
+      bySubject[name].nets.push(Number(s.net || 0));
+    }
+  }
   for (const c of calcs) {
     for (const s of c.subjects || []) {
       const name = String(s.subject || '').trim();
@@ -186,7 +194,31 @@ export function buildAnalyticsBoard(data: AppData): AnalyticsBoard {
 
   const examRows: ExamBreakdown[] = [];
   const lastByType: Record<string, number> = {};
-  if (calcs.length) {
+  if (exams.length) {
+    let prevTyt: number | undefined;
+    for (const e of exams.slice(-10)) {
+      const net = Number(e.tyt || 0);
+      examRows.push({
+        id: String(e.id),
+        name: e.name || 'Deneme',
+        date: e.date,
+        type: 'TYT/AYT',
+        net,
+        correct: e.correct != null ? Number(e.correct) : null,
+        wrong: e.wrong != null ? Number(e.wrong) : null,
+        blank: e.blank != null ? Number(e.blank) : null,
+        minutes: null,
+        subjects: (e.subjects || []).length
+          ? (e.subjects || []).map((s) => ({ name: String(s.name), net: Number(s.net || 0) }))
+          : [
+            { name: 'TYT', net: Number(e.tyt || 0) },
+            { name: 'AYT', net: Number(e.ayt || 0) },
+          ],
+        delta: prevTyt == null ? null : net - prevTyt,
+      });
+      prevTyt = net;
+    }
+  } else {
     for (const c of calcs.slice(-12)) {
       const type = String(c.type || 'Deneme');
       const net = Number(c.net || 0);
@@ -205,28 +237,6 @@ export function buildAnalyticsBoard(data: AppData): AnalyticsBoard {
         delta: prev == null ? null : net - prev,
       });
       lastByType[type] = net;
-    }
-  } else {
-    let prevTyt: number | undefined;
-    for (const e of exams.slice(-10)) {
-      const net = Number(e.tyt || 0);
-      examRows.push({
-        id: String(e.id),
-        name: e.name || 'Deneme',
-        date: e.date,
-        type: 'TYT/AYT',
-        net,
-        correct: null,
-        wrong: null,
-        blank: null,
-        minutes: null,
-        subjects: [
-          { name: 'TYT', net: Number(e.tyt || 0) },
-          { name: 'AYT', net: Number(e.ayt || 0) },
-        ],
-        delta: prevTyt == null ? null : net - prevTyt,
-      });
-      prevTyt = net;
     }
   }
 
@@ -248,8 +258,8 @@ export function buildAnalyticsBoard(data: AppData): AnalyticsBoard {
 
 export function analyticsFingerprint(data: AppData) {
   return [
-    data.exams.map((e) => `${e.id}:${e.tyt}:${e.ayt}:${e.date}`).join(','),
-    data.calcs.map((c) => `${c.id}:${c.net}:${c.date}`).join(','),
+    data.exams.map((e) => `${e.id}:${e.tyt}:${e.ayt}:${e.date}:${e.correct ?? ''}:${e.wrong ?? ''}:${e.blank ?? ''}:${(e.subjects || []).map((s) => `${s.name}:${s.net}`).join(',')}`).join(';'),
+    data.calcs.map((c) => `${c.id}:${c.net}:${c.date}:${(c.subjects || []).map((s) => `${s.subject}:${s.net}`).join(',')}`).join(';'),
     data.topics.map((t) => `${t.name}:${t.level}`).join(','),
   ].join('|');
 }

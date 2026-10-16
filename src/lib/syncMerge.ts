@@ -160,6 +160,18 @@ function pickScalar(a: AppData, b: AppData): Pick<AppData, 'dept' | 'rank' | 'we
   };
 }
 
+function mergeLibraryPrefs(local: AppData, remote: AppData): AppData['libraryPrefs'] {
+  const L = local.libraryPrefs;
+  const R = remote.libraryPrefs;
+  const localChoseIdentity = Boolean(L?.emoji || L?.nameMode || L?.joinedRoomId);
+  return {
+    nameMode: L?.nameMode || R?.nameMode || null,
+    emoji: L?.emoji || R?.emoji || null,
+    joinedRoomId: L?.joinedRoomId ?? (localChoseIdentity ? null : (R?.joinedRoomId ?? null)),
+    joinedAt: L?.joinedAt ?? (localChoseIdentity ? null : (R?.joinedAt ?? null)),
+  };
+}
+
 export function mergeAppData(local: AppData, remote: AppData): AppData {
   const L = normalizeData(local);
   const R = normalizeData(remote);
@@ -167,6 +179,7 @@ export function mergeAppData(local: AppData, remote: AppData): AppData {
   const scalars = pickScalar(L, R);
   const planWins = String(R.planDate || '') >= String(L.planDate || '');
   const schWins = String(R.schedule.updatedAt || '') >= String(L.schedule.updatedAt || '');
+  const coachSchWins = String(R.coachSchedule?.updatedAt || '') >= String(L.coachSchedule?.updatedAt || '');
   const exams = uniqueById([...L.exams, ...R.exams].filter((e) => e.id && !dead(tombstones, 'exam', e.id)));
   if (!L.exams.some((e) => e.id) && !R.exams.some((e) => e.id)) {
     /* date-only exams: keep union by date+name */
@@ -192,14 +205,14 @@ export function mergeAppData(local: AppData, remote: AppData): AppData {
     planDate: planWins ? R.planDate : L.planDate,
     calcs: [...L.calcs, ...R.calcs].filter((c, i, arr) => arr.findIndex((x) => x.id === c.id) === i),
     schedule: schWins ? R.schedule : L.schedule,
+    coachSchedule: coachSchWins ? (R.coachSchedule || L.coachSchedule) : (L.coachSchedule || R.coachSchedule),
     qb: mergeQb(L.qb, R.qb),
     questionStats: mergeStats(L.questionStats, R.questionStats),
     qbMarks: [...new Set([...L.qbMarks, ...R.qbMarks])],
     learningNotes: [...L.learningNotes, ...R.learningNotes].filter((n, i, arr) => arr.findIndex((x) => x.at === n.at && x.topic === n.topic) === i).slice(0, 24),
-    libraryPrefs: L.libraryPrefs?.joinedAt || L.libraryPrefs?.nameMode
-      ? L.libraryPrefs
-      : R.libraryPrefs,
+    libraryPrefs: mergeLibraryPrefs(L, R),
     supportPrefs: L.supportPrefs?.nameConsent ? L.supportPrefs : R.supportPrefs,
+    meetingAiConsent: Boolean(L.meetingAiConsent || R.meetingAiConsent),
   };
   return next;
 }

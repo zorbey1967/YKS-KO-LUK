@@ -289,7 +289,7 @@ export function AccountPage() {
           <div>
             <div className="eyebrow" style={{ color: '#cfe1ff' }}>E-Koçluk</div>
             <h2>Çalışmana giriş yaparak devam et.</h2>
-            <p>Hedef, program, deneme, net ve soru bankası hesabına bağlıdır. Koçları giriş olmadan da inceleyebilir, randevu için oturum açarsın.</p>
+            <p>Hedef, program, deneme ve net hesabına bağlıdır. Koçları giriş olmadan da inceleyebilir, randevu için oturum açarsın.</p>
             <ul>
               <li>Öğrenci ve koç aynı platformda</li>
               <li>Oturumun bu cihazda saklanır; her yenilemede tekrar şifre istenmez</li>

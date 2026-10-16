@@ -11,7 +11,7 @@ export const LIBRARY_ROOMS = [
 ] as const;
 
 export type LibraryNameMode = 'real' | 'alias';
-export type LibraryPeer = { display_name: string; minutes: number; share_exams?: boolean };
+export type LibraryPeer = { display_name: string; minutes: number; share_exams?: boolean; emoji?: string };
 
 function consentKey(userId: string) {
   return `yks_lib_name_${userId}`;
@@ -21,8 +21,47 @@ function joinedKey(userId: string) {
   return `yks_lib_joined_${userId}`;
 }
 
+export const LIBRARY_EMOJIS = ['🦁', '🐺', '🦊', '🐯', '🐼', '🦅', '🐉', '🐻', '🐨', '🐸'] as const;
+
+export const LIBRARY_EMOJI_LABELS: Record<(typeof LIBRARY_EMOJIS)[number], string> = {
+  '🦁': 'Aslan',
+  '🐺': 'Kurt',
+  '🦊': 'Tilki',
+  '🐯': 'Kaplan',
+  '🐼': 'Panda',
+  '🦅': 'Kartal',
+  '🐉': 'Ejderha',
+  '🐻': 'Ayı',
+  '🐨': 'Koala',
+  '🐸': 'Kurbağa',
+};
+
 export function emptyLibraryPrefs(): LibraryPrefs {
-  return { nameMode: null, joinedRoomId: null, joinedAt: null };
+  return { nameMode: null, joinedRoomId: null, joinedAt: null, emoji: null };
+}
+
+export function isLibraryEmoji(value: string | null | undefined): value is typeof LIBRARY_EMOJIS[number] {
+  return Boolean(value && (LIBRARY_EMOJIS as readonly string[]).includes(value));
+}
+
+export function pickLibraryEmoji(userId: string, chosen?: string | null) {
+  if (isLibraryEmoji(chosen)) return chosen;
+  const id = String(userId || '').replace(/-/g, '');
+  let n = 0;
+  for (let i = 0; i < id.length; i += 1) n = (n * 31 + id.charCodeAt(i)) >>> 0;
+  return LIBRARY_EMOJIS[n % LIBRARY_EMOJIS.length];
+}
+
+export function libraryShownLabel(emoji: string, name: string) {
+  return `${emoji} ${name}`.trim().slice(0, 42);
+}
+
+export function parseLibraryLabel(raw: string): { emoji: string; name: string } {
+  const chars = Array.from(String(raw || ''));
+  const first = chars[0] || '';
+  const rest = chars.slice(1).join('').trim();
+  if (isLibraryEmoji(first) && rest) return { emoji: first, name: rest };
+  return { emoji: '🦁', name: String(raw || '').trim() };
 }
 
 export function readLibraryNameMode(userId: string): LibraryNameMode | null {
@@ -75,20 +114,27 @@ export function formatStudyClock(ms: number) {
 
 export function sanitizeLibraryPeers(raw: unknown): LibraryPeer[] {
   if (!Array.isArray(raw)) return [];
-  const out: LibraryPeer[] = [];
+  const byName = new Map<string, LibraryPeer>();
   for (const row of raw) {
     if (!row || typeof row !== 'object') continue;
     const r = row as Record<string, unknown>;
-    const name = String(r.display_name || '').trim();
-    if (!name || libraryTextLeaksEmail(name)) continue;
-    if (/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(name)) continue;
-    out.push({
-      display_name: name.slice(0, 40),
-      minutes: Math.max(0, Number(r.minutes) || 0),
+    const rawName = String(r.display_name || '').trim();
+    if (!rawName || libraryTextLeaksEmail(rawName)) continue;
+    if (/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(rawName)) continue;
+    const parsed = parseLibraryLabel(rawName);
+    if (libraryTextLeaksEmail(parsed.name)) continue;
+    const key = parsed.name.toLocaleLowerCase('tr-TR');
+    const minutes = Math.max(0, Number(r.minutes) || 0);
+    const prev = byName.get(key);
+    if (prev && prev.minutes >= minutes) continue;
+    byName.set(key, {
+      display_name: parsed.name.slice(0, 40),
+      emoji: parsed.emoji,
+      minutes,
       share_exams: Boolean(r.share_exams),
     });
   }
-  return out;
+  return [...byName.values()];
 }
 
 export function resolveLibraryPrefs(cloud: LibraryPrefs | undefined, userId: string): LibraryPrefs {
@@ -101,6 +147,7 @@ export function resolveLibraryPrefs(cloud: LibraryPrefs | undefined, userId: str
     nameMode,
     joinedRoomId,
     joinedAt: joinedRoomId ? joinedAt : null,
+    emoji: isLibraryEmoji(cloud?.emoji) ? cloud.emoji : null,
   };
 }
 

@@ -12,6 +12,8 @@ import { parseAccountStatus, fetchMyCoach, pushStudentData } from '../lib/cloudP
 import { mergeAppData } from '../lib/syncMerge';
 import { resolveAccessGate, type AccessGate } from '../lib/accessGate';
 import { consumeOAuthRedirect, noteOAuthAuthEvent, oauthExchangeInFlight, urlHasOAuthCallback } from '../lib/authCallback';
+import { appendLibrarySession, invalidateStudentProgress } from '../lib/studentProgress';
+import { emptyLibraryPrefs } from '../lib/libraryPresence';
 
 type Ctx = {
   page: PageId;
@@ -88,6 +90,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const profileRef = useRef<Profile | null>(null);
   const hydratedUserId = useRef<string | null>(null);
   const hydrateChain = useRef(Promise.resolve());
+  const dataRef = useRef(data);
+  dataRef.current = data;
   profileRef.current = profile;
 
   const toast = useCallback((msg: string) => {
@@ -118,12 +122,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (!res.ok && res.data) {
         body = { ...mergeAppData(body, res.data), syncRev: res.rev };
         persistLocal(body, u.id);
+        invalidateStudentProgress();
         setDataState(body);
         res = await pushStudentData(body);
       }
       if (res.ok) {
         const next = { ...body, syncRev: res.rev };
         persistLocal(next, u.id);
+        invalidateStudentProgress();
         setDataState(next);
         setCloudStatus('Bulut senkron');
         return;
@@ -138,6 +144,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const setData = useCallback((next: AppData | ((prev: AppData) => AppData)) => {
     setDataState((prev) => {
       const value = typeof next === 'function' ? next(prev) : next;
+      invalidateStudentProgress();
       persistLocal(value);
       window.clearTimeout(pushTimer.current);
       pushTimer.current = window.setTimeout(() => void pushCloud(value), 700);
@@ -213,6 +220,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (cloudProfile?.target_rank != null) next = { ...next, rank: Number(cloudProfile.target_rank) };
       next = applyProfileSeed(next, cloudProfile);
       cloudReady.current = true;
+      invalidateStudentProgress();
       setDataState(next);
       persistLocal(next, u.id);
       if (shouldPush) void pushCloud(next);
@@ -221,14 +229,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
       cloudReady.current = false;
       setCloudStatus('Bağlantı hatası');
       const local = loadData(u.id);
+      invalidateStudentProgress();
       setDataState(local);
       persistLocal(local, u.id);
     }
   }, [persistLocal, pushCloud]);
 
+  const flushLibraryForUser = useCallback((leaving: User | null) => {
+    if (!leaving?.id) return;
+    const snapshot = dataRef.current;
+    if (!snapshot.libraryPrefs?.joinedRoomId) return;
+    const closed = {
+      ...appendLibrarySession(snapshot, snapshot.libraryPrefs.joinedAt),
+      libraryPrefs: emptyLibraryPrefs(),
+    };
+    persistLocal(closed, leaving.id);
+    void pushCloud(closed);
+  }, [persistLocal, pushCloud]);
+
   const applySession = useCallback(async (u: User | null, force = false) => {
     const run = async () => {
       if (!u) {
+        flushLibraryForUser(userRef.current);
         hydratedUserId.current = null;
         userRef.current = null;
         setUser(null);
@@ -237,10 +259,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setServerOwner(null);
         setCloudStatus(isSupabaseConfigured() ? 'Giriş yok' : 'Yapılandırılmadı');
         setProfile({ name: readLocal('yks_guest_name'), email: '', plan: '' });
+        invalidateStudentProgress();
         setDataState(loadData(null));
         setAuthReady(true);
         return;
       }
+      const prevUser = userRef.current;
+      if (prevUser?.id && prevUser.id !== u.id) flushLibraryForUser(prevUser);
       setUser((prev) => (prev?.id === u.id ? prev : u));
       userRef.current = u;
       if (!force && hydratedUserId.current === u.id) {
@@ -261,7 +286,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const queued = hydrateChain.current.then(run, run);
     hydrateChain.current = queued.catch(() => undefined);
     await queued;
-  }, [loadCloudProfile, pullCloud]);
+  }, [flushLibraryForUser, loadCloudProfile, pullCloud]);
 
   const refreshAuth = useCallback(async () => {
     if (!supabase) {

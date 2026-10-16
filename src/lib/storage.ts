@@ -1,5 +1,5 @@
-import type { AppData } from './types';
-import { emptyData } from './types';
+import type { AppData, Schedule } from './types';
+import { emptyData, emptySchedule } from './types';
 import { emptyNotifyPrefs, normalizeExamPlan, normalizeExamTarget, seedTargetsFromLegacy } from './examTargets';
 
 export function storageKey(userId?: string | null) {
@@ -36,22 +36,33 @@ export function normalizeData(raw: unknown): AppData {
       origin: t.origin === 'zorro' || t.origin === 'coach' || t.origin === 'student' ? t.origin : 'student',
     }))
     : [];
-  d.exams = Array.isArray(x.exams) ? x.exams.filter((e) => e && e.date) : [];
+  d.exams = Array.isArray(x.exams)
+    ? x.exams.filter((e) => e && e.date).map((e) => ({
+      ...e,
+      tyt: Math.max(0, Number(e.tyt) || 0),
+      ayt: Math.max(0, Number(e.ayt) || 0),
+      correct: e.correct == null ? undefined : Math.max(0, Number(e.correct) || 0),
+      wrong: e.wrong == null ? undefined : Math.max(0, Number(e.wrong) || 0),
+      blank: e.blank == null ? undefined : Math.max(0, Number(e.blank) || 0),
+      subjects: Array.isArray(e.subjects)
+        ? e.subjects.filter((s) => s && s.name).map((s) => ({
+          name: String(s.name),
+          net: Math.max(0, Number(s.net) || 0),
+          correct: s.correct == null ? undefined : Math.max(0, Number(s.correct) || 0),
+          wrong: s.wrong == null ? undefined : Math.max(0, Number(s.wrong) || 0),
+          blank: s.blank == null ? undefined : Math.max(0, Number(s.blank) || 0),
+        }))
+        : undefined,
+    }))
+    : [];
   d.topics = Array.isArray(x.topics) ? x.topics.filter((t) => t && t.name) : [];
   d.questions = Array.isArray(x.questions) ? x.questions.filter(Boolean) : [];
   d.sessions = uniqueById(Array.isArray(x.sessions) ? x.sessions.filter((s) => s && s.date) : []);
   d.plan = Array.isArray(x.plan) ? x.plan.filter(Boolean) : [];
   d.planDate = x.planDate;
   d.calcs = Array.isArray(x.calcs) ? x.calcs.filter(Boolean) : [];
-  const sch = x.schedule;
-  d.schedule = {
-    days: Array.isArray(sch?.days) ? sch.days : [],
-    source: String(sch?.source || ''),
-    pdfName: String(sch?.pdfName || ''),
-    pdfSize: Number(sch?.pdfSize) || 0,
-    notes: String(sch?.notes || ''),
-    updatedAt: String(sch?.updatedAt || ''),
-  };
+  d.schedule = parseSchedule(x.schedule);
+  d.coachSchedule = parseSchedule((x as AppData).coachSchedule);
   d.qb = x.qb && typeof x.qb === 'object' ? x.qb : {};
   d.questionStats = x.questionStats && typeof x.questionStats === 'object' ? x.questionStats : {};
   d.qbMarks = Array.isArray(x.qbMarks) ? [...new Set(x.qbMarks.map(String))] : [];
@@ -70,12 +81,26 @@ export function normalizeData(raw: unknown): AppData {
     nameMode: lp?.nameMode === 'real' || lp?.nameMode === 'alias' ? lp.nameMode : null,
     joinedRoomId: lp?.joinedRoomId ? String(lp.joinedRoomId) : null,
     joinedAt: lp?.joinedAt ? String(lp.joinedAt) : null,
+    emoji: lp?.emoji && String(lp.emoji).length <= 4 ? String(lp.emoji) : null,
   };
   const sp = (x as AppData).supportPrefs;
   d.supportPrefs = {
     nameConsent: sp?.nameConsent === 'yes' || sp?.nameConsent === 'no' ? sp.nameConsent : null,
   };
+  d.meetingAiConsent = Boolean((x as AppData).meetingAiConsent);
   return d;
+}
+
+function parseSchedule(raw: unknown): Schedule {
+  const sch = raw && typeof raw === 'object' ? raw as Schedule : emptySchedule();
+  return {
+    days: Array.isArray(sch.days) ? sch.days : [],
+    source: String(sch.source || ''),
+    pdfName: String(sch.pdfName || ''),
+    pdfSize: Number(sch.pdfSize) || 0,
+    notes: String(sch.notes || ''),
+    updatedAt: String(sch.updatedAt || ''),
+  };
 }
 
 export function uniqueTombstones(rows: AppData['tombstones']): AppData['tombstones'] {

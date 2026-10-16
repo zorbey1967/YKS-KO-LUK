@@ -1,4 +1,5 @@
 import { coercePageForAccess, type AccessGate } from './accessGate';
+import { QUESTION_BANK_ENABLED } from './features';
 import type { PageId, Profile } from './types';
 
 /** Öğrenci çalışma yüzeyleri. Koç hash ile gelse de panel dışına düşmesin. RLS yine asıl kapı. */
@@ -42,7 +43,8 @@ export function coerceAppPage(
   gate: AccessGate,
   isAdmin = false,
 ): PageId {
-  return coercePageForAccess(coercePageForRole(page, role, isAdmin), gate);
+  const hiddenBank = page === 'questionbank' && !QUESTION_BANK_ENABLED ? 'home' : page;
+  return coercePageForAccess(coercePageForRole(hiddenBank, role, isAdmin), gate);
 }
 
 export function leaveMeetingShell(go: (id: PageId) => void, role: Profile['role'] | string | null | undefined) {

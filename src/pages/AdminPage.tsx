@@ -325,7 +325,7 @@ export function AdminPage() {
 
       {tab === 'uyelik' ? (
         <div className="card" style={{ marginTop: 16 }}>
-          <div className="section-title"><h3>Üyelikler</h3><span>{billingRows ? 'sunucu' : 'RPC yok / 0'}</span></div>
+          <div className="section-title"><h3>Üyelikler</h3><span>{billingRows ? 'sunucu' : 'kayıt yok'}</span></div>
           {(() => {
             const rows = billingRows || [];
             const n = (pred: (r: BillingRow) => boolean) => rows.filter(pred).length;

@@ -12,8 +12,16 @@ export function CoachStudyBriefView({ brief, name }: { brief: CoachStudyBrief; n
   }
   return (
     <div className="card" style={{ boxShadow: 'none' }}>
-      <div className="section-title"><h3>{name} — çalışma özeti</h3></div>
+      <div className="section-title"><h3>Öğrencinin Çalışma Özeti</h3><span>{name}</span></div>
       <p className="muted">Süre yalnızca kaydedilmiş oturumlardan. Boş gün “çalışmadı” diye yazılmaz.</p>
+      {brief.narrative ? <p>{brief.narrative}</p> : <p className="muted">Bu konuda yeterli veri bulunmuyor.</p>}
+      {brief.dept ? <p className="muted">Hedef: {brief.dept}</p> : null}
+      {brief.todayTimer != null || brief.todayLibrary != null ? (
+        <p className="muted">Timer {brief.todayTimer ?? 0} dk · Kütüphane bugün {brief.todayLibrary ?? 0} dk · hafta {brief.weekLibrary ?? 0} dk · ay timer {brief.monthTimer ?? 0} dk · ay kütüphane {brief.monthLibrary ?? 0} dk{brief.topicRate != null ? ` · konu %${brief.topicRate}` : ''}</p>
+      ) : null}
+      {brief.topicLines?.length ? (
+        <p className="muted">Konu durumu: {brief.topicLines.join(' · ')}</p>
+      ) : null}
       <div className="kpi">
         <div>
           <span style={{ color: 'var(--muted)', fontSize: 12 }}>Bugün</span>

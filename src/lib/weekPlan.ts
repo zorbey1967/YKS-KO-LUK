@@ -29,8 +29,19 @@ export function scheduleFromWeekPlan(plan: WeekPlan, prev: Schedule): Schedule {
     ...prev,
     days: plan.days,
     notes: plan.notes,
-    source: plan.lock === 'coach' ? 'coach' : (prev.source || 'self'),
+    source: plan.lock === 'coach' ? 'coach' : (prev.source === 'coach' ? 'self' : (prev.source || 'self')),
     updatedAt: plan.updatedAt || prev.updatedAt,
+  };
+}
+
+export function weekPlanFromSchedule(sch: Schedule, weekHours = 0): WeekPlan {
+  return {
+    days: Array.isArray(sch.days) && sch.days.length ? sch.days : emptyWeekPlan().days,
+    weekHours,
+    notes: sch.notes || '',
+    lock: 'self',
+    coachId: null,
+    updatedAt: sch.updatedAt || '',
   };
 }
 

@@ -256,7 +256,10 @@ export function chatReply(q: string, data: AppData): { text: string; plan?: Plan
   const unit = blockLen(s.age);
 
   if (/\b(selam|merhaba|hey|sa\b)/.test(t)) {
-    return { text: `Selam. ${s.grade || 'sınıf belirtilmedi'}, ${s.age > 0 ? `${s.age} yaş` : 'yaş belirtilmedi'}, hedef ${s.dept || 'belirtilmedi'}. ${s.exam}’ye ${!data.examDate && !data.examTargets?.length ? 'tarih belirtilmedi' : s.past ? 'tarih geçmiş' : s.countdown}. Ne çalışmak istiyorsun?` };
+    const who = s.grade
+      ? `${s.grade}${s.track ? ` / ${s.track}` : ''}${s.dept ? `, hedef ${s.dept}` : ''}`
+      : `sınıf belirtilmedi, hedef ${s.dept || 'belirtilmedi'}`;
+    return { text: `Selam. ${who}. ${s.exam}’ye ${!data.examDate && !data.examTargets?.length ? 'tarih belirtilmedi' : s.past ? 'tarih geçmiş' : s.countdown}. Ne çalışmak istiyorsun?` };
   }
   if (/anlat|nedir|öğret|konuyu/.test(t) && !/kaç gün|program|plan/.test(t)) {
     const lesson = localTeachLesson(q);

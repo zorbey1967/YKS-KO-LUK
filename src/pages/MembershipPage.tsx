@@ -13,6 +13,7 @@ import {
 import { billingFromProfile, canStartMembershipTrial, displayMembershipName, entitledPlan, trialDaysLeft } from '../lib/subscription';
 import { startTopPlanTrial } from '../lib/cloudPlatform';
 import { applyTrialRpcToProfile } from '../lib/trialStart';
+import { QUESTION_BANK_ENABLED } from '../lib/features';
 
 function fmtDate(iso: string | null) {
   if (!iso) return '—';
@@ -167,7 +168,7 @@ export function MembershipPage() {
                 Ödeme doğrulanınca 30 günlük dönem başlar. İptal talebi dönemin sonuna kadar erişimi kesmez; kart çekimi ancak sağlayıcı aboneliği varsa durur.
               </p>
               <ul className="muted" style={{ margin: '8px 0 0', paddingLeft: 18 }}>
-                {p.bullets.map((b) => <li key={b}>{b}</li>)}
+                {p.bullets.filter((b) => QUESTION_BANK_ENABLED || !/soru bankası/i.test(b)).map((b) => <li key={b}>{b}</li>)}
               </ul>
               <div className="actions" style={{ marginTop: 12 }}>
                 <button className="btn primary" type="button" disabled={busy !== null || !user} onClick={() => void pay(p.id)}>

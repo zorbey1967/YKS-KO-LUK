@@ -9,7 +9,8 @@ import { eliteReport } from '../lib/elite';
 import { examCountdown, weekGoalPct, weekMinutes } from '../lib/insights';
 import { setBankJump, weakBankTopics } from '../lib/practice';
 import { examKind, examTitle } from '../lib/stage';
-import { analyticsFingerprint, buildAnalyticsBoard } from '../lib/studentAnalytics';
+import { buildAnalyticsBoard } from '../lib/studentAnalytics';
+import { formatMinutes, getStudentProgress, progressFingerprint } from '../lib/studentProgress';
 import { canSeeAnalyticsPage, canUseAnalytics } from '../lib/subscription';
 import { localDateKey } from '../lib/util';
 
@@ -18,11 +19,13 @@ export function AnalyticsPage() {
   const see = canSeeAnalyticsPage(profile, isAdmin);
   const use = canUseAnalytics(profile, isAdmin);
   const board = useMemo(() => buildAnalyticsBoard(data), [data]);
-  const fp = useMemo(() => analyticsFingerprint(data), [data]);
+  const progress = useMemo(() => getStudentProgress(data), [data]);
+  const fp = useMemo(() => progressFingerprint(data), [data]);
   const cacheRef = useRef<{ fp: string; report: AiCoachReport } | null>(null);
   const [aiBusy, setAiBusy] = useState(false);
   const [aiErr, setAiErr] = useState('');
   const [aiReport, setAiReport] = useState<AiCoachReport | null>(null);
+  const [tab, setTab] = useState<'genel' | 'ders' | 'konu' | 'trend' | 'calisma' | 'ai'>('genel');
   const localHints = useMemo(() => localAiCoachReport(data, board), [data, board]);
 
   if (!see) {
@@ -100,7 +103,19 @@ export function AnalyticsPage() {
 
   return (
     <>
-      <div className="card" style={{ marginBottom: 16 }}>
+      <div className="actions analytics-tabs" style={{ marginBottom: 12 }}>
+        {([
+          ['genel', 'GENEL'],
+          ['ders', 'DERS'],
+          ['konu', 'KONU'],
+          ['trend', 'DENEME TRENDİ'],
+          ['calisma', 'ÇALIŞMA'],
+          ['ai', 'AI ANALİZİ'],
+        ] as const).map(([id, label]) => (
+          <button key={id} className={tab === id ? 'btn primary' : 'btn secondary'} type="button" onClick={() => setTab(id)}>{label}</button>
+        ))}
+      </div>
+      <div hidden={tab !== 'genel'} className="card" style={{ marginBottom: 16 }}>
         <div className="section-title"><h3>GENEL PERFORMANS</h3></div>
         <div className="grid stats">
           {board.lastTyt != null ? <div className="card stat"><div className="label">SON TYT NETİ</div><div className="value">{board.lastTyt.toFixed(1)}</div></div> : null}
@@ -109,11 +124,57 @@ export function AnalyticsPage() {
           {board.avgAyt != null ? <div className="card stat"><div className="label">ORTALAMA AYT</div><div className="value">{board.avgAyt.toFixed(1)}</div></div> : null}
           {board.maxNet != null ? <div className="card stat"><div className="label">EN YÜKSEK NET</div><div className="value">{board.maxNet.toFixed(1)}</div></div> : null}
           {board.lastExamDate ? <div className="card stat"><div className="label">SON DENEME</div><div className="value" style={{ fontSize: 18 }}>{board.lastExamDate}</div></div> : null}
+          <div className="card stat"><div className="label">DENEME SAYISI</div><div className="value">{data.exams.length}</div></div>
+          <div className="card stat"><div className="label">ÇALIŞMA</div><div className="value">{formatMinutes(progress.capacity.weekMinutes)}</div><div className="sub">7 gün</div></div>
+          <div className="card stat"><div className="label">KONU</div><div className="value">%{progress.topicRate}</div></div>
+          {progress.insights.strengths[0] ? <div className="card stat"><div className="label">EN İYİ DERS</div><div className="value" style={{ fontSize: 18 }}>{progress.insights.strengths[0]}</div></div> : null}
+          {progress.insights.weaknesses[0] ? <div className="card stat"><div className="label">EN ZAYIF DERS</div><div className="value" style={{ fontSize: 18 }}>{progress.insights.weaknesses[0]}</div></div> : null}
+          {board.subjects.find((s) => s.trend === 'up') ? <div className="card stat"><div className="label">EN HIZLI GELİŞEN</div><div className="value" style={{ fontSize: 18 }}>{board.subjects.find((s) => s.trend === 'up')?.name}</div></div> : null}
+          {board.subjects.find((s) => s.trend === 'down') ? <div className="card stat"><div className="label">GERİLEYEN DERS</div><div className="value" style={{ fontSize: 18 }}>{board.subjects.find((s) => s.trend === 'down')?.name}</div></div> : null}
         </div>
       </div>
 
-      <div className="card" style={{ marginBottom: 16 }}>
-        <div className="section-title"><h3>AI KOÇUNUN ANALİZİ</h3></div>
+      <div hidden={tab !== 'konu'} className="card" style={{ marginBottom: 16 }}>
+        <div className="section-title"><h3>KONU PERFORMANSI</h3></div>
+        {progress.subjects.length ? progress.subjects.slice(0, 8).map((c) => (
+          <div className="topic-row" key={c.subject}>
+            <div className="topic-head"><b>{c.subject}</b><span className="chip">%{c.progress}</span></div>
+            <p className="muted" style={{ margin: '4px 0' }}>
+              🟢 Güçlü: {c.topics.filter((t) => t.status === 'done').map((t) => t.name).slice(0, 3).join(', ') || '—'}
+            </p>
+            <p className="muted" style={{ margin: '4px 0' }}>
+              🟡 Geliştirilmeli: {c.topics.filter((t) => t.status === 'in_progress').map((t) => `${t.name} %${t.level}`).slice(0, 3).join(', ') || '—'}
+            </p>
+            <p className="muted" style={{ margin: '4px 0' }}>
+              🔴 Öncelikli: {c.topics.filter((t) => t.status === 'not_started').map((t) => t.name).slice(0, 3).join(', ') || '—'}
+            </p>
+          </div>
+        )) : <p className="muted">Konu analizi için Hesabım’da sınıf seç. Uydurma konu yok.</p>}
+      </div>
+
+      {progress.capacity.weekTrend.some((d) => d.minutes) ? (
+        <div hidden={tab !== 'calisma'} className="card" style={{ marginBottom: 16 }}>
+          <div className="section-title"><h3>ÇALIŞMA TRENDİ</h3></div>
+          {progress.capacity.weekTrend.map((d) => (
+            <div className="kpi" key={`wk-${d.date}`}><div>{d.day}</div><b>{formatMinutes(d.minutes)}</b></div>
+          ))}
+        </div>
+      ) : null}
+
+      {board.subjects.length ? (
+        <div hidden={tab !== 'trend'} className="card" style={{ marginBottom: 16 }}>
+          <div className="section-title"><h3>DENEME TRENDİ</h3></div>
+          {board.subjects.map((s) => (
+            <div className="kpi" key={`tr-${s.name}`}>
+              <div>{s.name}</div>
+              <b>{s.trend === 'up' ? '📈 yükseliyor' : s.trend === 'down' ? '📉 düşüyor' : s.trend === 'flat' ? '➡️ sabit' : '—'}</b>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      <div hidden={tab !== 'ai'} className="card" style={{ marginBottom: 16 }}>
+        <div className="section-title"><h3>AI ANALİZİ</h3></div>
         <p className="muted">Sayfa açılınca model çağrılmaz. Yalnızca kayıtlı deneme/net kullanılır.</p>
         <div className="actions">
           <button className="btn primary" type="button" disabled={aiBusy || !board.hasData} onClick={() => void runAi()}>
@@ -125,16 +186,19 @@ export function AnalyticsPage() {
         {shown ? (
           <div style={{ marginTop: 12 }}>
             <p>{shown.narrative}</p>
-            {shown.strengths.length ? <p><b>Güçlü yönler:</b> {shown.strengths.join(', ')}</p> : null}
-            {shown.weaknesses.length ? <p><b>Geliştirilmesi gerekenler:</b> {shown.weaknesses.join(', ')}</p> : null}
-            {shown.weekHint ? <p><b>Bu hafta önerisi:</b> {shown.weekHint}</p> : null}
+            {shown.strengths.length ? <p><b>Güçlü olduğun alanlar:</b> {shown.strengths.join(', ')}</p> : null}
+            {shown.weaknesses.length ? <p><b>Geliştirmen gereken alanlar:</b> {shown.weaknesses.join(', ')}</p> : null}
+            {board.subjects.filter((s) => s.trend === 'up').length ? <p><b>Son dönemde yükselenler:</b> {board.subjects.filter((s) => s.trend === 'up').map((s) => s.name).join(', ')}</p> : null}
+            {board.subjects.filter((s) => s.trend === 'down').length ? <p><b>Son dönemde gerileyenler:</b> {board.subjects.filter((s) => s.trend === 'down').map((s) => s.name).join(', ')}</p> : null}
+            <p><b>Çalışma tempon:</b> {formatMinutes(progress.capacity.typicalDayMinutes)} / gün · bu hafta {formatMinutes(progress.capacity.weekMinutes)}</p>
+            {shown.weekHint ? <p><b>Deneme performansın:</b> {shown.weekHint}</p> : null}
             {shown.todayHint ? <p><b>Bugünkü öneri:</b> {shown.todayHint}</p> : null}
           </div>
         ) : null}
       </div>
 
       {localHints.empty || !(localHints.strengths[0] || localHints.weaknesses[0] || localHints.todayHint) ? null : (
-        <div className="card" style={{ marginBottom: 16 }}>
+        <div hidden={tab !== 'ai'} className="card" style={{ marginBottom: 16 }}>
           <div className="section-title"><h3>AI ÖNERİLERİ</h3></div>
           {localHints.strengths[0] ? <p style={{ marginTop: 0 }}><b>Güçlü alanın</b><br />{localHints.strengths[0]}</p> : null}
           {localHints.weaknesses[0] ? <p><b>Öncelik</b><br />{localHints.weaknesses[0]}</p> : null}
@@ -153,6 +217,7 @@ export function AnalyticsPage() {
         </div>
       )}
 
+      <div hidden={tab !== 'genel'}>
       {total || data.exams.length || qs || bankSolved || data.weekHours > 0 ? (
         <div className="grid stats">
           {total ? <div className="card stat"><div className="label">TOPLAM ÇALIŞMA</div><div className="value">{(total / 60).toFixed(1)}s</div><div className="sub">Kayıtlı oturumlar</div></div> : null}
@@ -170,7 +235,9 @@ export function AnalyticsPage() {
         {elite.lines.map((ln) => <p key={ln.slice(0, 40)} className="muted" style={{ margin: '6px 0' }}>{ln}</p>)}
       </div>
       ) : null}
+      </div>
 
+      <div hidden={tab !== 'trend'}>
       {board.hasData ? <ExamAnalysisPanel /> : null}
       <div style={{ marginBottom: 16 }}><ExamInsight /></div>
 
@@ -201,35 +268,6 @@ export function AnalyticsPage() {
         </div>
       </div>
 
-      {board.subjects.length ? (
-        <div className="card" style={{ marginTop: 16 }}>
-          <div className="section-title"><h3>Ders bazlı analiz</h3></div>
-          {board.subjects.map((s) => (
-            <div className="plan-item" key={s.name}>
-              <span>
-                {s.name}
-                <br />
-                <small className="muted">
-                  Son: {s.last ?? '—'} · Ort: {s.avg != null ? s.avg.toFixed(1) : '—'} · En yüksek: {s.high ?? '—'}
-                  {s.trend === 'up' ? ' · Trend: ↑' : s.trend === 'down' ? ' · Trend: ↓' : s.trend === 'flat' ? ' · Trend: →' : ''}
-                  {s.band ? ` · ${s.band}` : ''}
-                  {s.status ? ` · ${s.status}` : ''}
-                </small>
-              </span>
-            </div>
-          ))}
-        </div>
-      ) : null}
-
-      {board.weakAreas.length ? (
-        <div className="card" style={{ marginTop: 16 }}>
-          <div className="section-title"><h3>En çok geliştirmen gereken alanlar</h3></div>
-          <ol>
-            {board.weakAreas.map((w) => <li key={w}>{w}</li>)}
-          </ol>
-        </div>
-      ) : null}
-
       {board.examRows.length ? (
         <div className="card" style={{ marginTop: 16 }}>
           <div className="section-title"><h3>Deneme analizi</h3></div>
@@ -251,8 +289,38 @@ export function AnalyticsPage() {
           ))}
         </div>
       ) : null}
+      </div>
 
-      <div className="grid two" style={{ marginTop: 16 }}>
+      {board.subjects.length ? (
+        <div hidden={tab !== 'ders'} className="card" style={{ marginTop: 16 }}>
+          <div className="section-title"><h3>DERS PERFORMANSI</h3></div>
+          {board.subjects.map((s) => (
+            <div className="plan-item" key={s.name}>
+              <span>
+                {s.name}
+                <br />
+                <small className="muted">
+                  Son: {s.last ?? '—'} · Ort: {s.avg != null ? s.avg.toFixed(1) : '—'} · En yüksek: {s.high ?? '—'}
+                  {s.trend === 'up' ? ' · Trend: ↑' : s.trend === 'down' ? ' · Trend: ↓' : s.trend === 'flat' ? ' · Trend: →' : ''}
+                  {s.band ? ` · ${s.band}` : ''}
+                  {s.status ? ` · ${s.status}` : ''}
+                </small>
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {board.weakAreas.length ? (
+        <div hidden={tab !== 'ders'} className="card" style={{ marginTop: 16 }}>
+          <div className="section-title"><h3>En çok geliştirmen gereken alanlar</h3></div>
+          <ol>
+            {board.weakAreas.map((w) => <li key={w}>{w}</li>)}
+          </ol>
+        </div>
+      ) : null}
+
+      <div hidden={tab !== 'calisma'} className="grid two" style={{ marginTop: 16 }}>
         <div className="card">
           <div className="section-title"><h3>Zayıf konular</h3></div>
           {bankWeak.length ? bankWeak.map((x) => (
@@ -284,7 +352,7 @@ export function AnalyticsPage() {
           ) : null}
         </div>
       </div>
-      <div className="card" style={{ marginTop: 16 }}>
+      <div hidden={tab !== 'calisma'} className="card" style={{ marginTop: 16 }}>
         <div className="section-title"><h3>Son 7 gün çalışma</h3><span>dakika</span></div>
         <div className="chart">
           {days.map((x) => (

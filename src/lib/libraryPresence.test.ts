@@ -27,9 +27,17 @@ describe('sessiz kütüphane görünür ad ve katılım', () => {
     expect(LIBRARY_HEARTBEAT_MS).toBe(30_000);
     const page = readFileSync(join(process.cwd(), 'src/pages/LibraryPage.tsx'), 'utf8');
     expect(page).toContain('window.clearInterval(id)');
-    expect(page).toContain('Odaya Katıl');
+    expect(page).toContain('Katıl');
     expect(page).toContain('Ayrıl');
-    expect(page).toContain('Adınız ve soyadınız kütüphanede görünsün mü?');
+    expect(page).toContain('LIBRARY_EMOJI_LABELS');
+    expect(readFileSync(join(process.cwd(), 'src/lib/libraryPresence.ts'), 'utf8')).toContain('Aslan');
+    expect(page).toContain('Adınız ve soyadınız olarak görünmek ister misiniz?');
+    expect(page).toContain('Evet, adımı göster');
+    expect(page).toContain('LIBRARY_EMOJIS');
+    expect(page).toContain('library-card');
+    expect(page).toContain('appendLibrarySession');
+    expect(page).toContain('pendingRoom');
+    expect(page).toContain('LIBRARY_HEARTBEAT_MS');
     expect(page).toContain('document.hidden');
     expect(page).toContain('visibilitychange');
     expect(page).not.toMatch(/setInterval\(\(\) => void tick\(\), 15000\)/);
@@ -41,5 +49,9 @@ describe('sessiz kütüphane görünür ad ve katılım', () => {
       { display_name: 'x@y.com', minutes: 3 },
       { user_id: 'secret', display_name: 'Ayşe', minutes: 1 },
     ]).map((p) => p.display_name)).toEqual(['Ali', 'Ayşe']);
+    expect(sanitizeLibraryPeers([
+      { display_name: '🦁 Ali', minutes: 5 },
+      { display_name: 'Ali', minutes: 12 },
+    ]).map((p) => `${p.emoji}${p.display_name}${p.minutes}`)).toEqual(['🦁Ali12']);
   });
 });

@@ -145,7 +145,7 @@ export function SupportPanel() {
               <>
                 {askConsent ? (
                   <div className="card" style={{ background: 'rgba(255,255,255,.06)', color: '#fff' }}>
-                    <p>Adınızı ve soyadınızı destek mesajlarında kullanmamıza izin veriyor musunuz?</p>
+                    <p>Adınız ve soyadınız olarak kullanılmasını ister misiniz?</p>
                     <div className="actions">
                       <button className="btn primary" type="button" onClick={() => setConsent('yes')}>Evet</button>
                       <button className="btn secondary" type="button" onClick={() => setConsent('no')}>Hayır</button>
