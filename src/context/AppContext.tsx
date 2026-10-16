@@ -86,6 +86,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const cloudReady = useRef(false);
   const userRef = useRef<User | null>(null);
   const profileRef = useRef<Profile | null>(null);
+  const hydratedUserId = useRef<string | null>(null);
+  const hydrateChain = useRef(Promise.resolve());
   profileRef.current = profile;
 
   const toast = useCallback((msg: string) => {
@@ -224,18 +226,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [persistLocal, pushCloud]);
 
-  const refreshAuth = useCallback(async () => {
-    if (!supabase) {
-      setAuthMsg(SUPABASE_UNAVAILABLE);
-      setCloudStatus('Yapılandırılmadı');
-      setAuthReady(true);
-      return;
-    }
-    const { data: sessionData } = await withTimeout(supabase.auth.getSession(), 20000);
-    const u = sessionData.session?.user || null;
-    userRef.current = u;
-    setUser(u);
-    if (u) {
+  const applySession = useCallback(async (u: User | null, force = false) => {
+    const run = async () => {
+      if (!u) {
+        hydratedUserId.current = null;
+        userRef.current = null;
+        setUser(null);
+        cloudReady.current = false;
+        setServerAdmin(null);
+        setServerOwner(null);
+        setCloudStatus(isSupabaseConfigured() ? 'Giriş yok' : 'Yapılandırılmadı');
+        setProfile({ name: readLocal('yks_guest_name'), email: '', plan: '' });
+        setDataState(loadData(null));
+        setAuthReady(true);
+        return;
+      }
+      setUser((prev) => (prev?.id === u.id ? prev : u));
+      userRef.current = u;
+      if (!force && hydratedUserId.current === u.id) {
+        setAuthReady(true);
+        return;
+      }
       const p = await loadCloudProfile(u);
       if (userRef.current?.id !== u.id) {
         setAuthReady(true);
@@ -244,15 +255,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
       await pullCloud(u, p);
       setServerAdmin(await fetchServerAdmin());
       setServerOwner(await fetchServerPlatformOwner());
-    } else {
-      setServerAdmin(null);
-      setServerOwner(null);
-      setCloudStatus('Giriş yok');
-      setProfile({ name: readLocal('yks_guest_name'), email: '', plan: '' });
-      setDataState(loadData(null));
-    }
-    setAuthReady(true);
+      if (userRef.current?.id === u.id) hydratedUserId.current = u.id;
+      setAuthReady(true);
+    };
+    const queued = hydrateChain.current.then(run, run);
+    hydrateChain.current = queued.catch(() => undefined);
+    await queued;
   }, [loadCloudProfile, pullCloud]);
+
+  const refreshAuth = useCallback(async () => {
+    if (!supabase) {
+      setAuthMsg(SUPABASE_UNAVAILABLE);
+      setCloudStatus('Yapılandırılmadı');
+      setAuthReady(true);
+      return;
+    }
+    const { data: sessionData } = await withTimeout(supabase.auth.getSession(), 20000);
+    await applySession(sessionData.session?.user || null, true);
+  }, [applySession]);
 
   const saveGoals = useCallback(async () => {
     const u = userRef.current;
@@ -315,12 +335,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (oauth.handled) {
           setPage('account');
           if (oauth.session?.user) {
-            userRef.current = oauth.session.user;
-            setUser(oauth.session.user);
+            await applySession(oauth.session.user, true);
+            return;
           }
         }
       }
-      await refreshAuth();
+      const { data: sessionData } = supabase
+        ? await withTimeout(supabase.auth.getSession(), 20000)
+        : { data: { session: null } };
+      await applySession(sessionData.session?.user || null, false);
     })();
     if (!supabase) {
       return () => window.removeEventListener('hashchange', onHash);
@@ -329,29 +352,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       noteOAuthAuthEvent(event);
       if (event === 'TOKEN_REFRESHED') return;
       if (event === 'INITIAL_SESSION' && !session && (oauthPending || oauthExchangeInFlight())) return;
-      const u = session?.user || null;
-      userRef.current = u;
-      setUser(u);
-      if (!u) {
-        cloudReady.current = false;
-        setCloudStatus(isSupabaseConfigured() ? 'Giriş yok' : 'Yapılandırılmadı');
-        setProfile({ name: readLocal('yks_guest_name'), email: '', plan: '' });
-        setDataState(loadData(null));
-        setServerAdmin(null);
-        setServerOwner(null);
-        setAuthReady(true);
-      } else {
-        void loadCloudProfile(u).then((p) => pullCloud(u, p));
-        void fetchServerAdmin().then(setServerAdmin);
-        void fetchServerPlatformOwner().then(setServerOwner);
-        setAuthReady(true);
-      }
+      void applySession(session?.user || null, event === 'USER_UPDATED');
     });
     return () => {
       window.removeEventListener('hashchange', onHash);
       sub.subscription.unsubscribe();
     };
-  }, [loadCloudProfile, pullCloud, refreshAuth]);
+  }, [applySession]);
 
   useEffect(() => {
     const dest = coerceAppPage(page, profile?.role, accessGate, isAdmin);

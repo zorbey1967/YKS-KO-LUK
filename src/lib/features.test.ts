@@ -39,5 +39,9 @@ describe('üyelik performans regresyonu', () => {
     const page = readFileSync(join(process.cwd(), 'src/pages/MembershipPage.tsx'), 'utf8');
     expect(page).not.toMatch(/useEffect\(\(\) => \{[\s\S]*refreshAuth[\s\S]*\}, \[user, refreshAuth\]\)/);
     expect(page).not.toMatch(/if \(!user\) return;\s*void refreshAuth\(\)/);
+    const ctx = readFileSync(join(process.cwd(), 'src/context/AppContext.tsx'), 'utf8');
+    expect(ctx).toContain('hydratedUserId');
+    expect(ctx).toContain('hydrateChain');
+    expect(ctx).not.toMatch(/void loadCloudProfile\(u\)\.then\(\(p\) => pullCloud\(u, p\)\)/);
   });
 });
