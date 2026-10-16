@@ -66,7 +66,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'uyelik', label: 'Üyelikler ve Denemeler' },
   { id: 'finans', label: 'Ödemeler' },
   { id: 'denetim', label: 'Görüşme Denetimi' },
-  { id: 'mesajlar', label: 'Mesajlar' },
+  { id: 'mesajlar', label: '📩 Gelen Destek Mesajları' },
   { id: 'ayar', label: 'Sistem Güvenliği' },
 ];
 

@@ -152,8 +152,9 @@ describe('üyelik trial + Net Hesapla menü', () => {
     expect(ids).toEqual(expect.arrayContaining([
       'home', 'coaches', 'meetings', 'library', 'analytics',
       'schedule', 'calendar', 'tasks', 'goal', 'exams', 'calculator',
-      'topics', 'questions', 'timer', 'membership', 'account',
+      'questions', 'timer', 'membership', 'account',
     ]));
+    expect(ids).not.toContain('topics');
     expect(ids).not.toContain('questionbank');
     expect(NAV.some((n) => n.id === 'questionbank')).toBe(true);
     expect(QUESTION_BANK_ENABLED).toBe(false);
@@ -164,7 +165,7 @@ describe('üyelik trial + Net Hesapla menü', () => {
     expect(ids).toEqual([
       'home', 'coaches', 'meetings', 'library', 'analytics',
       'schedule', 'calendar', 'tasks', 'goal', 'plan', 'exams', 'calculator',
-      'topics', 'questions', 'timer', 'membership', 'account',
+      'questions', 'timer', 'membership', 'account',
     ]);
     expect(ids.indexOf('home')).toBe(0);
     expect(ids.indexOf('coaches')).toBe(1);

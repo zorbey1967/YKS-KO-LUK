@@ -51,6 +51,19 @@ describe('studentEducationContext', () => {
     expect(keys).not.toContain('Fizik');
   });
 
+  it('12. sınıf EA 1. dönem → müfredatta TYT + AYT EA (yalnızca TYT değil)', () => {
+    const d = student('12. Sınıf', 'Eşit Ağırlık');
+    const ctx = getStudentEducationContext(d, new Date('2026-10-16T12:00:00'));
+    expect(ctx.period).toBe('1');
+    expect(ctx.showsTyt).toBe(true);
+    expect(ctx.showsAyt).toBe(true);
+    const keys = Object.keys(curriculumForStudent(d.grade, d.track));
+    expect(keys.some((k) => /^TYT\b/.test(k))).toBe(true);
+    expect(keys).toContain('AYT Matematik');
+    expect(keys).toContain('AYT Edebiyat');
+    expect(keys).not.toContain('AYT Fizik');
+  });
+
   it('11. sınıf SAY → yazılı + TYT + AYT SAY; EA AYT yok', () => {
     const d = student('11. Sınıf', 'Sayısal');
     const ctx = getStudentEducationContext(d);
@@ -99,7 +112,9 @@ describe('studentEducationContext', () => {
     const page = readFileSync(join(process.cwd(), 'src/pages/ExamsPage.tsx'), 'utf8');
     expect(form).not.toContain('EXAM_KIND_OPTIONS');
     expect(form).toContain('calendarExamEntryOptions');
-    expect(page).toContain('examResultEntryOptions');
+    expect(page).toContain('ExamResultModal');
+    expect(page).not.toContain('Deneme ekle');
     expect(page).not.toMatch(/Bursluluk|Üniversite/);
   });
 });
+

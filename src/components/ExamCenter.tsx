@@ -2,10 +2,10 @@ import { useMemo, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import type { ExamPlanRecord, ExamTarget } from '../lib/types';
 import { ExamCountdownCard } from './ExamCountdownCard';
-import { ExamForm } from './ExamForm';
+import { ExamResultModal } from './ExamResultModal';
 import { monthCells, monthTitle, WEEKDAYS } from '../lib/calendar';
 import { remainingClock } from '../lib/countdown';
-import { emptyExamTarget, examDateForLegacy, primaryExam, splitExams, upsertExam, withPrimary, clearAiExamPlan } from '../lib/examTargets';
+import { examDateForLegacy, primaryExam, splitExams, withPrimary, clearAiExamPlan } from '../lib/examTargets';
 import { istanbulToday } from '../lib/meeting';
 import { askExamPlan } from '../lib/coachAi';
 import { examPlanInstruction, localExamPlanDraft } from '../lib/studyPlanner';
@@ -20,8 +20,7 @@ export function ExamCenter() {
   const today = istanbulToday();
   const [tab, setTab] = useState<Tab>('sinavlar');
   const [listTab, setListTab] = useState<ListTab>('upcoming');
-  const [modal, setModal] = useState<ExamTarget | null>(null);
-  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [resultTarget, setResultTarget] = useState<ExamTarget | null>(null);
   const [selectedDay, setSelectedDay] = useState(today);
   const [cursor, setCursor] = useState(() => {
     const [y, m] = today.split('-').map(Number);
@@ -43,18 +42,12 @@ export function ExamCenter() {
     setData({ ...data, ...extra, examTargets: next, examDate: examDateForLegacy(next) || data.examDate });
   }
 
-  function openNew() {
-    const draft = emptyExamTarget();
-    draft.isPrimary = !targets.length;
-    setModal(draft);
-  }
-
   return (
     <section className="exam-hub">
       <div className="hero exam-hub-hero">
         <div className="eyebrow" style={{ color: '#cfe1ff' }}>Sınav Merkezim</div>
         <h2>Yaklaşan sınavların ve sayaçların burada.</h2>
-        <p>Profilindeki sınıf ve alana göre uygun seçenekler gelir. Saat veya süre sormuyoruz.</p>
+        <p>Atanmış sınavlarını gör; tarihe tıklayarak sonucunu gir. Saat veya süre gösterilmez.</p>
         <div className="hero-actions">
           <button className="btn" type="button" onClick={() => setTab('takvim')}>Takvim</button>
           <button className="btn" type="button" onClick={() => setTab('ai')}>AI Planım</button>
@@ -71,8 +64,8 @@ export function ExamCenter() {
         <>
           {primary ? <ExamCountdownCard exam={primary} /> : (
             <div className="card exam-empty">
-              <h3>Henüz hedef sınavın yok</h3>
-              <p className="muted">Aşağıdan “Bugün sınavım var” ile tarih ekle; sayaç otomatik oluşur.</p>
+              <h3>Henüz atanmış sınav yok</h3>
+              <p className="muted">Sınavlar sistem veya koçun tarafından atanır. Sonuç girmek için listeden tarihe tıkla.</p>
             </div>
           )}
           {upcoming.length > 1 ? (
@@ -81,7 +74,7 @@ export function ExamCenter() {
               {upcoming.map((t) => {
                 const c = remainingClock(t.date, undefined, Date.now());
                 return (
-                  <button key={t.id} type="button" className={`exam-mini ${t.isPrimary ? 'is-primary' : ''} exam-mini--${c.phase}`} onClick={() => setDetail(t)}>
+                  <button key={t.id} type="button" className={`exam-mini ${t.isPrimary ? 'is-primary' : ''} exam-mini--${c.phase}`} onClick={() => setResultTarget(t)}>
                     <strong>{t.title}</strong>
                     <span>{t.date}</span>
                     {t.isPrimary ? <em>Ana sınav</em> : null}
@@ -97,22 +90,23 @@ export function ExamCenter() {
               <div className="exam-seg">
                 <button type="button" className={listTab === 'upcoming' ? 'active' : ''} onClick={() => setListTab('upcoming')}>Yaklaşan</button>
                 <button type="button" className={listTab === 'past' ? 'active' : ''} onClick={() => setListTab('past')}>Geçmiş</button>
-                <button type="button" className="btn primary" style={{ marginLeft: 8 }} onClick={openNew}>Bugün sınavım var</button>
               </div>
             </div>
             {(listTab === 'upcoming' ? upcoming : past).length === 0 ? (
-              <div className="empty">{listTab === 'upcoming' ? 'Yaklaşan sınav yok.' : 'Geçmiş sınav yok. Silinmez; arşiv burada.'}</div>
+              <div className="empty">{listTab === 'upcoming' ? 'Yaklaşan sınav yok.' : 'Geçmiş sınav yok.'}</div>
             ) : (listTab === 'upcoming' ? upcoming : past).map((t) => (
-              <div className="exam-row" key={t.id}>
+              <button
+                key={t.id}
+                type="button"
+                className="exam-row"
+                style={{ width: '100%', textAlign: 'left', cursor: 'pointer' }}
+                onClick={() => setResultTarget(t)}
+              >
                 <div>
                   <b>{t.title}</b>
                   <small className="muted">{t.date}</small>
                 </div>
-                <div className="exam-row-actions">
-                  <button className="btn" type="button" onClick={() => setModal(t)}>Düzenle</button>
-                  <button className="btn danger" type="button" onClick={() => setConfirmId(t.id)}>Sil</button>
-                </div>
-              </div>
+              </button>
             ))}
           </div>
         </>
@@ -132,8 +126,7 @@ export function ExamCenter() {
             setCursor({ y, m: (m || 1) - 1 });
             setSelectedDay(today);
           }}
-          onAdd={openNew}
-          onOpen={(t) => setDetail(t)}
+          onOpen={(t) => setResultTarget(t)}
         />
       )}
 
@@ -213,50 +206,18 @@ export function ExamCenter() {
         </div>
       )}
 
-      {modal ? (
-        <ExamForm
-          draft={modal}
-          onClose={() => setModal(null)}
-          onSave={(row) => {
-            saveTargets(upsertExam(targets, row));
-            setModal(null);
-            toast(row.id && targets.some((t) => t.id === row.id) ? 'Sınav güncellendi' : 'Sınavın oluşturuldu.');
-            setTab('sinavlar');
-          }}
-        />
+      {resultTarget ? (
+        <ExamResultModal target={resultTarget} onClose={() => setResultTarget(null)} />
       ) : null}
 
       {detail ? (
-        <ExamDetail exam={detail} plan={data.examPlan} onClose={() => setDetail(null)} onEdit={() => { setModal(detail); setDetail(null); }} onPrimary={() => { saveTargets(withPrimary(targets, detail.id)); setDetail(null); }} />
-      ) : null}
-
-      {confirmId ? (
-        <div className="modal" role="dialog">
-          <div className="modal-box">
-            <h3>Sınav silinsin mi?</h3>
-            <p>Bu işlem geri alınamaz. Countdown ve bildirim bu kaydı kullanmaz.</p>
-            {data.examPlan && (data.examPlan.examId === confirmId || data.examPlan.examDate === targets.find((t) => t.id === confirmId)?.date) ? (
-              <p className="muted">Bu sınava bağlı AI çalışma planı da silinecek. Program, görev ve PDF durur.</p>
-            ) : null}
-            <div className="actions">
-              <button className="btn danger" type="button" onClick={() => {
-                const gone = targets.find((t) => t.id === confirmId);
-                const next = targets.filter((t) => t.id !== confirmId);
-                const clearPlan = Boolean(data.examPlan && gone && (data.examPlan.examId === gone.id || data.examPlan.examDate === gone.date));
-                setData({
-                  ...data,
-                  examTargets: next,
-                  examDate: examDateForLegacy(next) || '',
-                  examPlan: clearPlan ? null : data.examPlan,
-                  examPlanDraft: clearPlan ? null : data.examPlanDraft,
-                });
-                setConfirmId(null);
-                toast('Sınav silindi');
-              }}>Sil</button>
-              <button className="btn" type="button" onClick={() => setConfirmId(null)}>Vazgeç</button>
-            </div>
-          </div>
-        </div>
+        <ExamDetail
+          exam={detail}
+          plan={data.examPlan}
+          onClose={() => setDetail(null)}
+          onResult={() => { setResultTarget(detail); setDetail(null); }}
+          onPrimary={() => { saveTargets(withPrimary(targets, detail.id)); setDetail(null); }}
+        />
       ) : null}
 
       {confirmPlanDel ? (
@@ -311,7 +272,7 @@ export function ExamCenter() {
   );
 
   async function runPlan(force: boolean) {
-    if (!primary) return toast('Önce sınav ekle.');
+    if (!primary) return toast('Önce atanmış bir sınav gerekli.');
     if (!force && data.examPlan) {
       setTab('ai');
       setShowPlanBody(true);
@@ -378,11 +339,11 @@ export function ExamCenter() {
 }
 
 function ExamMonth({
-  year, month0, selected, targets, onSelect, onPrev, onNext, onToday, onOpen, onAdd,
+  year, month0, selected, targets, onSelect, onPrev, onNext, onToday, onOpen,
 }: {
   year: number; month0: number; selected: string; targets: ExamTarget[];
   onSelect: (iso: string) => void; onPrev: () => void; onNext: () => void; onToday: () => void;
-  onOpen: (t: ExamTarget) => void; onAdd: () => void;
+  onOpen: (t: ExamTarget) => void;
 }) {
   const cells = monthCells(year, month0);
   const today = istanbulToday();
@@ -397,7 +358,6 @@ function ExamMonth({
           <button className="btn" type="button" onClick={onPrev}>Önceki</button>
           <button className="btn secondary" type="button" onClick={onToday}>Bugün</button>
           <button className="btn" type="button" onClick={onNext}>Sonraki</button>
-          <button className="btn primary" type="button" onClick={onAdd}>Bugün sınavım var</button>
         </div>
       </div>
       <div className="calendar-head">{WEEKDAYS.map((d) => <div key={d}>{d}</div>)}</div>
@@ -428,9 +388,9 @@ function ExamMonth({
   );
 }
 
-function ExamDetail({ exam, plan, onClose, onEdit, onPrimary }: {
+function ExamDetail({ exam, plan, onClose, onResult, onPrimary }: {
   exam: ExamTarget; plan: ExamPlanRecord | null;
-  onClose: () => void; onEdit: () => void; onPrimary: () => void;
+  onClose: () => void; onResult: () => void; onPrimary: () => void;
 }) {
   const c = remainingClock(exam.date, undefined, Date.now());
   return (
@@ -440,9 +400,8 @@ function ExamDetail({ exam, plan, onClose, onEdit, onPrimary }: {
         <p className="muted">{exam.date}</p>
         <p><b>{c.headline}</b></p>
         {plan && plan.examId === exam.id ? <p className="muted">Bu sınav için çalışma planın var.</p> : null}
-        {exam.note ? <p>{exam.note}</p> : null}
         <div className="actions">
-          <button className="btn primary" type="button" onClick={onEdit}>Düzenle</button>
+          <button className="btn primary" type="button" onClick={onResult}>Sonuç gir</button>
           {!exam.isPrimary ? <button className="btn" type="button" onClick={onPrimary}>Ana sınav yap</button> : null}
           <button className="btn" type="button" onClick={onClose}>Kapat</button>
         </div>

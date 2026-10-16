@@ -262,4 +262,52 @@ describe('migration hedef şema (020 sonra 021+016; 013/017 atlanır)', () => {
     expect(s).not.toContain('zorro_conversations');
     expect(s).not.toContain('start_top_plan_trial');
   });
+
+  it('045 destek FORCE RLS; politika user_id veya is_admin', () => {
+    const s = sql('045_support_force_rls_isolation.sql');
+    expect(s).toContain('force row level security');
+    expect(s).toContain('support_tickets_select');
+    expect(s).toContain('user_id = auth.uid() or public.is_admin()');
+    expect(s).toContain('support_replies_select');
+    expect(s).not.toMatch(/drop table/i);
+    expect(s).not.toMatch(/delete from/i);
+  });
+
+  it('046 ders programı PDF koça; path öğrenci klasörü; RLS gevşetilmez', () => {
+    const s = sql('046_schedule_pdf_to_coach.sql');
+    expect(s).toContain('schedule_pdf_submissions');
+    expect(s).toContain('schedule-pdfs');
+    expect(s).toContain('coach_linked_to_student');
+    expect(s).toContain('student_linked_coach_id');
+    expect(s).toContain('force row level security');
+    expect(s).not.toMatch(/drop table/i);
+    expect(s).not.toMatch(/delete from public\./i);
+  });
+
+  it('049 destek sender_role; RLS gevşetilmez; DROP yok', () => {
+    const s = sql('049_support_sender_role.sql');
+    expect(s).toContain('sender_role');
+    expect(s).toContain("check (sender_role in ('student', 'coach'))");
+    expect(s).toContain('force row level security');
+    expect(s).not.toMatch(/drop table/i);
+    expect(s).not.toMatch(/drop policy/i);
+  });
+
+  it('047 koç programı PDF; öğrenci path izolasyonu; RLS gevşetilmez', () => {
+    const s = sql('047_coach_program_pdfs.sql');
+    expect(s).toContain('coach_program_pdfs');
+    expect(s).toContain('coach-program-pdfs');
+    expect(s).toContain('coach_linked_to_student');
+    expect(s).toContain('force row level security');
+    expect(s).toContain('storage.foldername(objects.name)');
+    expect(s).not.toMatch(/drop table/i);
+  });
+
+  it('048 storage foldername coaches.name gölgelemesi düzeltilir', () => {
+    const s = sql('048_fix_storage_foldername_objects_name.sql');
+    expect(s).toContain('storage.foldername(objects.name)');
+    expect(s).toContain('coach-program-pdfs');
+    expect(s).toContain('schedule-pdfs');
+    expect(s).not.toMatch(/foldername\(name\)/);
+  });
 });

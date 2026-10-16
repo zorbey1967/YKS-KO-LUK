@@ -43,12 +43,20 @@ export function CoachStudyBriefView({ brief, name }: { brief: CoachStudyBrief; n
       {brief.weakTopics.length ? (
         <p>Soru sonucu: {brief.weakTopics.map((w) => `${w.topic} (${w.wrong} yanlış / ${w.answered} soru)`).join(' · ')}</p>
       ) : null}
-      {brief.exams[0] ? (
-        <p>
-          Son deneme {brief.exams[0].name}: TYT {brief.exams[0].tyt}
-          {brief.examDelta.tyt != null ? ` (${brief.examDelta.tyt >= 0 ? '+' : ''}${brief.examDelta.tyt})` : ''}
-          {brief.exams[0].ayt ? ` / AYT ${brief.exams[0].ayt}` : ''}
-        </p>
+      {brief.exams.length ? (
+        <div style={{ marginTop: 8 }}>
+          <div className="section-title"><h3>Sınav sonuçları</h3></div>
+          {brief.exams.map((e) => (
+            <p key={`${e.name}-${e.date}`} style={{ margin: '6px 0' }}>
+              <b>{e.name}</b> · {e.date}{e.kind ? ` · ${e.kind}` : ''}
+              <br />
+              <small className="muted">
+                Toplam {e.tyt}{e.ayt ? ` / ${e.ayt}` : ''}
+                {e.subjects.length ? ` · ${e.subjects.map((s) => `${s.name} ${s.net}${s.correct != null ? ` (D${s.correct}/Y${s.wrong ?? 0}/B${s.blank ?? 0})` : ''}`).join(', ')}` : ''}
+              </small>
+            </p>
+          ))}
+        </div>
       ) : null}
       {brief.difficulties.length ? (
         <p>Öğrencinin belirttiği zorluk: {brief.difficulties.map((d) => `${d.subject} ${d.difficulty}`).join(', ')}</p>

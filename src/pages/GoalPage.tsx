@@ -1,17 +1,11 @@
 import { useApp } from '../context/AppContext';
-import { examCountdown, weekGoalPct } from '../lib/insights';
-import { examTitle } from '../lib/stage';
-import { ExamInsight } from '../components/ExamInsight';
+import { weekGoalPct } from '../lib/insights';
 import { GoalEditor } from '../components/GoalEditor';
 import { displayRank, displayText } from '../lib/types';
-import { setBankJump, weakBankTopics } from '../lib/practice';
-import { QUESTION_BANK_ENABLED } from '../lib/features';
 
 export function GoalPage() {
-  const { data, go } = useApp();
+  const { data } = useApp();
   const bar = weekGoalPct(data);
-  const count = examCountdown(data.examDate);
-  const weak = weakBankTopics(data, 3);
   const last = data.exams.slice().sort((a, b) => b.date.localeCompare(a.date))[0];
 
   return (
@@ -25,7 +19,7 @@ export function GoalPage() {
           <p className="muted">Hedef sıra kaydı yok.</p>
         )}
         <div className="kpi">
-          <div><span className="muted" style={{ fontSize: 12 }}>{examTitle(data)}</span><br /><b>{data.examDate ? count.label : 'tarih yok'}</b></div>
+          <div><span className="muted" style={{ fontSize: 12 }}>Alan / sınıf</span><br /><b>{displayText(data.grade)}</b></div>
           <span className="chip">{displayText(data.track)}</span>
         </div>
         {bar.hoursLabel !== 'belirtilmedi' ? (
@@ -36,18 +30,9 @@ export function GoalPage() {
         ) : (
           <p className="muted">Haftalık saat hedefi yok.</p>
         )}
-        {last ? <div className="plan-item"><span>Son deneme • {last.name}</span><b>{last.tyt} TYT</b></div> : null}
-        {weak.length ? weak.map((w) => (
-          <div className="plan-item" key={w.key}>
-            <span>{w.topic}<br /><small className="muted">{w.subject} • %{w.acc}</small></span>
-            {QUESTION_BANK_ENABLED ? <button className="btn secondary" type="button" onClick={() => {
-              setBankJump({ level: w.levelName, subject: w.subject, topic: w.topic });
-              go('questionbank');
-            }}>Çalış</button> : null}
-          </div>
-        )) : null}
+        {last ? <div className="plan-item"><span>Son deneme • {last.name}</span><b>{last.tyt} net</b></div> : null}
+        <p className="muted">Sınav tarihleri Sınav Merkezi üzerinden yönetilir.</p>
       </div>
-      <div style={{ gridColumn: '1 / -1' }}><ExamInsight /></div>
     </div>
   );
 }

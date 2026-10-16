@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { TaskRows } from '../components/TaskRows';
-import { ExamForm } from '../components/ExamForm';
+import { ExamResultModal } from '../components/ExamResultModal';
 import { monthCells, monthTitle, WEEKDAYS } from '../lib/calendar';
-import { emptyExamTarget, examDateForLegacy, upsertExam } from '../lib/examTargets';
 import { istanbulToday, listMyAppointments, type MyAppointment } from '../lib/meeting';
 import { getCoachDisplayName, getPersonDisplayName } from '../lib/displayName';
 import { fetchMyCoach } from '../lib/cloudPlatform';
@@ -13,13 +12,12 @@ import type { ExamTarget } from '../lib/types';
 import { getStudentProgress } from '../lib/studentProgress';
 
 export function CalendarPage() {
-  const { data, setData, toast, go, user } = useApp();
+  const { data, go, user } = useApp();
   const today = istanbulToday();
   const [y, m0] = today.split('-').map(Number);
   const [cursor, setCursor] = useState({ y, m: (m0 || 1) - 1 });
   const [selected, setSelected] = useState(today);
-  const [modal, setModal] = useState<ExamTarget | null>(null);
-  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [resultTarget, setResultTarget] = useState<ExamTarget | null>(null);
   const [dayAppts, setDayAppts] = useState<MyAppointment[]>([]);
   const targets = data.examTargets || [];
   const cells = useMemo(() => monthCells(cursor.y, cursor.m), [cursor]);
@@ -28,7 +26,6 @@ export function CalendarPage() {
   const daySessions = data.sessions.filter((x) => x.date === selected);
   const weekday = weekdayNameIstanbul(selected);
   const progress = useMemo(() => getStudentProgress(data), [data]);
-  const dayBlocks = data.schedule.source === 'coach' ? [] : (data.schedule.days.find((d) => d.day === weekday)?.blocks || []);
   const coachDayBlocks = (data.coachSchedule?.days || []).find((d) => d.day === weekday)?.blocks || [];
   const mins = daySessions.reduce((a, x) => a + x.minutes, 0);
 
@@ -51,29 +48,14 @@ export function CalendarPage() {
     })();
     return () => { alive = false; };
   }, [user, selected]);
-  const confirmExam = confirmId ? targets.find((t) => t.id === confirmId) : null;
-  const planWarn = Boolean(confirmExam && data.examPlan && (data.examPlan.examId === confirmExam.id || data.examPlan.examDate === confirmExam.date));
-
-  function saveTargets(next: ExamTarget[]) {
-    setData({ ...data, examTargets: next, examDate: examDateForLegacy(next) || '' });
-  }
-
-  function openNew() {
-    const draft = emptyExamTarget();
-    draft.date = selected;
-    draft.isPrimary = false;
-    draft.origin = 'user';
-    setModal(draft);
-  }
 
   return (
     <div className="grid two">
       <div className="card">
         <div className="section-title">
           <h3>{monthTitle(cursor.y, cursor.m)}</h3>
-          <button className="btn primary" type="button" onClick={openNew}>Bugün sınavım var</button>
         </div>
-        <p className="muted">Sınavlar Sınav Merkezi ile aynı kayıttır. Tarih Türkiye takvimine göredir.</p>
+        <p className="muted">Sınavlar Sınav Merkezi ile aynı kayıttır. Sonucu girmek için tarihe tıkla.</p>
         <div className="actions" style={{ marginTop: 0 }}>
           <button className="btn" type="button" onClick={() => setCursor((c) => c.m === 0 ? { y: c.y - 1, m: 11 } : { y: c.y, m: c.m - 1 })}>Önceki</button>
           <button className="btn secondary" type="button" onClick={() => { setCursor({ y, m: (m0 || 1) - 1 }); setSelected(today); }}>Bugün</button>
@@ -89,7 +71,7 @@ export function CalendarPage() {
               <button key={c.iso} type="button" className={`cal-cell ${c.muted ? 'muted' : ''} ${c.iso === today ? 'today' : ''} ${c.iso === selected ? 'selected' : ''}`} onClick={() => setSelected(c.iso)}>
                 <div className="cal-num">{c.day}{hasStudy ? ' •' : ''}{hasTask ? ' ·' : ''}</div>
                 <div className="exam-badges">
-                  {hits.slice(0, 2).map((h) => <span key={h.id} className="exam-badge">{h.kind.slice(0, 8)}</span>)}
+                  {hits.slice(0, 2).map((h) => <span key={h.id} className="exam-badge">{h.title.slice(0, 8)}</span>)}
                 </div>
               </button>
             );
@@ -99,17 +81,19 @@ export function CalendarPage() {
       <div className="card">
         <div className="section-title"><h3>{fmtDate(selected)}</h3><span>{weekday}</span></div>
         {dayExams.length ? dayExams.map((t) => (
-          <div className="exam-row" key={t.id}>
+          <button
+            key={t.id}
+            type="button"
+            className="exam-row"
+            style={{ width: '100%', textAlign: 'left', cursor: 'pointer' }}
+            onClick={() => setResultTarget(t)}
+          >
             <div>
               <b>{t.title}</b>
               <small className="muted">{t.date}</small>
             </div>
-            <div className="exam-row-actions">
-              <button className="btn" type="button" onClick={() => setModal(t)}>Düzenle</button>
-              <button className="btn danger" type="button" onClick={() => setConfirmId(t.id)}>Sil</button>
-            </div>
-          </div>
-        )) : <p className="muted">Bu günde sınav yok. <button className="btn" type="button" onClick={openNew}>Bugün sınavım var</button></p>}
+          </button>
+        )) : <p className="muted">Bu günde sınav yok.</p>}
 
         {dayAppts.length ? (
           <div style={{ marginTop: 14 }}>
@@ -121,15 +105,6 @@ export function CalendarPage() {
                   <br /><small className="muted">{a.time} • {a.minutes} dk</small>
                 </span>
               </div>
-            ))}
-          </div>
-        ) : null}
-
-        {dayBlocks.length ? (
-          <div style={{ marginTop: 14 }}>
-            <h4 style={{ margin: '0 0 8px' }}>Ders Programım</h4>
-            {dayBlocks.map((b, i) => (
-              <div className="plan-item" key={`${b.title}-${i}`}><span>{b.icon} {[b.start, b.title, b.topic].filter(Boolean).join(' ')}</span><b>{b.minutes} dk</b></div>
             ))}
           </div>
         ) : null}
@@ -146,7 +121,6 @@ export function CalendarPage() {
         {progress.upcomingExams.length ? (
           <div style={{ marginTop: 14 }}>
             <h4 style={{ margin: '0 0 8px' }}>Yaklaşan sınav hazırlığı</h4>
-            <p className="muted">Ana ders programının yerine geçmez.</p>
             {progress.upcomingExams.map((e) => (
               <div key={e.examId} className="plan-item">
                 <span>
@@ -170,44 +144,9 @@ export function CalendarPage() {
         </div>
       </div>
 
-      {modal ? (
-        <ExamForm
-          draft={modal}
-          onClose={() => setModal(null)}
-          onSave={(row) => {
-            saveTargets(upsertExam(targets, row));
-            setModal(null);
-            toast(row.id && targets.some((t) => t.id === row.id) ? 'Sınav güncellendi' : 'Sınav eklendi');
-          }}
-        />
-      ) : null}
-
-      {confirmId && confirmExam ? (
-        <div className="modal" role="dialog">
-          <div className="modal-box">
-            <h3>Sınav silinsin mi?</h3>
-            <p>{confirmExam.title} kaydı kalkacak. Countdown ve bildirim bu sınavı kullanmaz.</p>
-            {planWarn ? <p className="muted">Bu sınava bağlı AI çalışma planı da silinecek. Ders programın, görevlerin ve PDF’in durur.</p> : null}
-            <div className="actions">
-              <button className="btn danger" type="button" onClick={() => {
-                const next = targets.filter((t) => t.id !== confirmId);
-                const clearPlan = planWarn;
-                setData({
-                  ...data,
-                  examTargets: next,
-                  examDate: examDateForLegacy(next) || '',
-                  examPlan: clearPlan ? null : data.examPlan,
-                  examPlanDraft: clearPlan ? null : data.examPlanDraft,
-                });
-                setConfirmId(null);
-                toast('Sınav silindi');
-              }}>Sil</button>
-              <button className="btn" type="button" onClick={() => setConfirmId(null)}>Vazgeç</button>
-            </div>
-          </div>
-        </div>
+      {resultTarget ? (
+        <ExamResultModal target={resultTarget} onClose={() => setResultTarget(null)} />
       ) : null}
     </div>
   );
 }
-

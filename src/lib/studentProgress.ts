@@ -799,3 +799,23 @@ export function acceptPlanChange(data: AppData, minutes?: number): AppData {
   }
   return { ...data, plan, planDate: istanbulDateKey(), schedule };
 }
+
+/**
+ * Öğrencinin Akıllı Planını tamamen temizler.
+ * Koç programı (coachSchedule) ve okul PDF programı (schedule) dokunulmaz.
+ * Plan kaynaklı (zorro / subject=Plan) görevler silinir; koç ödevleri kalır.
+ */
+export function clearStudentSmartPlan(data: AppData): AppData {
+  invalidateStudentProgress();
+  return {
+    ...data,
+    plan: [],
+    planDate: '',
+    tasks: data.tasks.filter((t) => {
+      if (t.origin === 'coach') return true;
+      if (t.origin === 'zorro') return false;
+      if (t.subject === 'Plan') return false;
+      return true;
+    }),
+  };
+}

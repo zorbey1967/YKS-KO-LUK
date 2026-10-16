@@ -11,7 +11,7 @@ export function ExamNotifyWatcher() {
     if (profile?.role === 'coach') return;
     const day = istanbulToday();
     const hour = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Istanbul', hour: 'numeric', hour12: false }).format(new Date());
-    const key = `${day}:${hour}:${(data.examTargets || []).map((t) => `${t.id}:${data.examNotifyLog?.[`${t.id}:r0`] || ''}`).join(',')}`;
+    const key = `${day}:${hour}:${(data.examTargets || []).map((t) => `${t.id}:${data.examNotifyLog?.[`${t.id}:1`] || data.examNotifyLog?.[`${t.id}:3`] || ''}`).join(',')}`;
     if (ran.current === key) return;
     const due = dueExamNotices(data, data.examTargets || []);
     if (!due.length) {

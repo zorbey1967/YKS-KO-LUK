@@ -5,5 +5,7 @@ export const QUESTION_BANK_ENABLED = false;
 
 export function isNavPageVisible(id: PageId): boolean {
   if (id === 'questionbank') return QUESTION_BANK_ENABLED;
+  /** Konular menüde gizlenir; Konuşar (ZORRO) kalır. Ayarlar öğrenci nav listesinde yok. */
+  if (id === 'topics') return false;
   return true;
 }

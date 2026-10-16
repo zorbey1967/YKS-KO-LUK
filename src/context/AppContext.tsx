@@ -14,7 +14,10 @@ import { resolveAccessGate, type AccessGate } from '../lib/accessGate';
 import { consumeOAuthRedirect, noteOAuthAuthEvent, oauthExchangeInFlight, urlHasOAuthCallback } from '../lib/authCallback';
 import { appendLibrarySession, invalidateStudentProgress, progressFingerprint } from '../lib/studentProgress';
 import { resetAiCoachCache } from '../lib/aiCoachAnalysis';
+import { resetExamDocumentAnalysisCache } from '../lib/examDocumentAnalysis';
 import { emptyLibraryPrefs } from '../lib/libraryPresence';
+import { clearLive } from '../lib/studyTimer';
+import { clearCoachSession } from '../lib/coaches';
 
 type Ctx = {
   page: PageId;
@@ -108,6 +111,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const bumpCaches = useCallback(() => {
     invalidateStudentProgress();
     resetAiCoachCache();
+    resetExamDocumentAnalysisCache();
   }, []);
 
   const pushCloud = useCallback(async (payload: AppData) => {
@@ -257,7 +261,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const applySession = useCallback(async (u: User | null, force = false) => {
     const run = async () => {
       if (!u) {
-        flushLibraryForUser(userRef.current);
+        const leaving = userRef.current;
+        flushLibraryForUser(leaving);
+        if (leaving?.id) clearLive(localStorage, leaving.id);
+        clearLive(localStorage, null);
+        clearCoachSession();
         hydratedUserId.current = null;
         userRef.current = null;
         setUser(null);
@@ -272,7 +280,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return;
       }
       const prevUser = userRef.current;
-      if (prevUser?.id && prevUser.id !== u.id) flushLibraryForUser(prevUser);
+      if (prevUser?.id && prevUser.id !== u.id) {
+        flushLibraryForUser(prevUser);
+        clearLive(localStorage, prevUser.id);
+        clearCoachSession();
+        hydratedUserId.current = null;
+        cloudReady.current = false;
+        // Hesap değişince eski kullanıcının verisi ekranda kalmasın (pull bitene kadar flash yok).
+        setDataState(loadData(u.id));
+      }
       setUser((prev) => (prev?.id === u.id ? prev : u));
       userRef.current = u;
       if (!force && hydratedUserId.current === u.id) {

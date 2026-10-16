@@ -16,7 +16,7 @@ import {
   type CoachTrack,
   type HumanCoach,
 } from '../lib/coaches';
-import { addCoachSlot, assignCoachHomework, closeCoachSlot, decideApprovedAppointmentCancel, fetchActiveCoaches, fetchCoachDesk, fetchCoachStudentBrief, fetchLinkedStudents, fetchMyCoach, fetchStudentWeekPlan, listMySlots, listOpenSlots, requestAppointment, requestCancelApprovedAppointment, respondAppointment, runAppointmentJobs, saveStudentWeekPlan, setCoachHomeworkDone, type LinkedStudentRow } from '../lib/cloudPlatform';
+import { addCoachSlot, assignCoachHomework, closeCoachSlot, decideApprovedAppointmentCancel, fetchActiveCoaches, fetchCoachDesk, fetchCoachStudentBrief, fetchLinkedStudents, fetchMyCoach, listMySlots, listOpenSlots, requestAppointment, requestCancelApprovedAppointment, respondAppointment, runAppointmentJobs, setCoachHomeworkDone, type LinkedStudentRow } from '../lib/cloudPlatform';
 import { CoachStudyBriefView } from '../components/CoachStudyBrief';
 import type { CoachStudyBrief } from '../lib/coachBrief';
 import { istanbulToday, istanbulWallIso, listMyAppointments, nextBookSlot, splitAppointmentsBySlot, type MyAppointment } from '../lib/meeting';
@@ -27,9 +27,20 @@ import { canDecideApprovedCancel, canRequestApprovedCancel } from '../lib/appoin
 import { CoachZorroAssist } from '../components/CoachZorroAssist';
 import { getCoachDisplayName, getPersonDisplayName } from '../lib/displayName';
 import { coachesAudience, coachesView } from '../lib/coachesView';
-import { WeekPlanEditor } from '../components/WeekPlanEditor';
-import { emptyWeekPlan, type WeekPlan } from '../lib/weekPlan';
-import type { ScheduleDay } from '../lib/types';
+import {
+  createSchedulePdfSignedUrl,
+  filterCoachSchedulePdfsForStudents,
+  listCoachSchedulePdfSubmissions,
+  type SchedulePdfSubmission,
+} from '../lib/schedulePdfCloud';
+import {
+  createCoachProgramPdfSignedUrl,
+  filterCoachProgramPdfsForStudents,
+  listCoachUploadedProgramPdfs,
+  uploadCoachProgramPdf,
+  type CoachProgramPdf,
+} from '../lib/coachProgramPdfCloud';
+import { assertPdfFile } from '../lib/pdfStore';
 
 type PanelTab = 'ozet' | 'ogrenci' | 'odev' | 'para' | 'randevu' | 'musait' | 'oda';
 
@@ -69,8 +80,9 @@ export function CoachesPage() {
   const [brief, setBrief] = useState<CoachStudyBrief | null>(null);
   const [briefErr, setBriefErr] = useState('');
   const [planStudent, setPlanStudent] = useState('');
-  const [week, setWeek] = useState<WeekPlan>(() => emptyWeekPlan());
-  const [weekBusy, setWeekBusy] = useState(false);
+  const [programBusy, setProgramBusy] = useState(false);
+  const [schedulePdfs, setSchedulePdfs] = useState<SchedulePdfSubmission[]>([]);
+  const [coachProgramPdfs, setCoachProgramPdfs] = useState<CoachProgramPdf[]>([]);
   const coachUx = profile?.role === 'coach' || isAdmin;
   const view = coachesView(coachesAudience({ signedIn: Boolean(user), role: profile?.role, isAdmin }));
 
@@ -166,6 +178,25 @@ export function CoachesPage() {
     });
     return () => { alive = false; };
   }, [user, coachUx]);
+
+  useEffect(() => {
+    if (!view.showCoachPanel || !session) {
+      setSchedulePdfs([]);
+      setCoachProgramPdfs([]);
+      return;
+    }
+    let alive = true;
+    const allowed = (linked.length ? linked : desk.students).map((s) => s.id);
+    void listCoachSchedulePdfSubmissions().then((res) => {
+      if (!alive || !res.ok) return;
+      setSchedulePdfs(allowed.length ? filterCoachSchedulePdfsForStudents(res.rows, allowed) : res.rows);
+    });
+    void listCoachUploadedProgramPdfs().then((res) => {
+      if (!alive || !res.ok) return;
+      setCoachProgramPdfs(allowed.length ? filterCoachProgramPdfsForStudents(res.rows, allowed) : res.rows);
+    });
+    return () => { alive = false; };
+  }, [view.showCoachPanel, session, linked, desk.students]);
 
   useEffect(() => {
     if (!session || !cloudCoachId) {
@@ -496,19 +527,6 @@ export function CoachesPage() {
                   </span>
                   <button className="btn secondary" type="button" onClick={() => {
                     setPlanStudent(s.id);
-                    setWeek(emptyWeekPlan());
-                    void fetchStudentWeekPlan(s.id).then((row) => {
-                      if (!row || typeof row !== 'object') return;
-                      const rec = row as { days?: ScheduleDay[]; week_hours?: number; notes?: string; lock?: string; coach_id?: string; updated_at?: string };
-                      setWeek({
-                        days: Array.isArray(rec.days) && rec.days.length ? rec.days as ScheduleDay[] : emptyWeekPlan().days,
-                        weekHours: Number(rec.week_hours) || 0,
-                        notes: String(rec.notes || ''),
-                        lock: 'coach',
-                        coachId: rec.coach_id ? String(rec.coach_id) : null,
-                        updatedAt: String(rec.updated_at || ''),
-                      });
-                    });
                     setBriefId(s.id);
                     setBrief(null);
                     setBriefErr('');
@@ -530,25 +548,106 @@ export function CoachesPage() {
                   name={(linked.find((s) => s.id === briefId) || desk.students.find((s) => s.id === briefId))?.name || 'Öğrenci'}
                 />
               ) : null}
-              {planStudent ? (
-                <div style={{ marginTop: 16 }}>
-                  <div className="section-title"><h3>Koçun Programı</h3><span>{(linked.find((s) => s.id === planStudent) || desk.students.find((s) => s.id === planStudent))?.name || 'Öğrenci'}</span></div>
-                  <WeekPlanEditor
-                    key={planStudent + week.updatedAt}
-                    plan={week}
-                    editable
-                    busy={weekBusy}
-                    onSave={(next) => {
-                      setWeekBusy(true);
-                      void saveStudentWeekPlan({ studentId: planStudent, days: next.days, weekHours: next.weekHours, notes: next.notes, lock: 'coach' }).then((res) => {
-                        setWeekBusy(false);
-                        toast(res.ok ? 'Koç programı kaydedildi.' : res.error);
-                        if (res.ok) setWeek({ ...next, lock: 'coach' });
-                      });
-                    }}
-                  />
+              <div style={{ marginTop: 16 }}>
+                <div className="section-title"><h3>Koçun Programı (PDF)</h3></div>
+                <p className="muted">Öğrenci seç → Program Yükle. Haftalık editör yok; yalnızca PDF.</p>
+                <div className="field">
+                  <label>Öğrenci</label>
+                  <select value={planStudent} onChange={(e) => setPlanStudent(e.target.value)}>
+                    <option value="">Seç</option>
+                    {(linked.length ? linked : desk.students).map((s) => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                  </select>
                 </div>
-              ) : null}
+                <div className="actions" style={{ marginTop: 8 }}>
+                  <label className="btn primary" style={{ cursor: programBusy || !planStudent ? 'not-allowed' : 'pointer', opacity: programBusy || !planStudent ? 0.6 : 1 }}>
+                    {programBusy ? 'Yükleniyor…' : 'Program Yükle'}
+                    <input
+                      type="file"
+                      accept="application/pdf"
+                      hidden
+                      disabled={programBusy || !planStudent}
+                      onChange={(e) => {
+                        const f = e.target.files?.[0] || null;
+                        e.target.value = '';
+                        if (!f || !planStudent) return;
+                        setProgramBusy(true);
+                        void (async () => {
+                          try {
+                            assertPdfFile(f);
+                            const res = await uploadCoachProgramPdf(planStudent, f);
+                            if (!res.ok) {
+                              toast(res.error);
+                              return;
+                            }
+                            setCoachProgramPdfs((prev) => [res.row, ...prev.filter((r) => r.id !== res.row.id)]);
+                            toast('Program PDF yüklendi');
+                          } catch (err) {
+                            toast(err instanceof Error ? err.message : 'PDF yüklenemedi');
+                          } finally {
+                            setProgramBusy(false);
+                          }
+                        })();
+                      }}
+                    />
+                  </label>
+                </div>
+                {coachProgramPdfs.filter((r) => !planStudent || r.student_id === planStudent).length ? (
+                  coachProgramPdfs.filter((r) => !planStudent || r.student_id === planStudent).map((r) => (
+                    <div className="plan-item" key={r.id}>
+                      <span>
+                        <b>{r.student_name || 'Öğrenci'}</b>
+                        <br />
+                        <small className="muted">{r.file_name} · {new Date(r.created_at).toLocaleString('tr-TR')}</small>
+                      </span>
+                      <button
+                        className="btn secondary"
+                        type="button"
+                        onClick={() => {
+                          void createCoachProgramPdfSignedUrl(r.storage_path).then((url) => {
+                            if (!url) {
+                              toast('PDF açılamadı.');
+                              return;
+                            }
+                            window.open(url, '_blank', 'noopener,noreferrer');
+                          });
+                        }}
+                      >
+                        Görüntüle
+                      </button>
+                    </div>
+                  ))
+                ) : <div className="empty">Yüklenmiş koç programı yok.</div>}
+              </div>
+              <div style={{ marginTop: 16 }}>
+                <div className="section-title"><h3>Öğrencinin Ders Programları</h3></div>
+                <p className="muted">Yalnızca bağlı öğrencilerin gönderdiği PDF’ler.</p>
+                {schedulePdfs.length ? schedulePdfs.map((r) => (
+                  <div className="plan-item" key={r.id}>
+                    <span>
+                      <b>{r.student_name || 'Öğrenci'}</b>
+                      <br />
+                      <small className="muted">{r.file_name} · {new Date(r.created_at).toLocaleString('tr-TR')}</small>
+                    </span>
+                    <button
+                      className="btn secondary"
+                      type="button"
+                      onClick={() => {
+                        void createSchedulePdfSignedUrl(r.storage_path).then((url) => {
+                          if (!url) {
+                            toast('PDF açılamadı.');
+                            return;
+                          }
+                          window.open(url, '_blank', 'noopener,noreferrer');
+                        });
+                      }}
+                    >
+                      PDF’yi aç
+                    </button>
+                  </div>
+                )) : <div className="empty">Gönderilmiş ders programı yok.</div>}
+              </div>
             </div>
           ) : null}
 

@@ -65,7 +65,7 @@ export function ExamInsight() {
         {displayAge(data.age)} • {displayText(data.grade)}. Program kısa bloklar ve okul derslerine göre üretilir. YKS analizi 11 ve 12. sınıfta açılır.
       </p>
       <div className="actions">
-        <button className="btn secondary" type="button" onClick={() => go('topics')}>Müfredat</button>
+        <button className="btn secondary" type="button" onClick={() => go('plan')}>Akıllı Plan</button>
         {QUESTION_BANK_ENABLED ? <button className="btn secondary" type="button" onClick={() => go('questionbank')}>Sınıf soruları</button> : null}
       </div>
     </div>

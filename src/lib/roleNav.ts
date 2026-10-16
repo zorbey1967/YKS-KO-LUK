@@ -43,8 +43,10 @@ export function coerceAppPage(
   gate: AccessGate,
   isAdmin = false,
 ): PageId {
-  const hiddenBank = page === 'questionbank' && !QUESTION_BANK_ENABLED ? 'home' : page;
-  return coercePageForAccess(coercePageForRole(hiddenBank, role, isAdmin), gate);
+  let next = page;
+  if (page === 'questionbank' && !QUESTION_BANK_ENABLED) next = 'home';
+  if (page === 'topics') next = 'home';
+  return coercePageForAccess(coercePageForRole(next, role, isAdmin), gate);
 }
 
 export function leaveMeetingShell(go: (id: PageId) => void, role: Profile['role'] | string | null | undefined) {

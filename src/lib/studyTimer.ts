@@ -3,6 +3,11 @@ import { today as todayKey } from './util';
 
 export const LIVE_KEY = 'yks_timer_live_v1';
 export const INTENT_KEY = 'yks_timer_intent_v1';
+
+/** Canlı timer taslağı kullanıcıya özel; A→B geçişinde sızıntı olmasın. */
+export function liveStorageKey(userId?: string | null) {
+  return userId ? `${LIVE_KEY}_${userId}` : `${LIVE_KEY}_guest`;
+}
 export const MIN_SAVE_SEC = 60;
 /** Duvar saati bu kadar ileri zıplarsa (uyku/NTP) kalan süreye güvenilir; ekstra süre eklenmez. */
 export const MAX_CLOCK_JUMP_MS = 36 * 60 * 60 * 1000;
@@ -328,10 +333,17 @@ export function parseLive(raw: unknown): LiveTimer | null {
   };
 }
 
-export function loadLive(store: Pick<Storage, 'getItem'> = localStorage): LiveTimer | null {
+export function loadLive(
+  store: Pick<Storage, 'getItem' | 'removeItem'> = localStorage,
+  userId?: string | null,
+): LiveTimer | null {
   try {
-    const raw = store.getItem(LIVE_KEY);
-    if (!raw) return null;
+    const raw = store.getItem(liveStorageKey(userId));
+    if (!raw) {
+      // Eski global anahtar: başka hesaba taşınmasın diye sil.
+      try { store.removeItem(LIVE_KEY); } catch { /* ignore */ }
+      return null;
+    }
     const live = parseLive(JSON.parse(raw));
     if (!live?.id) return null;
     return live;
@@ -340,12 +352,21 @@ export function loadLive(store: Pick<Storage, 'getItem'> = localStorage): LiveTi
   }
 }
 
-export function writeLive(live: LiveTimer, store: Pick<Storage, 'setItem'> = localStorage): void {
-  store.setItem(LIVE_KEY, JSON.stringify(live));
+export function writeLive(
+  live: LiveTimer,
+  store: Pick<Storage, 'setItem' | 'removeItem'> = localStorage,
+  userId?: string | null,
+): void {
+  try { store.removeItem(LIVE_KEY); } catch { /* ignore */ }
+  store.setItem(liveStorageKey(userId), JSON.stringify(live));
 }
 
-export function clearLive(store: Pick<Storage, 'removeItem'> = localStorage): void {
-  store.removeItem(LIVE_KEY);
+export function clearLive(
+  store: Pick<Storage, 'removeItem'> = localStorage,
+  userId?: string | null,
+): void {
+  store.removeItem(liveStorageKey(userId));
+  try { store.removeItem(LIVE_KEY); } catch { /* ignore */ }
 }
 
 export function dailyTotals(sessions: Session[], date: string): { minutes: number; count: number } {

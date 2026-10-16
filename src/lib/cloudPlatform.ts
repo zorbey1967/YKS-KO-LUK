@@ -1135,3 +1135,23 @@ export async function requestExamScan(path: string): Promise<{ ok: boolean; erro
   if (body.ok !== true) return { ok: false, error: String(body.error || 'Görsel okunamadı.') };
   return { ok: true, error: '', marks: body.marks, warning: body.warning ? String(body.warning) : undefined };
 }
+
+export async function requestExamDocumentScan(
+  path: string,
+  context = '',
+): Promise<{ ok: true; analysis: unknown } | { ok: false; error: string }> {
+  if (!supabase) return { ok: false, error: SUPABASE_UNAVAILABLE };
+  const { data, error } = await supabase.functions.invoke('exam-scan', {
+    body: { path, mode: 'document_analysis', context: context.slice(0, 4000) },
+  });
+  const body = (data && typeof data === 'object') ? data as Record<string, unknown> : {};
+  if (error) {
+    const msg = String(error.message || '');
+    if (/not found|404|failed to send/i.test(msg)) {
+      return { ok: false, error: 'Görsel analiz servisi yayınlanmadı. Sonuç uydurulmadı.' };
+    }
+    return { ok: false, error: publicCloudError(error) };
+  }
+  if (body.ok !== true) return { ok: false, error: String(body.error || 'Görsel okunamadı.') };
+  return { ok: true, analysis: body.analysis ?? null };
+}

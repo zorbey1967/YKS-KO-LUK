@@ -99,7 +99,7 @@ export function HomePage({ onNewTask }: { onNewTask: () => void }) {
           Sistem seni tanıyor: sınıf, hedef, konular, denemeler ve çalışma sürelerin tek yerde Akıllı Plan’a gider.
           {data.examDate
             ? (count.past ? ` ${examTitle(data)} tarihi geçti.` : ` ${examTitle(data)}’ye ${count.label}.`)
-            : ' Sınav tarihi Hedefim veya Takvim’de.'}
+            : ' Sınav tarihleri Sınav Merkezi’nde.'}
           {data.rank > 0 ? ` Hedef sıra ${displayRank(data.rank)}.` : ''}
         </p>
         <div className="hero-actions">
@@ -229,14 +229,10 @@ export function HomePage({ onNewTask }: { onNewTask: () => void }) {
 
       <div className="card coach-program-card" style={{ marginTop: 16 }}>
         <div className="section-title"><h3>Koçun Programı</h3></div>
-        {state.coachToday.length || state.coachWeekFocus.some((d) => d.minutes) ? (
-          <>
-            {state.coachToday.length ? <p>Bugün: {state.coachToday.map((b) => `${b.title} ${b.minutes} dk`).join(' · ')}</p> : <p className="muted">Bugün için koç bloğu yok.</p>}
-            <div className="actions">
-              <button className="btn secondary" type="button" onClick={() => go('schedule')}>Programı gör</button>
-            </div>
-          </>
-        ) : <p className="muted">Koç henüz program yazmadı. Uydurma program yok.</p>}
+        <p className="muted">Koçunun yüklediği PDF Akıllı Plan’da görünür. Kendi ders programı PDF’nden ayrıdır.</p>
+        <div className="actions">
+          <button className="btn secondary" type="button" onClick={() => go('plan')}>Koçun Programı’nı aç</button>
+        </div>
       </div>
 
       <div className="card student-program-card" style={{ marginTop: 16 }}>
@@ -263,7 +259,6 @@ export function HomePage({ onNewTask }: { onNewTask: () => void }) {
         <div className="actions">
           <button className="btn secondary" type="button" onClick={() => go('plan')}>Akıllı Plan</button>
           <button className="btn secondary" type="button" onClick={() => go('exams')}>Denemeler</button>
-          <button className="btn secondary" type="button" onClick={() => go('topics')}>Konular</button>
           <button className="btn secondary" type="button" onClick={onNewTask}>Görev ekle</button>
           <button className="btn secondary" type="button" onClick={() => go('library')}>Kütüphane</button>
           <button className="btn secondary" type="button" onClick={() => go('analytics')}>Analiz</button>

@@ -194,7 +194,7 @@ export async function askDailyPlan(data: AppData, minutes: number, focus: string
     minutes,
     focus,
     context: selectZorroContext(data, `${minutes} dk ${focus}`, 'plan'),
-    instruction: `Günlük çalışma planı üret. JSON: { "summary": "...", "plan": [ { "text": "...", "minutes": 40, "icon": "📚" } ] }. Toplam yaklaşık ${minutes} dk. Odak: ${focus}. Kayıtsız zayıf konu uydurma. Programı uygulamadan öner.`,
+    instruction: `Günlük çalışma planı üret. JSON: { "summary": "...", "plan": [ { "text": "...", "minutes": 40, "icon": "📚" } ] }. Toplam yaklaşık ${minutes} dk (öğrencinin haftalık çalışma hedefi / tipik kapasitesi). Odak: ${focus}. Yalnızca bağlamdaki deneme netleri, yaklaşan yazılı/sınavlar, sınıf/alan, bitmemiş konular ve koç programı uyarısını kullan. Kayıtsız zayıf konu uydurma. Koçun Programını değiştirme veya kopyalama. Programı uygulamadan öner.`,
   }, 40000);
   if (cloud.ok) {
     const hit = fromPacked(cloud.data);

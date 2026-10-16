@@ -16,12 +16,12 @@ export function StudySuggestCard() {
 
   function start() {
     if (rec.action === 'onboard') {
-      go(QUESTION_BANK_ENABLED ? 'questionbank' : 'topics');
+      go(QUESTION_BANK_ENABLED ? 'questionbank' : 'plan');
       return;
     }
     if (rec.action === 'bank') {
       if (!QUESTION_BANK_ENABLED) {
-        go('topics');
+        go('plan');
         return;
       }
       const jump = rec.level

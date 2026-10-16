@@ -8,7 +8,6 @@ import { QUESTION_BANK_ENABLED } from '../lib/features';
 import { today, uid } from '../lib/util';
 import { commitSession, patchSession } from '../lib/studyLoop';
 import { tombstone } from '../lib/syncMerge';
-import { StudySuggestCard } from '../components/StudySuggestCard';
 import { formatMinutes, getStudentProgress } from '../lib/studentProgress';
 import {
   STUDY_KINDS,
@@ -45,9 +44,10 @@ function newIdle(kind: StudyKind, subject: string, plannedSec?: number): LiveTim
 }
 
 export function TimerPage() {
-  const { data, setData, toast, go } = useApp();
+  const { data, setData, toast, go, user } = useApp();
+  const timerUid = user?.id ?? null;
   const [live, setLive] = useState<LiveTimer>(() => {
-    const restored = loadLive();
+    const restored = loadLive(localStorage, timerUid);
     const intent = takeTimerIntent();
     if (intent && !restored?.startedAt) {
       return idleLive({
@@ -63,12 +63,12 @@ export function TimerPage() {
     if (restored) return syncFromClock(restored);
     return newIdle('free', 'Odak');
   });
-  const [topic, setTopic] = useState(() => loadLive()?.topic || '');
+  const [topic, setTopic] = useState(() => loadLive(localStorage, timerUid)?.topic || '');
   const [asked, setAsked] = useState('');
   const [correctCount, setCorrectCount] = useState('');
   const [difficulty, setDifficulty] = useState<'' | 'kolay' | 'orta' | 'zor'>('');
   const [now, setNow] = useState(() => Date.now());
-  const [saveUi, setSaveUi] = useState<SaveUi>(() => (loadLive()?.saved ? 'saved' : 'idle'));
+  const [saveUi, setSaveUi] = useState<SaveUi>(() => (loadLive(localStorage, timerUid)?.saved ? 'saved' : 'idle'));
   const [saveErr, setSaveErr] = useState('');
   const [online, setOnline] = useState(() => (typeof navigator === 'undefined' ? true : navigator.onLine));
   const [customMin, setCustomMin] = useState(40);
@@ -78,8 +78,25 @@ export function TimerPage() {
   const commitLive = useCallback((next: LiveTimer) => {
     liveRef.current = next;
     setLive(next);
-    writeLive(next);
-  }, []);
+    writeLive(next, localStorage, timerUid);
+  }, [timerUid]);
+
+  useEffect(() => {
+    const restored = loadLive(localStorage, timerUid);
+    if (restored) {
+      const synced = syncFromClock(restored);
+      liveRef.current = synced;
+      setLive(synced);
+      setTopic(synced.topic || '');
+      setSaveUi(synced.saved ? 'saved' : 'idle');
+    } else {
+      const idle = newIdle('free', 'Odak');
+      liveRef.current = idle;
+      setLive(idle);
+      setTopic('');
+      setSaveUi('idle');
+    }
+  }, [timerUid]);
 
   useEffect(() => {
     const id = window.setInterval(() => {
@@ -95,9 +112,9 @@ export function TimerPage() {
     }, 250);
     return () => {
       window.clearInterval(id);
-      writeLive(syncFromClock(liveRef.current, Date.now()));
+      writeLive(syncFromClock(liveRef.current, Date.now()), localStorage, timerUid);
     };
-  }, [commitLive, toast]);
+  }, [commitLive, toast, timerUid]);
 
   useEffect(() => {
     const onVis = () => {
@@ -111,7 +128,7 @@ export function TimerPage() {
       e.returnValue = '';
     };
     const onHash = () => {
-      writeLive(syncFromClock(liveRef.current, Date.now()));
+      writeLive(syncFromClock(liveRef.current, Date.now()), localStorage, timerUid);
     };
     const onOnline = () => setOnline(true);
     const onOffline = () => setOnline(false);
@@ -121,14 +138,14 @@ export function TimerPage() {
     window.addEventListener('online', onOnline);
     window.addEventListener('offline', onOffline);
     return () => {
-      writeLive(syncFromClock(liveRef.current, Date.now()));
+      writeLive(syncFromClock(liveRef.current, Date.now()), localStorage, timerUid);
       document.removeEventListener('visibilitychange', onVis);
       window.removeEventListener('beforeunload', onLeave);
       window.removeEventListener('hashchange', onHash);
       window.removeEventListener('online', onOnline);
       window.removeEventListener('offline', onOffline);
     };
-  }, [commitLive]);
+  }, [commitLive, timerUid]);
 
   const rem = remainingSec(live, now);
   const used = elapsedSec(live, now);
@@ -165,7 +182,7 @@ export function TimerPage() {
 
   function applyCancel() {
     const next = cancelLive(live, Date.now());
-    clearLive();
+    clearLive(localStorage, timerUid);
     commitLive(next);
     setSaveUi('idle');
     setSaveErr('');
@@ -420,14 +437,13 @@ export function TimerPage() {
           <div className="card stat"><div className="label">BU HAFTA</div><div className="value">{formatMinutes(progress.capacity.weekMinutes)}</div><div className="sub">Çalışma saati {formatMinutes(progress.capacity.weekTimer)} · Kütüphane {formatMinutes(progress.capacity.weekLibrary)}</div></div>
           <div className="card stat"><div className="label">BU AY</div><div className="value">{formatMinutes(progress.capacity.monthTotal)}</div><div className="sub">Çalışma saati {formatMinutes(progress.capacity.monthTimer)} · Kütüphane {formatMinutes(progress.capacity.monthLibrary)}</div></div>
         </div>
-        <p className="muted">Koçun Programı bugün {formatMinutes(progress.coachToday.reduce((a, b) => a + b.minutes, 0))} · hafta {formatMinutes(progress.coachWeekFocus.reduce((a, d) => a + d.minutes, 0))}. Çalışma saati ve kütüphane ayrı sayılır.</p>
+        <p className="muted">Çalışma saati ve kütüphane ayrı sayılır.</p>
         {progress.capacity.weekTrend.map((d) => (
           <div className="kpi" key={d.date}><div>{d.day}</div><b>{formatMinutes(d.minutes)}</b></div>
         ))}
         {progress.studyBreakdown.slice(0, 8).map((s) => (
           <div className="plan-item" key={s.name}><span>{s.name}</span><b>{formatMinutes(s.minutes)}</b></div>
         ))}
-        <StudySuggestCard />
         <div className="section-title" style={{ marginTop: 16 }}><h3>Bugünkü kayıtlar</h3></div>
         <div className="kpi">
           <div>

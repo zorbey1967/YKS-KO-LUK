@@ -10,6 +10,9 @@ const HOUR_LIMIT = 8;
 const scanBuckets: RateStore = new Map();
 const upstash = readUpstashEnv(Deno.env);
 
+const UNREADABLE =
+  "Dosya yeterince net okunamadı. Daha net bir fotoğraf veya PDF yükleyebilirsiniz.";
+
 function json(req: Request, data: unknown, status = 200) {
   return new Response(JSON.stringify(data), { status, headers: { ...corsHeaders(req), "Content-Type": "application/json" } });
 }
@@ -34,6 +37,17 @@ function sniffMime(bytes: Uint8Array): string | null {
   const webp = bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50;
   if (riff && webp) return "image/webp";
   return null;
+}
+
+function extractJsonObject(text: string): Record<string, unknown> | null {
+  const start = text.indexOf("{");
+  const end = text.lastIndexOf("}");
+  if (start < 0 || end <= start) return null;
+  try {
+    return JSON.parse(text.slice(start, end + 1)) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
 }
 
 Deno.serve(async (req) => {
@@ -108,12 +122,14 @@ Deno.serve(async (req) => {
     return json(req, { ok: false, error: "Saatlik analiz kotası doldu." }, 429);
   }
 
-  let body: { path?: unknown } = {};
+  let body: { path?: unknown; mode?: unknown; context?: unknown } = {};
   try { body = await req.json(); } catch { return json(req, { ok: false, error: "Geçersiz istek" }, 400); }
   const path = String(body.path || "");
   if (!pathOwned(authData.user.id, path)) {
     return json(req, { ok: false, error: "Dosya yolu geçersiz" }, 400);
   }
+  const mode = String(body.mode || "marks") === "document_analysis" ? "document_analysis" : "marks";
+  const studentCtx = String(body.context || "").slice(0, 4000);
 
   const { data: file, error: dl } = await supabase.storage.from("exam-scans").download(path);
   if (dl || !file) return json(req, { ok: false, error: "Dosya okunamadı veya depo yok." }, 404);
@@ -132,16 +148,49 @@ Deno.serve(async (req) => {
   }
   const b64 = btoa(binary);
 
-  const prompt = `Optik form veya sonuç belgesi. JSON: {"marks":[(0-4 veya null)],"warning":"..."}.
+  const marksPrompt = `Optik form veya sonuç belgesi. JSON: {"marks":[(0-4 veya null)],"warning":"..."}.
 Belirsiz işaret için null kullan. Cevap anahtarı uydurma. Resmî sınav adı emin değilsen warning yaz.`;
 
+  const docPrompt = `Sınav/deneme fotoğrafı veya PDF. SADECE gördüğün soruları analiz et.
+JSON:
+{
+  "unreadable": false,
+  "message": "",
+  "summary": "kısa özet",
+  "advice": "yalnızca okunan sorulara dayalı çalışma önerisi",
+  "unreadableQuestions": ["Soru 4"],
+  "questions": [
+    {
+      "number": 1,
+      "subject": "Matematik",
+      "topic": "Fonksiyonlar",
+      "subtopic": "Belirlenemedi",
+      "verdict": "yanlis",
+      "errorType": "Belirlenemedi",
+      "readable": true
+    }
+  ]
+}
+Kurallar:
+- Dosyada olmayan soru üretme. Net/sonuç uydurma.
+- Konu görünmüyorsa topic = "Konusu belirlenemedi".
+- Doğru/yanlış/boş okunmuyorsa verdict = "belirlenemedi"; tahmin etme.
+- Hata türü görünmüyorsa errorType = "Belirlenemedi".
+- Tamamen okunamıyorsa unreadable=true, questions=[], message tam olarak: "${UNREADABLE}"
+- Kısmi okumada okunamayanları unreadableQuestions’a yaz.
+${studentCtx ? `Öğrenci bağlamı (karşılaştırma; uydurma yok):\n${studentCtx}` : ""}`;
+
+  const prompt = mode === "document_analysis" ? docPrompt : marksPrompt;
   const model = (Deno.env.get("GEMINI_MODEL") || "gemini-2.0-flash").split(",")[0].trim();
   const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
     body: JSON.stringify({
       contents: [{ role: "user", parts: [{ text: prompt }, { inline_data: { mime_type: sniffed, data: b64 } }] }],
-      generationConfig: { temperature: 0.1, maxOutputTokens: 1024 },
+      generationConfig: {
+        temperature: 0.1,
+        maxOutputTokens: mode === "document_analysis" ? 4096 : 1024,
+      },
     }),
   });
   const payload = await res.json().catch(() => ({}));
@@ -149,17 +198,27 @@ Belirsiz işaret için null kullan. Cevap anahtarı uydurma. Resmî sınav adı 
     return json(req, { ok: false, error: "Görsel model yanıt vermedi. İşaret uydurulmadı." }, 502);
   }
   const text = String(payload?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text).join("") || "");
-  const start = text.indexOf("{");
-  const end = text.lastIndexOf("}");
-  if (start < 0 || end <= start) {
+  const parsed = extractJsonObject(text);
+  if (!parsed) {
+    if (mode === "document_analysis") {
+      return json(req, {
+        ok: true,
+        mode: "document_analysis",
+        analysis: { unreadable: true, message: UNREADABLE, questions: [], unreadableQuestions: [] },
+      });
+    }
     return json(req, { ok: false, error: "Görsel yeterince okunamadı. İşaret uydurulmadı." }, 422);
   }
+
+  if (mode === "document_analysis") {
+    return json(req, { ok: true, mode: "document_analysis", analysis: parsed });
+  }
+
   try {
-    const parsed = JSON.parse(text.slice(start, end + 1)) as { marks?: unknown; warning?: string };
     const marks = Array.isArray(parsed.marks)
       ? parsed.marks.map((m) => (m === 0 || m === 1 || m === 2 || m === 3 || m === 4 ? m : null))
       : [];
-    return json(req, { ok: true, marks, warning: parsed.warning || "Belirsiz kutular boş bırakıldı." });
+    return json(req, { ok: true, marks, warning: String(parsed.warning || "Belirsiz kutular boş bırakıldı.") });
   } catch {
     return json(req, { ok: false, error: "Çıktı ayrıştırılamadı. Anahtar uydurulmadı." }, 422);
   }

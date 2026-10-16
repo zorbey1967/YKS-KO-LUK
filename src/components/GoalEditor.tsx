@@ -165,7 +165,6 @@ export function GoalEditor({ compact }: { compact?: boolean }) {
             }}
           />
         </div>
-        <div className="field"><label>Sınav tarihi</label><input type="date" value={draft.examDate} onChange={(e) => patch({ examDate: e.target.value })} /></div>
       </div>
       <div className="actions">
         <button className="btn primary" type="submit">Kaydet</button>

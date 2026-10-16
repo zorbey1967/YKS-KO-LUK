@@ -16,7 +16,7 @@ export type CoachStudyBrief = {
   overdueTitles: string[];
   dueReviews: { subject: string; topic: string; dueDate: string }[];
   weakTopics: { subject: string; topic: string; wrong: number; answered: number }[];
-  exams: { name: string; date: string; tyt: number; ayt: number }[];
+  exams: { name: string; date: string; kind: string; tyt: number; ayt: number; subjects: { name: string; net: number; correct?: number; wrong?: number; blank?: number }[] }[];
   examDelta: { tyt: number | null; ayt: number | null };
   difficulties: { subject: string; difficulty: string; date: string }[];
   notes: { topic: string; note: string; at: string }[];
@@ -44,8 +44,21 @@ export function coachStudyBrief(data: AppData, today: string): CoachStudyBrief {
   const overdue = open.filter((t) => t.date && t.date < today);
   const due = dueReviews(data, today).map((r) => ({ subject: r.subject, topic: r.topic, dueDate: r.dueDate }));
   const weak = weakBankTopics(data, 5).map((w) => ({ subject: w.subject, topic: w.topic, wrong: w.wrong, answered: w.answered }));
-  const exams = data.exams.slice().sort((a, b) => b.date.localeCompare(a.date)).slice(0, 3)
-    .map((e) => ({ name: e.name, date: e.date, tyt: e.tyt, ayt: e.ayt }));
+  const exams = data.exams.slice().sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5)
+    .map((e) => ({
+      name: e.name,
+      date: e.date,
+      kind: e.kind || '',
+      tyt: e.tyt,
+      ayt: e.ayt,
+      subjects: (e.subjects || []).map((s) => ({
+        name: s.name,
+        net: s.net,
+        correct: s.correct,
+        wrong: s.wrong,
+        blank: s.blank,
+      })),
+    }));
   const examDelta = {
     tyt: exams.length >= 2 ? exams[0].tyt - exams[1].tyt : null,
     ayt: exams.length >= 2 ? exams[0].ayt - exams[1].ayt : null,

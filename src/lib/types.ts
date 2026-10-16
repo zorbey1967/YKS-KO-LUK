@@ -61,6 +61,9 @@ export type Exam = {
   wrong?: number;
   blank?: number;
   subjects?: ExamSubjectNet[];
+  /** Bağlı sınav hedefi (Sınav Merkezi). */
+  targetId?: string;
+  kind?: string;
 };
 
 export type ExamPriority = 'dusuk' | 'normal' | 'yuksek';
@@ -404,7 +407,6 @@ const STUDENT_NAV_IDS: PageId[] = [
   'plan',
   'exams',
   'calculator',
-  'topics',
   'questions',
   'timer',
   'membership',
