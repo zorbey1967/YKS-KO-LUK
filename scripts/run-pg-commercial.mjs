@@ -1,12 +1,12 @@
 /**
- * 050 ticari hazırlık provası (throwaway PostgreSQL; canlıya/staging'e bağlanmaz).
+ * 055 ticari hazırlık provası (throwaway PostgreSQL; canlıya/staging'e bağlanmaz).
  *   npm run test:pg:commercial
  * Varsayılan: Docker'da postgres:16-alpine. Alternatif: YKS_PG_TEST_URL (yerel, supabase.co olmayan) + psql.
  *
- * İki senaryo, aynı test dosyası (supabase/tests/050_commercial_pg.sql):
- *   A) Canlıya yakın: 001–010 + üyelik/ödeme parçaları (013, 014, 016, 017) + 041–049 + 050 (iki kez)
- *   B) Tam zincir:     001–010 + 011–040 (atlananlar hariç) + 041–049 + 050 (iki kez)
- * Ayrıca negatif kontrol: 050 olmadan test başarısız olmalı (A senaryosu).
+ * İki senaryo, aynı test dosyası (supabase/tests/055_commercial_pg.sql):
+ *   A) Canlıya yakın: 001–010 + üyelik/ödeme parçaları (013, 014, 016, 017) + 041–049 + 050–054 + 055 (iki kez)
+ *   B) Tam zincir:     001–010 + 011–040 (atlananlar hariç) + 041–049 + 050–054 + 055 (iki kez)
+ * Ayrıca negatif kontrol: 055 olmadan test başarısız olmalı (A senaryosu).
  */
 import { execFileSync, spawnSync } from 'node:child_process';
 import { readFileSync, readdirSync } from 'node:fs';
@@ -31,12 +31,12 @@ function mig(prefix) {
 }
 
 const LIVE010 = ['001', '002', '003', '004', '005', '007', '008', '009', '010'].map(mig);
-const FEATURE = ['041', '042', '043', '044', '045', '046', '047', '048', '049'].map(mig);
+const FEATURE = ['041', '042', '043', '044', '045', '046', '047', '048', '049', '050', '051', '052', '053', '054'].map(mig);
 /** Atlananlar: 013, 017, 018, 019 (yerine 020), 023 (027 kapsar). 027 hem başta hem 026'dan sonra. */
 const FULL_CHAIN = ['027', '011', '012', '014', '015', '020', '021', '016', '022', '026', '027', '024', '025',
   '028', '029', '030', '031', '032', '033', '034', '035', '036', '037', '038', '039', '040'].map(mig);
 const LIVE_LIKE = ['013', '014', '016', '017'].map(mig);
-const M050 = mig('050');
+const M055 = mig('055');
 
 function load(rel) {
   return readFileSync(join(root, rel), 'utf8');
@@ -100,15 +100,15 @@ function apply(db, list) {
 }
 
 function runTest(db) {
-  return psql(db, load('supabase/tests/050_commercial_pg.sql'));
+  return psql(db, load('supabase/tests/055_commercial_pg.sql'));
 }
 
 function scenario(label, db, list) {
   process.stdout.write(`• ${label}\n`);
   fresh(db);
-  apply(db, [...list, ...FEATURE, M050, M050]);
+  apply(db, [...list, ...FEATURE, M055, M055]);
   const out = runTest(db);
-  if (!out.includes('OK 050_commercial_pg')) throw new Error(`${label}: test sonucu yok`);
+  if (!out.includes('OK 055_commercial_pg')) throw new Error(`${label}: test sonucu yok`);
   console.log('  OK');
 }
 
@@ -140,15 +140,15 @@ try {
     if (!ready) throw new Error('Postgres hazır olmadı');
   }
 
-  scenario('A) canlıya yakın: 001–010 + 013/014/016/017 + 041–049 + 050', 'c050a', LIVE_LIKE);
-  scenario('B) tam zincir: 001–010 + 011–040 + 041–049 + 050', 'c050b', FULL_CHAIN);
+  scenario('A) canlıya yakın: 001–010 + 013/014/016/017 + 041–054 + 055', 'c055a', LIVE_LIKE);
+  scenario('B) tam zincir: 001–010 + 011–040 + 041–054 + 055', 'c055b', FULL_CHAIN);
 
-  process.stdout.write('• Negatif kontrol: 050 olmadan test başarısız olmalı\n');
-  fresh('c050n');
-  apply('c050n', [...LIVE_LIKE, ...FEATURE]);
+  process.stdout.write('• Negatif kontrol: 055 olmadan test başarısız olmalı\n');
+  fresh('c055n');
+  apply('c055n', [...LIVE_LIKE, ...FEATURE]);
   let failed = false;
-  try { runTest('c050n'); } catch { failed = true; }
-  if (!failed) throw new Error('050 olmadan test geçti; test açığı yakalamıyor');
+  try { runTest('c055n'); } catch { failed = true; }
+  if (!failed) throw new Error('055 olmadan test geçti; test açığı yakalamıyor');
   console.log('  OK (beklenen hata)');
 
   console.log('PG_COMMERCIAL_OK');

@@ -226,6 +226,49 @@ begin
 end
 $$;
 
+-- 4b) 054 kuralları 055'te: iade edilmiş ödeme tekrar gelirse ve eski oturumdan gelen ödeme ----
+do $$
+declare
+  u uuid := 'a0000000-0000-4000-8000-000000000002';
+  r jsonb;
+  e_before timestamptz;
+  e_after timestamptz;
+  pl text;
+  s_old uuid;
+  s_new uuid;
+begin
+  select subscription_ends_at into e_before from public.profiles where id = u;
+  -- O-1 yukarıda tamamen iade edildi; aynı bildirim yeniden gelirse üyelik açılmaz / uzamaz.
+  r := public.apply_verified_payment(u, 'pro', 'shopier', 'O-1', 100, null, 'O-1');
+  select subscription_ends_at into e_after from public.profiles where id = u;
+  if not (r->>'duplicate_payment')::boolean or e_after is distinct from e_before then
+    raise exception 'iade edilmiş ödeme tekrar gelince hiçbir şey yazılmamalı: % (% → %)', r, e_before, e_after;
+  end if;
+  if (select status from public.billing_payments where provider = 'shopier' and provider_payment_id = 'O-1') <> 'refunded' then
+    raise exception 'iade edilmiş ödeme refunded kalmalı';
+  end if;
+
+  insert into public.billing_checkout_sessions (user_id, plan_id, amount_try, status, provider, created_at)
+    values (u, 'pro', 100, 'pending', 'shopier', now() - interval '2 hours') returning id into s_old;
+  insert into public.billing_checkout_sessions (user_id, plan_id, amount_try, status, provider, created_at)
+    values (u, 'premium', 200, 'pending', 'shopier', now() - interval '1 hour') returning id into s_new;
+
+  r := public.apply_verified_payment(u, 'premium', 'shopier', 'P-NEW', 200, s_new, 'P-NEW');
+  if (r->>'late_payment')::boolean then raise exception 'yeni oturum gecikmiş sayılmamalı: %', r; end if;
+  select subscription_ends_at, plan into e_before, pl from public.profiles where id = u;
+  if pl <> 'premium' then raise exception 'yeni ödeme premium açmalı: %', pl; end if;
+
+  r := public.apply_verified_payment(u, 'pro', 'shopier', 'P-OLD', 100, s_old, 'P-OLD');
+  select subscription_ends_at, plan into e_after, pl from public.profiles where id = u;
+  if not (r->>'late_payment')::boolean or pl <> 'premium' or e_after is distinct from e_before then
+    raise exception 'eski oturumdan gelen ödeme yeni paketi düşürmemeli: % (% %)', r, pl, e_after;
+  end if;
+  if (select status from public.billing_payments where provider = 'shopier' and provider_payment_id = 'P-OLD') <> 'succeeded' then
+    raise exception 'gecikmiş ödeme yine de kaydedilmeli (para alındı)';
+  end if;
+end
+$$;
+
 -- 5) Deneme -------------------------------------------------------------------------------
 do $$
 declare

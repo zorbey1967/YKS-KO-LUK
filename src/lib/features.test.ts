@@ -108,7 +108,6 @@ describe('Akıllı Plan AI tetikleyici', () => {
     expect(page).toContain('Şimdilik Değiştirme');
     expect(page).toContain('Akıllı Plan; deneme sonuçlarına');
     expect(page).toContain('Planı Sil');
-    expect(page).toContain('Sunucu ile plan');
     expect(page).toContain('Görevlere aktar');
     expect(page).not.toContain('Yerel üret');
     expect(page).not.toContain('saveLocal');

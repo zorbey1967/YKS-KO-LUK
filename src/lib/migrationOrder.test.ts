@@ -310,8 +310,16 @@ describe('migration hedef şema (020 sonra 021+016; 013/017 atlanır)', () => {
     expect(s).toContain("'name', 'target_department', 'target_rank', 'updated_at'");
     expect(s).not.toMatch(/@[a-z0-9.-]+\.(com|net|org)/i);
     expect(s).toContain('signup_grade');
-    expect(s).toContain("existing_end > now_ts");
+    // Kalan gün korunur (yenileme ve paket değişimi); 054 kuralları da 055'te durur.
+    expect(s).toContain("if cur_status = 'active' and cur_end is not null and cur_end > now_ts then");
     expect(s).toContain("ends := base + interval '30 days'");
+    expect(s).toContain("if prev_status in ('succeeded', 'refunded') then");
+    expect(s).toContain("'duplicate_payment', true");
+    expect(s).toContain('chk_created < cur_created');
+    expect(s).toContain("'late_payment', true");
+    // 053: istemci e-posta / rol / durum değiştiremez; 052: OAuth niyeti korunur.
+    expect(s).toContain('new.email := old.email;');
+    expect(s).toContain("when coalesce(public.profiles.signup_intent, '') in ('', 'student')");
     expect(s).toContain('function public.apply_payment_refund(');
     expect(s).toContain('revoke all on function public.apply_payment_refund(text, text, numeric) from public, anon, authenticated');
     expect(s).toContain('revoke all on function public.apply_verified_payment(uuid, text, text, text, numeric, uuid, text) from public, anon, authenticated');
