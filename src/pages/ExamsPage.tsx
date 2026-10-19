@@ -4,7 +4,18 @@ import { fmtDate } from '../lib/util';
 import { getStudentProgress } from '../lib/studentProgress';
 import { getStudentEducationContext } from '../lib/studentEducation';
 import { ExamResultModal } from '../components/ExamResultModal';
-import type { ExamTarget } from '../lib/types';
+import { examResultMode } from '../lib/examResultEntry';
+import type { Exam, ExamTarget } from '../lib/types';
+
+function formatRecordedScore(x: Exam): string {
+  const mode = examResultMode(x.kind || '');
+  if (mode === 'yazili') return `${x.tyt} puan`;
+  if (mode === 'lgs') return `${x.tyt} net (LGS)`;
+  if (mode === 'kpss') return `${x.tyt} net (KPSS)`;
+  if (mode === 'ayt') return `AYT ${x.ayt || x.tyt}`;
+  if (x.ayt) return `TYT ${x.tyt} / AYT ${x.ayt}`;
+  return `TYT ${x.tyt}`;
+}
 
 export function ExamsPage() {
   const { data } = useApp();
@@ -53,7 +64,7 @@ export function ExamsPage() {
               <br />
               <small className="muted">{fmtDate(x.date)}{x.kind ? ` · ${x.kind}` : ''}{x.subjects?.length ? ` · ${x.subjects.map((s) => `${s.name} ${s.net}`).join(', ')}` : ''}</small>
             </span>
-            <b>{x.tyt}{x.ayt ? ` / ${x.ayt}` : ''}</b>
+            <b>{formatRecordedScore(x)}</b>
           </div>
         )) : <div className="empty">Henüz sonuç yok.</div>}
       </div>

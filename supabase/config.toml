@@ -32,6 +32,13 @@ verify_jwt = true
 [functions.meeting-recording-ingest]
 verify_jwt = true
 
+[functions.content-moderate]
+verify_jwt = true
+
+# STT sağlayıcı HMAC; kullanıcı JWT yok.
+[functions.meeting-stt-webhook]
+verify_jwt = false
+
 # Google: Client ID/Secret ortam değişkeni. Değer bu dosyada yok.
 # Yerel: YKS_GOOGLE_CLIENT_ID / YKS_GOOGLE_CLIENT_SECRET
 # Canlı Dashboard: Authentication → Providers → Google; Automatic linking kapalı.

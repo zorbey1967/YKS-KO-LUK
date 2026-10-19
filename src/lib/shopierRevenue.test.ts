@@ -28,14 +28,27 @@ describe('Shopier gelir ayrımı', () => {
     expect(stats.grossTry).toBe(400);
   });
 
-  it('iadeyi brütten düşer; koç satırı yok', () => {
+  it('iade edilen sipariş brütte kalır, netten bir kez düşer; koç satırı yok', () => {
     const stats = shopierRevenueFromPayments([
       pay({ providerPaymentId: 'ord_1', status: 'succeeded' }),
       pay({ id: 'r', providerPaymentId: 'ord_9', status: 'refunded', amountTry: 200 }),
     ]);
+    expect(stats.orderCount).toBe(2);
     expect(stats.refundCount).toBe(1);
+    expect(stats.grossTry).toBe(400);
+    expect(stats.refundedTry).toBe(200);
+    expect(stats.netTry).toBe(200);
+  });
+
+  it('tamamı iade edilmişse net sıfır; başarısız ödeme brüte girmez', () => {
+    const stats = shopierRevenueFromPayments([
+      pay({ id: 'r1', providerPaymentId: 'ord_1', status: 'refunded', amountTry: 200 }),
+      pay({ id: 'f1', providerPaymentId: 'ord_2', status: 'failed', amountTry: 200 }),
+    ]);
+    expect(stats.grossTry).toBe(200);
     expect(stats.refundedTry).toBe(200);
     expect(stats.netTry).toBe(0);
+    expect(stats.failedCount).toBe(1);
   });
 
   it('aktif üyeliği subscription_status ile sayar', () => {

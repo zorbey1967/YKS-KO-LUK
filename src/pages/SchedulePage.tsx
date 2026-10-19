@@ -62,7 +62,8 @@ export function SchedulePage() {
       });
       toast('PDF kaydedildi');
     } catch (e) {
-      toast(e instanceof Error ? e.message : 'PDF yüklenemedi');
+      const msg = e instanceof Error ? e.message : '';
+      toast(/PDF|MB|boyut|geçersiz|izin/i.test(msg) ? msg : 'PDF yüklenemedi');
     }
   }
 
@@ -109,7 +110,8 @@ export function SchedulePage() {
       });
       toast(res.usedAi ? 'PDF analiz edildi' : res.summary);
     } catch (e) {
-      toast(e instanceof Error ? e.message : 'PDF analizi başarısız');
+      const msg = e instanceof Error ? e.message : '';
+      toast(/PDF|metin|taranmış|analiz/i.test(msg) ? msg : 'PDF analizi başarısız');
     } finally {
       setBusy('');
     }

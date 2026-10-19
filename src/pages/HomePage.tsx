@@ -15,16 +15,17 @@ export function HomePage({ onNewTask }: { onNewTask: () => void }) {
   const { data, go, profile, user, isPlatformOwner } = useApp();
   const state = useMemo(() => getStudentProgress(data), [data]);
   const count = examCountdown(data.examDate);
-  const todayDone = data.tasks.filter((t) => t.done).length;
   const [aiBusy, setAiBusy] = useState(false);
   const [aiText, setAiText] = useState('');
   const [aiErr, setAiErr] = useState('');
-  const aiCache = useRef<{ fp: string; text: string } | null>(null);
+  const [aiSource, setAiSource] = useState<'ai' | 'local' | ''>('');
+  const aiCache = useRef<{ fp: string; text: string; source: 'ai' | 'local' } | null>(null);
 
   async function analyzeToday() {
     const fp = progressFingerprint(data);
     if (aiCache.current?.fp === fp) {
       setAiText(aiCache.current.text);
+      setAiSource(aiCache.current.source);
       setAiErr('');
       return;
     }
@@ -34,12 +35,17 @@ export function HomePage({ onNewTask }: { onNewTask: () => void }) {
       const report = await requestAiCoachAnalysis(data);
       if (report.empty) {
         setAiText('');
-        setAiErr('Analiz için yeterli kayıt yok. Konu, deneme veya çalışma ekledikten sonra tekrar deneyin.');
+        setAiSource('');
+        setAiErr('Analiz için yeterli kayıt yok. Deneme veya çalışma ekledikten sonra tekrar deneyin.');
         return;
       }
       const text = report.narrative || 'Kayıtlı verilere göre kısa bir özet üretilemedi.';
-      aiCache.current = { fp, text };
+      aiCache.current = { fp, text, source: report.source };
       setAiText(text);
+      setAiSource(report.source);
+      if (report.source !== 'ai') {
+        setAiErr('Sunucu AI yanıtı yok; yalnızca kayıtlı veriden yerel özet gösteriliyor.');
+      }
     } catch {
       setAiErr('Durum özeti şu an alınamadı. Lütfen tekrar deneyin.');
     } finally {
@@ -90,85 +96,62 @@ export function HomePage({ onNewTask }: { onNewTask: () => void }) {
     );
   }
 
+  const focus = state.todayFocus[0];
+  const tasksDoneToday = state.todayTaskTitles.filter((t) => t.startsWith('✓')).length;
+
   return (
     <>
       <div className="hero">
         <div className="eyebrow" style={{ color: '#cfe1ff' }}>Öğrenci merkezi</div>
         <h2>{isPlatformOwner ? 'Yönetici hesabı' : `Merhaba, ${name}`}</h2>
         <p>
-          Sistem seni tanıyor: sınıf, hedef, konular, denemeler ve çalışma sürelerin tek yerde Akıllı Plan’a gider.
+          {data.grade ? `${data.grade}${data.track ? ` · ${data.track}` : ''}${data.dept ? ` · ${data.dept}` : ''}. ` : 'Sınıf ve hedefini Hesabım’dan tamamla. '}
           {data.examDate
-            ? (count.past ? ` ${examTitle(data)} tarihi geçti.` : ` ${examTitle(data)}’ye ${count.label}.`)
-            : ' Sınav tarihleri Sınav Merkezi’nde.'}
+            ? (count.past ? `${examTitle(data)} tarihi geçti.` : `${examTitle(data)}’ye ${count.label}.`)
+            : 'Sınav tarihleri Sınavlarım’da.'}
           {data.rank > 0 ? ` Hedef sıra ${displayRank(data.rank)}.` : ''}
         </p>
         <div className="hero-actions">
-          <button className="btn primary" type="button" onClick={() => go('plan')}>HAZIRIM / HADİ BAŞLA</button>
-          <button className="btn" type="button" onClick={() => window.dispatchEvent(new Event('yks-open-zorro'))}>ZORRO ile konuş</button>
+          <button className="btn primary" type="button" onClick={() => go('plan')}>HADİ BAŞLA</button>
+          <button className="btn" type="button" onClick={() => window.dispatchEvent(new Event('yks-open-zorro'))}>ZORRO</button>
         </div>
       </div>
 
       <div className="card" style={{ marginTop: 16 }}>
-        <div className="section-title"><h3>Bugün Nasılsın?</h3></div>
-        <div className="grid stats">
-          <div className="card stat"><div className="label">BUGÜN NE KADAR ÇALIŞTIM?</div><div className="value">{formatMinutes(state.capacity.todayTotal)}</div><div className="sub">çalışma saati {formatMinutes(state.capacity.todayTimer)}</div></div>
-          <div className="card stat"><div className="label">SESSİZ KÜTÜPHANEDE NE KADAR KALDIM?</div><div className="value">{formatMinutes(state.capacity.todayLibrary)}</div><div className="sub">hafta {formatMinutes(state.capacity.weekLibrary)}</div></div>
-          <div className="card stat"><div className="label">GÖREVLER</div><div className="value">{state.todayTaskTitles.filter((t) => t.startsWith('✓')).length}</div><div className="sub">{state.todayTaskTitles.length ? `${state.todayTaskTitles.length} bugün` : `${state.tasks.open} açık`}</div></div>
-          <div className="card stat"><div className="label">BUGÜN KONU</div><div className="value" style={{ fontSize: 18 }}>{state.todayTopics[0] ? state.todayTopics.length : '—'}</div><div className="sub">{state.todayTopics.slice(0, 2).join(' · ') || 'kayıt yok'}</div></div>
-          <div className="card stat"><div className="label">SON ÇALIŞMA</div><div className="value" style={{ fontSize: 16 }}>{state.activity[0] ? 'var' : '—'}</div><div className="sub">{state.activity[0]?.text || 'henüz yok'}</div></div>
-          <div className="card stat"><div className="label">HAFTALIK İLERLEME</div><div className="value">{formatMinutes(state.capacity.weekMinutes)}</div><div className="sub">{state.weekGoal.hoursLabel} · %{state.weekGoal.pct}</div></div>
-          <div className="card stat"><div className="label">SON DENEME DURUMU</div><div className="value" style={{ fontSize: 18 }}>{state.lastExam ? state.lastExam.tyt : '—'}</div><div className="sub">{state.lastExam?.delta != null ? `Δ ${state.lastExam.delta > 0 ? '+' : ''}${state.lastExam.delta}` : 'kayıt yok'}</div></div>
-        </div>
-      </div>
-
-      <div className="card" style={{ marginTop: 16 }}>
-        <div className="section-title"><h3>Hesabıma göre bugün ne yapmalıyım?</h3></div>
-        {state.todayFocus[0] ? <p><b>{state.todayFocus[0].clock ? `${state.todayFocus[0].clock} ` : ''}{state.todayFocus[0].subject}{state.todayFocus[0].topic ? ` / ${state.todayFocus[0].topic}` : ''}</b> — {state.todayFocus[0].reason}</p> : <p className="muted">Önce Hesabım’dan sınıfını seç veya konu/deneme ekle. Uydurma öneri yok.</p>}
-        <div className="actions">
-          <button className="btn primary" type="button" onClick={() => go('plan')}>HAZIRIM / HADİ BAŞLA</button>
-        </div>
-      </div>
-
-      <div className="card" style={{ marginTop: 16 }}>
-        <div className="section-title"><h3>Yaptıkların</h3></div>
-        {state.activity.length ? (
-          <ul className="muted" style={{ marginTop: 0 }}>
-            {state.activity.map((a, i) => <li key={`${a.at}-${i}`}>{a.text}</li>)}
-          </ul>
-        ) : <p className="muted">Henüz kayıtlı çalışma, deneme veya tamamlanan görev yok.</p>}
-      </div>
-
-      <div className="card" style={{ marginTop: 16 }}>
-        <div className="section-title"><h3>Akıllı Plan’ın bugünkü önerisi</h3></div>
-        {state.todayFocus.length ? state.todayFocus.map((x) => (
-          <div className="plan-item" key={`${x.order}-${x.subject}`}>
-            <span>{x.order}. {x.subject}{x.topic ? ` — ${x.topic}` : ''}<br /><small className="muted">{x.minutes} dk · {x.reason}</small></span>
+        <div className="section-title"><h3>Bugün ne yapmalıyım?</h3></div>
+        {focus ? (
+          <p style={{ marginTop: 0, fontSize: '1.05rem' }}>
+            <b>{focus.clock ? `${focus.clock} ` : ''}{focus.subject}</b>
+            {focus.topic ? ` / ${focus.topic}` : ''}
+            <span className="muted"> — {focus.reason}</span>
+          </p>
+        ) : (
+          <p className="muted" style={{ marginTop: 0 }}>Öneri için sınıfını seç veya deneme/çalışma ekle. Uydurma öneri yok.</p>
+        )}
+        <div className="grid stats" style={{ marginTop: 12 }}>
+          <div className="card stat">
+            <div className="label">ÇALIŞMA</div>
+            <div className="value">{formatMinutes(state.capacity.todayTotal)}</div>
           </div>
-        )) : <p className="muted">Öneri için Hesabım’dan sınıfını seç veya konu/deneme ekle. Uydurma plan yok.</p>}
-        <div className="actions">
+          <div className="card stat">
+            <div className="label">GÖREVLER</div>
+            <div className="value">{tasksDoneToday}/{state.todayTaskTitles.length || state.tasks.open}</div>
+          </div>
+          <div className="card stat">
+            <div className="label">HAFTA</div>
+            <div className="value">%{state.weekGoal.pct}</div>
+          </div>
+        </div>
+        <div className="actions" style={{ marginTop: 12, flexWrap: 'wrap' }}>
           <button className="btn primary" type="button" onClick={() => go('plan')}>Akıllı Plan</button>
-          <button className="btn secondary" type="button" onClick={() => go('timer')}>Çalışma saati</button>
+          <button className="btn secondary" type="button" onClick={() => go('exams')}>Sınavlarım</button>
+          <button className="btn secondary" type="button" onClick={() => go('analytics')}>Analiz</button>
+          <button className="btn secondary" type="button" onClick={() => go('schedule')}>Ders Programı</button>
+          <button className="btn secondary" type="button" onClick={() => go('library')}>Kütüphane</button>
         </div>
       </div>
 
       <ExamHomeWidget />
-
-      <div className="grid two" style={{ marginTop: 16 }}>
-        <div className="card">
-          <div className="section-title"><h3>Son Deneme Durumu</h3></div>
-          {state.lastExam ? (
-            <p>TYT {state.lastExam.tyt}{state.lastExam.delta != null ? ` · Δ ${state.lastExam.delta > 0 ? '+' : ''}${state.lastExam.delta}` : ''}</p>
-          ) : <p className="muted">Henüz yeterli deneme verisi bulunmuyor.</p>}
-          <p className="muted">{state.examFeedback.text}</p>
-        </div>
-        <div className="card">
-          <div className="section-title"><h3>Güçlü Olduğun Alanlar</h3></div>
-          {state.insights.strengths[0] ? <p>{state.insights.strengths.join(', ')}</p> : <p className="muted">Güçlü alan için kayıtlı ders neti yok.</p>}
-          <div className="section-title" style={{ marginTop: 12 }}><h3>Geliştirmen Gereken Alanlar</h3></div>
-          {state.insights.weaknesses[0] ? <p>{state.insights.weaknesses.join(', ')}</p> : <p className="muted">Zayıf alan tahmini yapılmadı.</p>}
-          <p className="muted">Tamamlanan görev: {todayDone}</p>
-        </div>
-      </div>
 
       <div style={{ marginTop: 16 }}>
         <StudySuggestCard />
@@ -178,92 +161,45 @@ export function HomePage({ onNewTask }: { onNewTask: () => void }) {
       </div>
 
       <div className="card" style={{ marginTop: 16 }}>
-        <div className="section-title"><h3>Neden buradan çalışmalısın?</h3></div>
-        <p className="muted" style={{ marginTop: 0 }}>
-          Bu sistemi neden kullanmalısın? Çalışmaların tek yerde toplanır; programın onayın olmadan değişmez.
-        </p>
-        <ul className="muted">
-          <li>Çalışma süreni takip eder</li>
-          <li>Konu ilerlemeni takip eder</li>
-          <li>Denemelerini analiz eder</li>
-          <li>Eksiklerini belirler</li>
-          <li>Hedefini dikkate alır</li>
-          <li>Koçunun programını gösterir</li>
-          <li>Kendi çalışma programını takip eder</li>
-          <li>Yaklaşan sınavlarını dikkate alır</li>
-          <li>Yapay zekâ ile performansını yorumlar</li>
-          <li>Akıllı Plan’ı buna göre oluşturur</li>
-        </ul>
-      </div>
-
-      <div className="card" style={{ marginTop: 16 }}>
-        <div className="section-title"><h3>Yapay Zeka Senin İçin Nasıl Çalışıyor?</h3></div>
-        <p style={{ marginTop: 0 }}>
-          Hedefini, konu ilerlemeni, deneme sonuçlarını, çalışma sürelerini ve programını birlikte analiz ederek sana kişiselleştirilmiş çalışma önerileri oluşturuyoruz.
-        </p>
-        <p className="muted">Ne kadar çok veri oluşursa öneriler o kadar kişiselleşir. Sayfa açılınca model çağrılmaz; veri yoksa sonuç uydurulmaz.</p>
-        <p className="muted">Yapay zekayı senin için nasıl kullanıyoruz? Konular, denemeler, çalışma ve kütüphane süreleri, kendi programın, koç programı, hedef, sınavlar ve görevler birlikte değerlendirilir.</p>
-        <ul className="muted">
-          <li>Denemelerini analiz eder</li>
-          <li>Konu eksiklerini bulur</li>
-          <li>Çalışma temposunu inceler</li>
-          <li>Hedefini dikkate alır</li>
-          <li>Kendi ders programını dikkate alır</li>
-          <li>Koç programını dikkate alır; sessizce değiştirmez</li>
-          <li>Yaklaşan sınavlarını dikkate alır</li>
-          <li>Gelişimine göre plan değişikliği önerir, onayınla uygular</li>
-        </ul>
-        <div className="ai-flow" aria-label="Veri akışı">
-          {['Verilerin', 'Analiz', 'Eksikler / güçlü yönler', 'Plan önerisi', 'Senin onayın', 'Uygulama', 'Yeni sonuçlar', 'Tekrar analiz'].map((x) => (
-            <span className="chip" key={x}>{x}</span>
-          ))}
-        </div>
-        <div className="actions">
-          <button className="btn primary" type="button" disabled={aiBusy} onClick={() => void analyzeToday()}>
-            {aiBusy ? 'Analiz ediliyor…' : 'Bugünkü durumunu analiz et'}
-          </button>
-        </div>
-        {aiText ? <p style={{ marginTop: 12 }}>{aiText}</p> : null}
-        {aiErr ? <p className="muted" style={{ marginTop: 12 }}>{aiErr}</p> : null}
-      </div>
-
-      <div className="card coach-program-card" style={{ marginTop: 16 }}>
-        <div className="section-title"><h3>Koçun Programı</h3></div>
-        <p className="muted">Koçunun yüklediği PDF Akıllı Plan’da görünür. Kendi ders programı PDF’nden ayrıdır.</p>
-        <div className="actions">
-          <button className="btn secondary" type="button" onClick={() => go('plan')}>Koçun Programı’nı aç</button>
-        </div>
-      </div>
-
-      <div className="card student-program-card" style={{ marginTop: 16 }}>
-        <div className="section-title"><h3>Bugünkü Programım</h3></div>
-        {state.scheduleToday.length || state.weekFocus.some((d) => d.minutes) ? (
-          <>
-            {state.scheduleToday.length ? <p>Bugün: {state.scheduleToday.map((b) => `${b.title} ${b.minutes} dk`).join(' · ')}</p> : <p className="muted">Bugün için kendi bloğun yok.</p>}
-            <div className="actions">
-              <button className="btn secondary" type="button" onClick={() => go('schedule')}>Ders Programım</button>
-            </div>
-          </>
-        ) : <p className="muted">Henüz kendi programını yazmadın. Koç programının üzerine yazılmaz.</p>}
-      </div>
-
-      <div className="card" style={{ marginTop: 16 }}>
         <div className="section-title"><h3>Koçun verdiği görevler</h3></div>
         {data.tasks.some((t) => t.origin === 'coach') ? (
           <TaskRows tasks={data.tasks.filter((t) => t.origin === 'coach')} />
         ) : <p className="muted">Açık koç görevi yok.</p>}
-      </div>
-
-      <div className="card" style={{ marginTop: 16 }}>
-        <div className="section-title"><h3>Çalışma araçları</h3></div>
-        <div className="actions">
-          <button className="btn secondary" type="button" onClick={() => go('plan')}>Akıllı Plan</button>
-          <button className="btn secondary" type="button" onClick={() => go('exams')}>Denemeler</button>
+        <div className="actions" style={{ marginTop: 8 }}>
           <button className="btn secondary" type="button" onClick={onNewTask}>Görev ekle</button>
-          <button className="btn secondary" type="button" onClick={() => go('library')}>Kütüphane</button>
-          <button className="btn secondary" type="button" onClick={() => go('analytics')}>Analiz</button>
+          <button className="btn secondary" type="button" onClick={() => go('plan')}>Koçun Programı</button>
         </div>
       </div>
+
+      <section className="card why-here" style={{ marginTop: 20 }} aria-labelledby="why-here-title">
+        <div className="section-title">
+          <h3 id="why-here-title">Neden Buradan Çalışmalısın?</h3>
+        </div>
+        <p className="why-here-lead">
+          Sınıfın, hedefin, denemelerin ve gerçek çalışma süren aynı zincirde toplanır; plan ve öneriler buna göre şekillenir.
+          Veri yoksa sahte istatistik üretilmez.
+        </p>
+        <details className="why-here-block">
+          <summary>Kişiye özel eğitim, AI ve koç bağlantısı</summary>
+          <p>
+            Alanına (EA/SAY/SÖZ) ve sınıfına göre içerik filtrelenir. ZORRO, Akıllı Plan ve Analiz’deki AI gerçek sunucu
+            çağrılarıdır; sayfa açılır açılmaz model çalışmaz. Koçun Programı ile kendi Ders Programın birbirini ezmez.
+          </p>
+          <div className="actions" style={{ marginTop: 10 }}>
+            <button className="btn secondary" type="button" disabled={aiBusy} onClick={() => void analyzeToday()}>
+              {aiBusy ? 'Analiz ediliyor…' : 'Bugünkü durumunu analiz et'}
+            </button>
+            <button className="btn secondary" type="button" onClick={() => go('analytics')}>AI ile Analiz Et</button>
+          </div>
+          {aiText ? (
+            <p style={{ marginTop: 12 }}>
+              {aiSource === 'ai' ? <small className="muted">AI özeti · </small> : <small className="muted">Yerel özet · </small>}
+              {aiText}
+            </p>
+          ) : null}
+          {aiErr ? <p className="muted" style={{ marginTop: 12 }}>{aiErr}</p> : null}
+        </details>
+      </section>
     </>
   );
 }

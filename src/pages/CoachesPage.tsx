@@ -99,6 +99,10 @@ export function CoachesPage() {
   }, [session]);
 
   useEffect(() => {
+    if (!user) {
+      setListTick((n) => n + 1);
+      return;
+    }
     void runAppointmentJobs().then(async (res) => {
       if (!res.ok) toast(res.error);
       if (session) {

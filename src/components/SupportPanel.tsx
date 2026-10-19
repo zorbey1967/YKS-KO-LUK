@@ -82,39 +82,19 @@ export function SupportPanel() {
       setErr('Önce ad-soyad tercihini seç.');
       return;
     }
+    if (!canSendNew) {
+      setErr('Açık destek kaydına yeniden mesaj yazılamaz. Yanıtı bekle veya Hatırlat kullan.');
+      return;
+    }
     const msg = body.trim();
-    if (!msg) {
-      setErr('Mesaj gerekli.');
+    const sub = subject.trim();
+    if (!sub || !msg) {
+      setErr('Konu ve mesaj gerekli.');
       return;
     }
     setBusy(true);
     setErr('');
     setNote('');
-
-    // Açık kayıt varken yeni ticket yerine yanıt yaz (mesaj yazma her zaman açık).
-    const openTicket = rows.find((t) => t.status === 'new' || t.status === 'reviewing')
-      || (activeId ? rows.find((t) => t.id === activeId) : null);
-    if (openTicket && !canSendNew) {
-      const res = await addSupportReply(openTicket.id, msg);
-      setBusy(false);
-      if (!res.ok) {
-        setErr('Mesaj gönderilemedi. Lütfen tekrar deneyin.');
-        return;
-      }
-      setNote('Mesaj gönderildi.');
-      setBody('');
-      setActiveId(openTicket.id);
-      const list = await listSupportReplies(openTicket.id);
-      setReplies(list.filter((r) => r.body !== SUPPORT_NUDGE_MARKER));
-      return;
-    }
-
-    const sub = subject.trim();
-    if (!sub) {
-      setBusy(false);
-      setErr('Konu ve mesaj gerekli.');
-      return;
-    }
     const names = supportNamesForTicket({ profileName: profile?.name, consent });
     const res = await createSupportTicket({ firstName: names.firstName, lastName: names.lastName, subject: sub, body: msg });
     setBusy(false);
@@ -192,16 +172,18 @@ export function SupportPanel() {
                     style={{ display: 'flex', flexDirection: 'column', gap: 8 }}
                   >
                     {canSendNew ? (
-                      <label className="muted">Konu
-                        <input value={subject} onChange={(e) => setSubject(e.target.value)} maxLength={160} required />
-                      </label>
+                      <>
+                        <label className="muted">Konu
+                          <input value={subject} onChange={(e) => setSubject(e.target.value)} maxLength={160} required />
+                        </label>
+                        <label className="muted">Mesaj
+                          <textarea value={body} onChange={(e) => setBody(e.target.value)} maxLength={4000} rows={5} required />
+                        </label>
+                        <button className="btn primary" type="submit" disabled={busy}>{busy ? 'Gönderiliyor…' : 'Gönder'}</button>
+                      </>
                     ) : (
-                      <p className="muted">Açık kayda mesaj yazıyorsun.</p>
+                      <p className="muted">Açık destek kaydın var. Aynı kayda yeniden mesaj yazılamaz; yanıtı bekle veya Hatırlat kullan.</p>
                     )}
-                    <label className="muted">Mesaj
-                      <textarea value={body} onChange={(e) => setBody(e.target.value)} maxLength={4000} rows={5} required />
-                    </label>
-                    <button className="btn primary" type="submit" disabled={busy}>{busy ? 'Gönderiliyor…' : 'Gönder'}</button>
                   </form>
                 )}
                 {note ? <p className="notice">{note}</p> : null}

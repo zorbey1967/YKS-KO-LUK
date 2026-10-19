@@ -12,16 +12,21 @@ function uniqueByPaymentId(rows: AdminPaymentRow[]) {
   return out;
 }
 
-/** Shopier brüt / iade / net; koç defteri ayrı. Aynı sipariş id bir kez sayılır. */
+/**
+ * Shopier brüt / iade / net; koç defteri ayrı. Aynı sipariş id bir kez sayılır.
+ * İade aynı ödeme satırını succeeded → refunded yapar; o satır da tahsil edilmiştir.
+ * Brüt = succeeded + refunded, net = brüt − iade (iade bir kez düşülür).
+ */
 export function shopierRevenueFromPayments(rows: AdminPaymentRow[] | null | undefined) {
   const all = uniqueByPaymentId((rows || []).filter((r) => r.provider === 'shopier'));
   const succeeded = all.filter((r) => r.status === 'succeeded');
   const refunded = all.filter((r) => r.status === 'refunded');
   const failed = all.filter((r) => r.status === 'failed');
-  const gross = succeeded.reduce((s, r) => s + r.amountTry, 0);
+  const collected = [...succeeded, ...refunded];
+  const gross = collected.reduce((s, r) => s + r.amountTry, 0);
   const refunds = refunded.reduce((s, r) => s + r.amountTry, 0);
   return {
-    orderCount: succeeded.length,
+    orderCount: collected.length,
     refundCount: refunded.length,
     failedCount: failed.length,
     grossTry: Math.round(gross * 100) / 100,

@@ -9,7 +9,6 @@ import { resetAiCoachCache } from '../lib/aiCoachAnalysis';
 import {
   acceptPlanChange,
   clearStudentSmartPlan,
-  generateLivingPlan,
   getStudentProgress,
   invalidateStudentProgress,
 } from '../lib/studentProgress';
@@ -42,27 +41,24 @@ export function PlanPage() {
     return () => { alive = false; };
   }, [user?.id]);
 
-  function saveLocal() {
-    const blocks = generateLivingPlan(data, state.capacity.typicalDayMinutes);
-    if (!blocks.length && !state.gaps.length && !state.lastExam && !state.upcomingExams.length) {
-      setNote('Yeterli deneme/konu/sınav verisi yok; uydurma plan üretilmedi.');
-      toast('Veri yok — plan uydurulmadı');
+  async function saveCloud() {
+    if (!aiPlan) {
+      toast('Akıllı Plan için üyelik veya deneme gerekir.');
       return;
     }
-    setData({ ...data, plan: blocks, planDate: today() });
-    invalidateStudentProgress();
-    setNote('Deneme netleri, yaklaşan sınavlar, çalışma hedefi, sınıf/alan ve koç programı dikkate alındı. Koç programı değiştirilmedi.');
-    toast('Plan güncellendi');
-  }
-
-  async function saveCloud() {
     setBusy(true);
     try {
       const res = await askDailyPlan(data, state.capacity.typicalDayMinutes, 'Eksik konular');
+      // Yerel generatePlan yedeği UI’ya yazılmaz — “Sunucu ile plan” uydurma plan göstermez.
+      if (res.source !== 'ai' || !res.blocks.length) {
+        setNote('');
+        toast(res.summary || 'Sunucu planı alınamadı. Yerel plan otomatik kaydedilmez.');
+        return;
+      }
       setData({ ...data, plan: res.blocks, planDate: today() });
       invalidateStudentProgress();
-      setNote(res.summary + (res.source === 'ai' ? ` • ${publicCoachBrand()}` : ' • Yerel yedek'));
-      toast(res.source === 'ai' ? 'AI planı hazır' : 'Yerel koç planı hazır');
+      setNote(`${res.summary} • ${publicCoachBrand()}`);
+      toast('AI planı hazır');
     } finally {
       setBusy(false);
     }
@@ -98,8 +94,9 @@ export function PlanPage() {
             <span>{data.grade}{data.track ? ` · ${data.track}` : ''}{data.dept ? ` · ${data.dept}` : ''}</span>
           </div>
           <p style={{ marginTop: 0 }}>
-            Akıllı Plan; deneme sonuçlarına ve netlerine, yaklaşan yazılı/sınavlarına, çalışma hedefine
-            {weekGoalHours != null ? ` (haftada ${weekGoalHours} saat)` : ''}, sınıf/yaş/alan bilgine ve tamamlanan konulara göre oluşturulur.
+            Akıllı Plan; deneme sonuçlarına, hedeflerine ve çalışmak istediğin süreye göre kişiselleştirilir.
+            Netler, yaklaşan yazılı/sınavlar, sınıf/alan, tamamlanan konular ve tipik çalışma temposu da dikkate alınır
+            {weekGoalHours != null ? ` (haftalık hedef: ${weekGoalHours} saat)` : ''}.
             Koçun Programı varsa çelişki uyarılır; koç programı değiştirilmez veya kopyalanmaz.
           </p>
           <p className="muted">
@@ -114,10 +111,9 @@ export function PlanPage() {
               <div><strong>{x.text}</strong><small className="muted"> {x.minutes} dk</small></div>
             </div>
           )) : (
-            <div className="empty">Plan yok. Aşağıdan üret — sayfa açılışında AI çağrılmaz. Uydurma plan yok.</div>
+            <div className="empty">Plan yok. Sunucu ile plan üret — sayfa açılışında AI çağrılmaz. Uydurma plan yok.</div>
           )}
           <div className="actions" style={{ marginTop: 12 }}>
-            <button className="btn" type="button" disabled={busy} onClick={saveLocal}>Yerel üret</button>
             <button className="btn primary" type="button" disabled={busy || !aiPlan} onClick={() => void saveCloud()}>{busy ? 'Hazırlanıyor…' : 'Sunucu ile plan'}</button>
             <button className="btn" type="button" onClick={() => {
               if (!data.plan.length) return toast('Önce plan oluştur.');

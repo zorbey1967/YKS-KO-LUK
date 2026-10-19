@@ -1,7 +1,7 @@
 /** Ad/soyad doğrulama. Asıl güvenlik sunucu (011) tarafındadır; bu kopya yalnızca kayıt UX’i içindir. */
 
 export const PERSON_NAME_REJECT =
-  'Bu ad veya soyad kullanılamaz. Lütfen gerçek adınızı ve soyadınızı girin.';
+  'Bu ad veya soyad kullanılamaz. Lütfen uygun, gerçek adınızı ve soyadınızı seçin.';
 
 const TR_MAP: Record<string, string> = {
   ı: 'i',

@@ -17,7 +17,7 @@ export function CoachStudyBriefView({ brief, name }: { brief: CoachStudyBrief; n
       {brief.narrative ? <p>{brief.narrative}</p> : <p className="muted">Bu konuda yeterli veri bulunmuyor.</p>}
       {brief.dept ? <p className="muted">Hedef: {brief.dept}</p> : null}
       {brief.todayTimer != null || brief.todayLibrary != null ? (
-        <p className="muted">Timer {brief.todayTimer ?? 0} dk · Kütüphane bugün {brief.todayLibrary ?? 0} dk · hafta {brief.weekLibrary ?? 0} dk · ay timer {brief.monthTimer ?? 0} dk · ay kütüphane {brief.monthLibrary ?? 0} dk{brief.topicRate != null ? ` · konu %${brief.topicRate}` : ''}</p>
+        <p className="muted">Çalışma saati {brief.todayTimer ?? 0} dk · Kütüphane bugün {brief.todayLibrary ?? 0} dk · hafta {brief.weekLibrary ?? 0} dk · ay çalışma {brief.monthTimer ?? 0} dk · ay kütüphane {brief.monthLibrary ?? 0} dk{brief.topicRate != null ? ` · konu %${brief.topicRate}` : ''}</p>
       ) : null}
       {brief.topicLines?.length ? (
         <p className="muted">Konu durumu: {brief.topicLines.join(' · ')}</p>

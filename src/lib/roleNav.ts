@@ -46,6 +46,8 @@ export function coerceAppPage(
   let next = page;
   if (page === 'questionbank' && !QUESTION_BANK_ENABLED) next = 'home';
   if (page === 'topics') next = 'home';
+  // Öğrenci Ayarlar deep-link → Hesabım (nav’da yok; gizli LLM ayar yüzeyi açılmasın).
+  if (page === 'settings' && role !== 'coach' && !isAdmin) next = 'account';
   return coercePageForAccess(coercePageForRole(next, role, isAdmin), gate);
 }
 

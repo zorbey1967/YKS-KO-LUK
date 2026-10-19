@@ -1,0 +1,16 @@
+node_modules
+dist
+.env
+.env.*
+.env*
+!.env.example
+*.log
+.DS_Store
+legacy/app-v31.html
+.vercel
+.supabase
+supabase/.temp
+supabase/.branches/
+supabase/functions/bank-pack/pack.json
+.local-e2e-users.json
+.cursor/

@@ -56,6 +56,16 @@ import { paymentStatusLabel } from '../lib/billing';
 import { SQL_DRAFTS, draftStatusLabel } from '../lib/deployStatus';
 import { supabase, withTimeout } from '../lib/supabase';
 import { AdminSupportPanel } from '../components/AdminSupportPanel';
+import {
+  adminListModerationViolations,
+  adminReviewModerationViolation,
+  fetchModerationConfig,
+  moderationAccountMismatch,
+  moderationKindLabel,
+  moderationStatusLabel,
+  type ModerationViolationRow,
+} from '../lib/moderationCloud';
+import type { ModerationStatus } from '../lib/contentModeration';
 
 type Tab = 'ozet' | 'basvuru' | 'uyelik' | 'kullanici' | 'koc' | 'eslesme' | 'finans' | 'randevu' | 'denetim' | 'mesajlar' | 'ayar';
 
@@ -118,6 +128,16 @@ export function AdminPage() {
   const [payRows, setPayRows] = useState<AdminPaymentRow[] | null>(null);
   const [appFilter, setAppFilter] = useState<'pending' | 'active' | 'rejected'>('pending');
   const [rejectId, setRejectId] = useState('');
+  const [violations, setViolations] = useState<ModerationViolationRow[] | null>(null);
+  const [modCfg, setModCfg] = useState<{
+    lexicon: boolean;
+    voiceStt: boolean;
+    voiceEnforcement: boolean;
+    gemini: boolean;
+    note: string;
+    configured: boolean;
+  } | null>(null);
+  const [violNote, setViolNote] = useState('');
   const [rejectNote, setRejectNote] = useState('');
 
   const owner = isAdmin;
@@ -155,10 +175,76 @@ export function AdminPage() {
     return () => { alive = false; };
   }, [tick]);
 
+  useEffect(() => {
+    if (!owner || tab !== 'kullanici') return;
+    let alive = true;
+    void fetchModerationConfig().then((c) => {
+      if (alive) setModCfg(c);
+    });
+    void adminListModerationViolations().then((res) => {
+      if (!alive) return;
+      setViolations(res.ok ? res.rows : []);
+      if (!res.ok && res.error) toast(res.error);
+    });
+    return () => { alive = false; };
+  }, [owner, tab, tick, toast]);
+
   if (!owner) return <AdminGate />;
 
   function refresh() {
     setTick((n) => n + 1);
+  }
+
+  async function reviewViolation(row: ModerationViolationRow, status: ModerationStatus, reactivate: boolean) {
+    const profile = cloud?.profiles.find((p) => p.id === row.user_id);
+    const isAdminTarget = profile?.role === 'admin';
+    // Önce DB+Auth (admin-account-status); başarısızsa ihlal satırı değişmez → tutarsız “başarı” yok.
+    if (status === 'suspended' && !isAdminTarget) {
+      const sync = await adminSetAccountStatus(row.user_id, 'pasif');
+      if (!sync.ok) {
+        toast(`Askı başarısız (DB/Auth). İhlal kaydı değiştirilmedi: ${sync.error}`);
+        return;
+      }
+      if (sync.db === false || sync.auth === false) {
+        toast('Hesap senkronu eksik (DB veya Auth). İhlal kaydı yazılmadı; durumu kontrol edin.');
+        return;
+      }
+    } else if (status === 'restored' && reactivate) {
+      const sync = await adminSetAccountStatus(row.user_id, 'active');
+      if (!sync.ok) {
+        toast(`Geri açma başarısız (DB/Auth). İhlal kaydı değiştirilmedi: ${sync.error}`);
+        return;
+      }
+      if (sync.db === false || sync.auth === false) {
+        toast('Hesap senkronu eksik (DB veya Auth). İhlal kaydı yazılmadı; durumu kontrol edin.');
+        return;
+      }
+    } else if (status === 'suspended' && isAdminTarget) {
+      toast('Yönetici hesabı Auth ile askıya alınmaz; yalnızca ihlal kaydı güncellenecek.');
+    }
+
+    const res = await adminReviewModerationViolation({
+      id: row.id,
+      status,
+      notes: violNote,
+      reactivate,
+    });
+    if (!res.ok) {
+      toast(
+        (status === 'suspended' || (status === 'restored' && reactivate))
+          ? `Hesap durumu güncellendi ancak ihlal kaydı yazılamadı: ${res.error || 'hata'}. Uyumsuzluk panoda görünecek.`
+          : (res.error || 'Güncellenemedi.'),
+      );
+      refresh();
+      return;
+    }
+    toast(
+      status === 'suspended' || (status === 'restored' && reactivate)
+        ? 'Hesap (DB+Auth) ve ihlal kaydı güncellendi.'
+        : 'İhlal kaydı güncellendi.',
+    );
+    setViolNote('');
+    refresh();
   }
 
   const coaches: CloudCoach[] = cloud?.coaches ?? localSnap.coaches.map(({ passHash: _hash, ...c }) => ({ ...c, userId: null }));
@@ -224,12 +310,14 @@ export function AdminPage() {
       email: p.email,
       kind: p.role === 'admin' ? 'Yönetici' : p.role === 'coach' ? 'Koç hesabı' : 'Öğrenci',
       status: p.account_status === 'pasif' ? 'Pasif' : p.account_status === 'pending' ? 'Onay bekliyor' : p.account_status === 'rejected' ? 'Red' : 'Aktif',
+      accountStatus: p.account_status,
+      role: p.role,
       extra: `${labelStoredPlan(p.plan)} • ${p.target_department || '—'}`,
       pasif: p.account_status === 'pasif',
     }))
     : [
-      ...(localSnap.current ? [{ id: 'me', name: localSnap.current.name || 'Sen', email: localSnap.current.email, kind: 'Öğrenci (bu oturum)', status: 'Girişte', extra: `${localSnap.current.grade} • ${localSnap.current.plan}`, pasif: false }] : []),
-      ...localSnap.links.map((l, i) => ({ id: `st_${i}`, name: l.studentName, email: '—', kind: 'Koç öğrencisi', status: 'Kayıtlı', extra: `${l.grade} • ${l.coachName}`, pasif: false })),
+      ...(localSnap.current ? [{ id: 'me', name: localSnap.current.name || 'Sen', email: localSnap.current.email, kind: 'Öğrenci (bu oturum)', status: 'Girişte', accountStatus: 'active' as const, role: 'student' as const, extra: `${localSnap.current.grade} • ${localSnap.current.plan}`, pasif: false }] : []),
+      ...localSnap.links.map((l, i) => ({ id: `st_${i}`, name: l.studentName, email: '—', kind: 'Koç öğrencisi', status: 'Kayıtlı', accountStatus: 'active' as const, role: 'student' as const, extra: `${l.grade} • ${l.coachName}`, pasif: false })),
     ]
   ).filter((u) => {
     const s = q.toLocaleLowerCase('tr-TR');
@@ -385,31 +473,89 @@ export function AdminPage() {
       ) : null}
 
       {tab === 'kullanici' ? (
-        <div className="card" style={{ marginTop: 16 }}>
-          <div className="section-title"><h3>Kullanıcılar</h3><span>{cloud ? 'profiles' : 'Yerel yedek'}</span></div>
-          <div className="field"><label>Ara</label><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Ad veya rol" /></div>
-          {users.length ? users.map((u) => (
-            <div className="plan-item" key={u.id}>
-              <span><b>{u.name}</b><br /><small style={{ color: 'var(--muted)' }}>{u.id.slice(0, 8)}… • {u.kind} • {u.status}</small></span>
-              <span>
-                <span className="chip">{u.status}</span>
-                {cloud && u.id !== user?.id ? (
-                  <button className="btn secondary" type="button" style={{ marginLeft: 8 }} onClick={() => {
-                    const next = u.pasif ? 'active' : 'pasif';
-                    const q = next === 'pasif'
-                      ? 'Bu hesabı askıya almak istiyor musun? Veriler silinmez; kişi giriş yapamaz ve koç listesinde görünmez.'
-                      : 'Bu hesabı yeniden açmak istiyor musun?';
-                    if (!confirm(q)) return;
-                    void adminSetAccountStatus(u.id, next).then((res) => {
-                      toast(res.ok ? (next === 'active' ? 'Hesap yeniden açıldı.' : 'Hesap askıya alındı.') : (res.error || 'İşlem yapılmadı.'));
-                      refresh();
-                    });
-                  }}>{u.pasif ? 'Yeniden etkinleştir' : 'Hesabı askıya al'}</button>
-                ) : null}
-              </span>
-            </div>
-          )) : <div className="empty">Kayıt yok veya SQL henüz uygulanmadı.</div>}
-        </div>
+        <>
+          <div className="card" style={{ marginTop: 16 }}>
+            <div className="section-title"><h3>AI Küfür ve Uygunsuz Dil Denetimi</h3></div>
+            <p className="muted" style={{ marginTop: 0 }}>
+              Profil adları sunucu lexikonu ile denetlenir. Ses denetimi yalnızca imzalı sunucu STT webhook ile yapılır;
+              istemci transcript ve ses seviyesi ceza üretmez. Yönetici hesapları otomatik askıya alınmaz.
+            </p>
+            {modCfg ? (
+              <p className="muted">
+                Lexikon: {modCfg.lexicon ? 'açık' : 'yok'}
+                {' · '}STT webhook: {modCfg.voiceStt ? 'yapılandırıldı' : 'eksik (ses BLOCKED)'}
+                {' · '}Ses askısı: {modCfg.voiceEnforcement ? 'açık' : 'kapalı'}
+                {' · '}Gemini: {modCfg.gemini ? 'var' : 'yok'}
+                {modCfg.note ? ` · ${modCfg.note}` : ''}
+              </p>
+            ) : <p className="muted">Yapılandırma okunuyor…</p>}
+          </div>
+
+          <div className="card" style={{ marginTop: 16 }}>
+            <div className="section-title"><h3>İhlal Kayıtları</h3><span>{violations ? `${violations.length} kayıt` : '…'}</span></div>
+            <div className="field"><label>Yönetici gerekçesi</label><input value={violNote} onChange={(e) => setViolNote(e.target.value)} placeholder="İnceleme notu" maxLength={500} /></div>
+            {violations === null ? <p className="muted">Yükleniyor…</p> : null}
+            {violations && !violations.length ? <p className="muted">İhlal kaydı yok veya 050 henüz uygulanmadı.</p> : null}
+            {(violations || []).map((v) => {
+              const who = users.find((u) => u.id === v.user_id);
+              const mismatch = moderationAccountMismatch(v.status, who?.accountStatus);
+              return (
+                <div className="plan-item" key={v.id} style={{ alignItems: 'flex-start' }}>
+                  <span>
+                    <b>{who?.name || v.user_id.slice(0, 8)}</b>
+                    <br />
+                    <small className="muted">
+                      {moderationKindLabel(v.kind)} · {v.evidence_label || v.category}
+                      {' · '}güven %{(v.confidence * 100).toFixed(0)}
+                      {' · '}{new Date(v.created_at).toLocaleString('tr-TR')}
+                      <br />
+                      İhlal: {moderationStatusLabel(v.status)}
+                      {' · '}Hesap: {who?.status || 'bilinmiyor'}
+                      {v.admin_notes ? ` · Not: ${v.admin_notes}` : ''}
+                      {mismatch === 'viol_suspended_acct_active' ? (
+                        <><br /><span style={{ color: 'var(--danger, #b91c1c)' }}>Uyumsuz: ihlal askıda, hesap aktif — Askıda tut ile DB+Auth düzeltin.</span></>
+                      ) : null}
+                      {mismatch === 'viol_restored_acct_pasif' ? (
+                        <><br /><span style={{ color: 'var(--danger, #b91c1c)' }}>Uyumsuz: ihlal açık/incelemede, hesap pasif — Geri aç ile DB+Auth düzeltin.</span></>
+                      ) : null}
+                    </small>
+                  </span>
+                  <span className="actions" style={{ flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                    <button className="btn secondary" type="button" onClick={() => void reviewViolation(v, 'reviewing', false)}>İnceleniyor</button>
+                    <button className="btn" type="button" onClick={() => void reviewViolation(v, 'suspended', false)}>Askıda tut</button>
+                    <button className="btn primary" type="button" onClick={() => void reviewViolation(v, 'restored', true)}>Geri aç</button>
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="card" style={{ marginTop: 16 }}>
+            <div className="section-title"><h3>Kullanıcılar</h3><span>{cloud ? 'profiles' : 'Yerel yedek'}</span></div>
+            <div className="field"><label>Ara</label><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Ad veya rol" /></div>
+            {users.length ? users.map((u) => (
+              <div className="plan-item" key={u.id}>
+                <span><b>{u.name}</b><br /><small style={{ color: 'var(--muted)' }}>{u.id.slice(0, 8)}… • {u.kind} • {u.status}</small></span>
+                <span>
+                  <span className="chip">{u.status}</span>
+                  {cloud && u.id !== user?.id ? (
+                    <button className="btn secondary" type="button" style={{ marginLeft: 8 }} onClick={() => {
+                      const next = u.pasif ? 'active' : 'pasif';
+                      const q = next === 'pasif'
+                        ? 'Bu hesabı askıya almak istiyor musun? Veriler silinmez; kişi giriş yapamaz ve koç listesinde görünmez.'
+                        : 'Bu hesabı yeniden açmak istiyor musun?';
+                      if (!confirm(q)) return;
+                      void adminSetAccountStatus(u.id, next).then((res) => {
+                        toast(res.ok ? (next === 'active' ? 'Hesap yeniden açıldı.' : 'Hesap askıya alındı.') : (res.error || 'İşlem yapılmadı.'));
+                        refresh();
+                      });
+                    }}>{u.pasif ? 'Yeniden etkinleştir' : 'Hesabı askıya al'}</button>
+                  ) : null}
+                </span>
+              </div>
+            )) : <div className="empty">Kayıt yok veya SQL henüz uygulanmadı.</div>}
+          </div>
+        </>
       ) : null}
 
       {tab === 'basvuru' ? (

@@ -19,6 +19,7 @@ import { shopierRetrievedOrderMatches } from "../_shared/shopierCheckout.ts";
 import {
   shopierActivateOk,
   shopierEventHeader,
+  shopierRefundedTotal,
   shopierSignatureHeader,
   shopierWebhookAuth,
 } from "../_shared/shopierWebhook.ts";
@@ -155,10 +156,16 @@ Deno.serve(async (req) => {
     });
     if (!ev.ok) return json({ error: ev.error }, 500);
 
-    if (/refund/i.test(eventName)) {
+    // İade kararı imzasız Shopier-Event başlığından değil, GET /orders ile yeniden çekilen
+    // siparişteki tamamlanmış (succeeded) iadelerden verilir. Başlık yalnızca etiket.
+    if (shopierRefundedTotal(order) > 0.009) {
       const refunded = await markPaymentRefunded(admin, { provider: "shopier", paymentId: order.id });
       if (!refunded.ok) return json({ error: refunded.error }, 500);
       return json({ ok: true, applied: false, refunded: refunded.updated > 0 });
+    }
+    // İade talebi / tamamlanmamış iade olayları ödemeyi refunded yapmaz ve üyelik de açmaz.
+    if (/refund/i.test(eventName)) {
+      return json({ ok: true, applied: false, refunded: false, reason: "iade_tamamlanmadi" });
     }
 
     if (!session || !productId) {
@@ -184,10 +191,24 @@ Deno.serve(async (req) => {
       subscriptionId: order.id,
     });
     if (!applied.ok) return json({ error: applied.error }, 500);
+    if (applied.latePayment) {
+      await recordBillingEvent(admin, {
+        provider: "shopier",
+        eventId: `shopier:${order.id}:late_payment`,
+        eventType: "late_payment_review",
+        userId: String(session.user_id),
+        payload: { orderId: order.id, planId, reason: "daha_yeni_aktif_plan_korundu" },
+      });
+    }
     if (!applied.duplicatePayment) {
       await shopierDeleteProduct(secrets.pat, productId);
     }
-    return json({ ok: true, applied: true, duplicatePayment: applied.duplicatePayment });
+    return json({
+      ok: true,
+      applied: !applied.duplicatePayment && !applied.latePayment,
+      duplicatePayment: applied.duplicatePayment,
+      latePayment: applied.latePayment,
+    });
   }
 
   // PayTR bildirim: merchant_oid + merchant_salt + status + total_amount HMAC, yanıt OK.

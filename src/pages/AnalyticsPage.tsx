@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { FeatureLock } from '../components/FeatureLock';
-import { appendAiBlocksAsTasks, localAiCoachReport, requestAiCoachAnalysis, type AiCoachReport } from '../lib/aiCoachAnalysis';
 import {
   EXAM_DOC_ACCEPT,
   analyzeExamDocumentFiles,
@@ -27,30 +26,23 @@ function verdictLabel(v: string) {
 }
 
 export function AnalyticsPage() {
-  const { data, setData, go, profile, isAdmin, user, toast } = useApp();
+  const { data, go, profile, isAdmin, user, toast } = useApp();
   const see = canSeeAnalyticsPage(profile, isAdmin);
   const use = canUseAnalytics(profile, isAdmin);
   const board = useMemo(() => buildAnalyticsBoard(data), [data]);
   const progress = useMemo(() => getStudentProgress(data), [data]);
   const edu = useMemo(() => getStudentEducationContext(data), [data]);
   const fp = useMemo(() => progressFingerprint(data), [data]);
-  const cacheRef = useRef<{ fp: string; report: AiCoachReport } | null>(null);
-  const [aiBusy, setAiBusy] = useState(false);
-  const [aiErr, setAiErr] = useState('');
-  const [aiReport, setAiReport] = useState<AiCoachReport | null>(null);
   const [files, setFiles] = useState<LocalFile[]>([]);
   const [docBusy, setDocBusy] = useState(false);
   const [docErr, setDocErr] = useState('');
   const [docResult, setDocResult] = useState<ExamDocumentAnalysis | null>(null);
-  const localHints = useMemo(() => localAiCoachReport(data, board), [data, board]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     clearExamDocumentAnalysisForUser(user?.id || null);
     setDocResult(null);
     setDocErr('');
-    setAiReport(null);
-    cacheRef.current = null;
     setFiles((prev) => {
       prev.forEach((f) => URL.revokeObjectURL(f.url));
       return [];
@@ -129,26 +121,6 @@ export function AnalyticsPage() {
     }
   }
 
-  async function runAi() {
-    if (!board.hasData && !progress.capacity.weekMinutes) return;
-    if (cacheRef.current?.fp === fp) {
-      setAiReport(cacheRef.current.report);
-      return;
-    }
-    setAiBusy(true);
-    setAiErr('');
-    try {
-      const report = await requestAiCoachAnalysis(data);
-      cacheRef.current = { fp, report };
-      setAiReport(report);
-    } catch {
-      setAiErr('Analiz şu an alınamadı.');
-    } finally {
-      setAiBusy(false);
-    }
-  }
-
-  const shown = aiReport && !aiReport.empty ? aiReport : null;
   const total = data.sessions.reduce((a, x) => a + x.minutes, 0);
   const qs = data.questions.reduce((a, x) => a + x.correct + x.wrong + x.blank, 0);
   const bankSolved = Object.values(data.questionStats).reduce((a, s) => a + s.attempts, 0);
@@ -163,10 +135,13 @@ export function AnalyticsPage() {
   });
   const week = weekMinutes(data);
   const weekGoal = weekGoalPct(data);
-  const tytAytExams = data.exams
+  const denemeExams = data.exams
     .filter((e) => {
       const label = `${e.kind || ''} ${e.name || ''}`;
-      return /tyt|ayt/i.test(label) || Number(e.tyt) > 0 || Number(e.ayt) > 0;
+      return /tyt|ayt|lgs|kpss|deneme/i.test(label)
+        || Number(e.tyt) > 0
+        || Number(e.ayt) > 0
+        || (e.subjects?.length ?? 0) > 0;
     })
     .slice()
     .sort((a, b) => b.date.localeCompare(a.date) || String(b.id).localeCompare(String(a.id)));
@@ -178,7 +153,6 @@ export function AnalyticsPage() {
       <p className="muted" style={{ marginTop: 0 }}>
         {edu.gradeLabel || 'Profil'}
         {edu.fieldShort ? ` · ${edu.fieldShort}` : ''}
-        {edu.age ? ` · ${edu.age} yaş` : ''}
         {edu.periodLabel ? ` · ${edu.periodLabel}` : ''}
       </p>
 
@@ -310,7 +284,7 @@ export function AnalyticsPage() {
 
           {docResult.advice ? (
             <>
-              <div className="section-title" style={{ marginTop: 8 }}><h3>AI değerlendirmesi</h3></div>
+              <div className="section-title" style={{ marginTop: 8 }}><h3>Öneri</h3></div>
               <p>{docResult.advice}</p>
             </>
           ) : null}
@@ -349,20 +323,32 @@ export function AnalyticsPage() {
 
           <div className="card" style={{ marginBottom: 16 }}>
             <div className="section-title"><h3>Deneme Analizi</h3></div>
-            {tytAytExams.length ? tytAytExams.map((e) => {
-              const kindLabel = /ayt/i.test(String(e.kind || e.name || '')) ? 'AYT' : /tyt/i.test(String(e.kind || e.name || '')) ? 'TYT' : 'TYT / AYT';
+            {denemeExams.length ? denemeExams.map((e) => {
+              const raw = String(e.kind || e.name || '');
+              const kindLabel = /lgs/i.test(raw)
+                ? 'LGS'
+                : /kpss/i.test(raw)
+                  ? 'KPSS'
+                  : /ayt/i.test(raw)
+                    ? 'AYT'
+                    : /tyt/i.test(raw)
+                      ? 'TYT'
+                      : 'Deneme';
+              const scoreLine = /lgs|kpss/i.test(raw)
+                ? `${Number(e.tyt || 0).toFixed(1)} net`
+                : /ayt/i.test(raw) && !/tyt/i.test(raw)
+                  ? `AYT ${Number(e.ayt || e.tyt || 0).toFixed(1)}`
+                  : `TYT ${Number(e.tyt || 0).toFixed(1)}${e.ayt ? ` · AYT ${Number(e.ayt).toFixed(1)}` : ''}`;
               return (
                 <div className="plan-item" key={e.id}>
                   <span>
                     {kindLabel} · {e.name || 'Deneme'} · {e.date}
                     <br />
-                    <small className="muted">
-                      TYT {Number(e.tyt || 0).toFixed(1)} · AYT {Number(e.ayt || 0).toFixed(1)}
-                    </small>
+                    <small className="muted">{scoreLine}</small>
                   </span>
                 </div>
               );
-            }) : <p className="muted">TYT / AYT deneme kaydı yok.</p>}
+            }) : <p className="muted">Deneme kaydı yok.</p>}
           </div>
 
           <div className="card" style={{ marginBottom: 16 }}>
@@ -392,43 +378,6 @@ export function AnalyticsPage() {
           </div>
         </>
       )}
-
-      <div className="card" style={{ marginBottom: 16 }}>
-        <div className="section-title"><h3>AI Değerlendirmesi</h3></div>
-        <p className="muted">
-          Yaş, sınıf, alan, hedef, deneme sonuçları, çalışma süreleri ve konu ilerlemeleri birlikte değerlendirilir.
-          Üstteki dosya analizinden bağımsızdır; sayfa açılınca model çağrılmaz.
-        </p>
-        <div className="actions">
-          <button className="btn primary" type="button" disabled={aiBusy} onClick={() => void runAi()}>
-            {aiBusy ? 'Analiz ediliyor…' : 'AI ile Analiz Et'}
-          </button>
-        </div>
-        {aiErr ? <p className="notice">{aiErr}</p> : null}
-        {shown ? (
-          <div style={{ marginTop: 12 }}>
-            <p>{shown.narrative}</p>
-            {shown.strengths.length ? <p><b>Güçlü yönler:</b> {shown.strengths.join(', ')}</p> : null}
-            {shown.weaknesses.length ? <p><b>Geliştirilmesi gerekenler:</b> {shown.weaknesses.join(', ')}</p> : null}
-            {shown.weekHint ? <p><b>Çalışma öncelikleri:</b> {shown.weekHint}</p> : null}
-            {shown.todayHint ? <p><b>Hedefe göre durum:</b> {shown.todayHint}</p> : null}
-          </div>
-        ) : null}
-        {localHints.empty || !(localHints.strengths[0] || localHints.weaknesses[0] || localHints.todayHint) ? null : (
-          <div style={{ marginTop: 12 }}>
-            {localHints.strengths[0] ? <p><b>Güçlü alanın</b><br />{localHints.strengths[0]}</p> : null}
-            {localHints.weaknesses[0] ? <p><b>Öncelik</b><br />{localHints.weaknesses[0]}</p> : null}
-            {localHints.todayHint ? <p><b>Bugünkü öneri</b><br />{localHints.todayHint}</p> : null}
-            {localHints.todayBlocks.length ? (
-              <div className="actions">
-                <button className="btn secondary" type="button" onClick={() => setData(appendAiBlocksAsTasks(data, localHints.todayBlocks))}>
-                  Programa ekle
-                </button>
-              </div>
-            ) : null}
-          </div>
-        )}
-      </div>
     </>
   );
 }

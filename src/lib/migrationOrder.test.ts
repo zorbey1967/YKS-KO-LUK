@@ -310,4 +310,52 @@ describe('migration hedef şema (020 sonra 021+016; 013/017 atlanır)', () => {
     expect(s).toContain('schedule-pdfs');
     expect(s).not.toMatch(/foldername\(name\)/);
   });
+
+  it('050 içerik denetimi; RLS; sunucu taraması; yönetici otomatik askı yok', () => {
+    const s = sql('050_content_moderation.sql');
+    expect(s).toContain('moderation_violations');
+    expect(s).toContain('force row level security');
+    expect(s).toContain('record_moderation_violation');
+    expect(s).toContain('admin_list_moderation_violations');
+    expect(s).toContain('admin_review_moderation_violation');
+    expect(s).toContain('moderation_target_is_admin');
+    expect(s).toContain('scan_text_profanity');
+    expect(s).toContain('p_text');
+    expect(s).toContain('appeal_note');
+    expect(s).toContain('ses ihlali yalnızca sunucu STT');
+    expect(s).not.toMatch(/drop table/i);
+    expect(s).not.toContain('VITE_SUPABASE_SERVICE');
+  });
+
+  it('051 STT olayları; service_role; istemci grant yok', () => {
+    const s = sql('051_meeting_stt_moderation.sql');
+    expect(s).toContain('moderation_stt_events');
+    expect(s).toContain('service_record_voice_stt_violation');
+    expect(s).toContain('appointment_user_is_party');
+    expect(s).toContain('force row level security');
+    expect(s).toContain('unique_violation');
+    expect(s).not.toMatch(/drop table/i);
+    expect(s).not.toContain('VITE_SUPABASE_SERVICE');
+  });
+
+  it('053 canlı hotfix: e-posta ile admin yok; istemci email/role kilitli', () => {
+    const s = sql('053_live_hotfix_email_admin.sql');
+    expect(s).not.toMatch(/yusufbesiroglu/i);
+    expect(s).toContain('create or replace function public.protect_role()');
+    expect(s).toContain('create or replace function public.handle_new_user()');
+    expect(s).toContain('new.email := old.email;');
+    expect(s).toContain('new.role := old.role;');
+    expect(s).toContain('new.account_status := old.account_status;');
+    expect(s).toMatch(/auth\.uid\(\) is not null and not public\.is_admin\(\) then\s+new\.role := 'student';/);
+    expect(s).not.toMatch(/^\s*(update|delete|insert into public\.profiles\s+select)/im);
+  });
+
+  it('052 OAuth signup_intent; email admin yok; claim RPC', () => {
+    const s = sql('052_oauth_signup_intent.sql');
+    expect(s).toContain('claim_signup_prefs');
+    expect(s).toContain('signup_intent');
+    expect(s).toContain("intent not in ('student', 'coach')");
+    expect(s).not.toMatch(/yusufbesiroglu/i);
+    expect(s).not.toContain('VITE_SUPABASE_SERVICE');
+  });
 });
