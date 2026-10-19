@@ -347,7 +347,7 @@ export function AdminPage() {
               </div>
             );
           })()}
-          <p className="muted">Doğrulanmış toplam tüm succeeded satırlarıdır. Shopier ayrımı aşağıdaki kartlarda; 016 yoksa tire. Sahte ciro yok.</p>
+          <p className="muted">Doğrulanmış toplam başarılı ödemelerin toplamıdır. Shopier ayrımı aşağıdaki kartlarda; ödeme tablosu okunamazsa tire görünür. Sahte ciro yok.</p>
           <div className="grid stats" style={{ marginBottom: 16 }}>
             <div className="card stat"><div className="label">Shopier sipariş</div><div className="value">{payRows ? shopierRev.orderCount : '—'}</div></div>
             <div className="card stat"><div className="label">Shopier brüt</div><div className="value">{payRows ? `${shopierRev.grossTry} TL` : '—'}</div></div>
@@ -356,7 +356,7 @@ export function AdminPage() {
             <div className="card stat"><div className="label">Aktif üyelik</div><div className="value">{billingRows ? shopierActive : '—'}</div></div>
             <div className="card stat"><div className="label">Koç defteri (ayrı)</div><div className="value">{formatTry(localSnap.gross)}</div></div>
           </div>
-          <p className="muted">Koç kazancı Shopier brütünden düşülmez; ayrı defterdir. İade, üyelik süresini otomatik kesmez.</p>
+          <p className="muted">Koç kazancı Shopier brütünden düşülmez; ayrı defterdir. Tam iadede o ödemenin 30 günü düşülür, kalan süre yoksa erişim kapanır. Kısmi iade erişimi değiştirmez.</p>
           {(billingRows || []).length ? (billingRows || []).map((r) => (
             <div className="plan-item" key={r.id}>
               <span>
@@ -365,10 +365,10 @@ export function AdminPage() {
                 <small className="muted">{r.email} • {labelStoredPlan(r.plan)} • {r.subscription_status || 'legacy'} • {r.account_status}</small>
               </span>
             </div>
-          )          ) : <div className="empty">Kayıt yok veya 013 henüz uygulanmadı.</div>}
-          <div className="section-title" style={{ marginTop: 20 }}><h3>Ödemeler</h3><span>{payRows ? 'sunucu' : '017 yok'}</span></div>
+          )          ) : <div className="empty">Kayıt yok veya üyelik verisi okunamadı.</div>}
+          <div className="section-title" style={{ marginTop: 20 }}><h3>Ödemeler</h3><span>{payRows ? 'sunucu' : 'okunamadı'}</span></div>
           {payRows === null ? (
-            <p className="muted">admin_list_payments yok. Kart veya secret gösterilmez.</p>
+            <p className="muted">Ödeme listesi okunamadı. Kart veya gizli anahtar gösterilmez.</p>
           ) : payRows.length === 0 ? (
             <p className="muted">Doğrulanmış ödeme satırı yok.</p>
           ) : payRows.map((p) => (
@@ -376,7 +376,13 @@ export function AdminPage() {
               <span>
                 <b>{paymentStatusLabel(p.status)}</b>
                 <br />
-                <small className="muted">{p.email} • {p.provider} • {p.providerPaymentId || '—'}</small>
+                <small className="muted">
+                  {[p.email, p.provider, p.providerPaymentId || '—', p.planId ? labelStoredPlan(p.planId) : '',
+                    p.coversEnd ? `dönem sonu ${new Date(p.coversEnd).toLocaleDateString('tr-TR')}` : '',
+                    p.refundedAt ? `iade ${new Date(p.refundedAt).toLocaleDateString('tr-TR')}` : '',
+                    p.status === 'succeeded' && p.refundedTotalTry ? `kısmi iade ${p.refundedTotalTry} TL` : '',
+                  ].filter(Boolean).join(' • ')}
+                </small>
               </span>
               <b>{p.amountTry} {p.currency}</b>
             </div>

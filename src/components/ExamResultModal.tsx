@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import type { ExamSubjectNet, ExamTarget } from '../lib/types';
 import { getStudentEducationContext } from '../lib/studentEducation';
+import { fmtExamDateLong } from '../lib/examTargets';
 import {
   denemeSubjectRows,
   emptySubjectRows,
@@ -70,7 +71,7 @@ export function ExamResultModal({
       }
       const puan = Math.max(0, Number(score) || 0);
       setData((prev) => upsertExamResult(prev, target, { tyt: puan, ayt: 0, subjects: [], note: 'Yazılı puan' }));
-      toast('Yazılı sonucu kaydedildi');
+      toast('Sonuç kaydedildi');
       onClose();
       return;
     }
@@ -92,7 +93,7 @@ export function ExamResultModal({
       <div className="modal-box" style={{ width: 'min(640px,100%)' }}>
         <h3>Sınav sonucu</h3>
         <p className="muted" style={{ marginTop: 0 }}>
-          <b>{target.title}</b> · {target.date}
+          <b>{target.title}</b> · {fmtExamDateLong(target.date)}
         </p>
         {written ? (
           <div className="field">

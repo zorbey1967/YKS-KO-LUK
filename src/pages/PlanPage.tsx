@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { askDailyPlan } from '../lib/coachAi';
 import { publicCoachBrand } from '../lib/zoroText';
-import { fmtDate, today, uid } from '../lib/util';
+import { today, uid } from '../lib/util';
 import { canUseFeature } from '../lib/subscription';
 import { appendGeneratedTasks } from '../lib/coachPlan';
 import { resetAiCoachCache } from '../lib/aiCoachAnalysis';
@@ -13,34 +13,15 @@ import {
   getStudentProgress,
   invalidateStudentProgress,
 } from '../lib/studentProgress';
-import {
-  createCoachProgramPdfSignedUrl,
-  listMyCoachProgramPdfs,
-  type CoachProgramPdf,
-} from '../lib/coachProgramPdfCloud';
 
 export function PlanPage() {
-  const { data, setData, toast, profile, isAdmin, go, user } = useApp();
+  const { data, setData, toast, profile, isAdmin, go } = useApp();
   const aiPlan = canUseFeature(profile, 'ai_plan', Date.now(), isAdmin);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState('');
   const [holdChange, setHoldChange] = useState(false);
-  const [coachPdfs, setCoachPdfs] = useState<CoachProgramPdf[]>([]);
   const state = useMemo(() => getStudentProgress(data), [data]);
   const weekGoalHours = data.weekHours > 0 ? data.weekHours : null;
-
-  useEffect(() => {
-    if (!user?.id) {
-      setCoachPdfs([]);
-      return;
-    }
-    let alive = true;
-    void listMyCoachProgramPdfs().then((res) => {
-      if (!alive) return;
-      if (res.ok) setCoachPdfs(res.rows.filter((r) => r.student_id === user.id));
-    });
-    return () => { alive = false; };
-  }, [user?.id]);
 
   function saveLocal() {
     const blocks = generateLivingPlan(data, state.capacity.typicalDayMinutes);
@@ -114,11 +95,11 @@ export function PlanPage() {
               <div><strong>{x.text}</strong><small className="muted"> {x.minutes} dk</small></div>
             </div>
           )) : (
-            <div className="empty">Plan yok. Aşağıdan üret — sayfa açılışında AI çağrılmaz. Uydurma plan yok.</div>
+            <div className="empty">Henüz plan yok. “Plan oluştur” ile kayıtlarına göre bugünün planını hazırla.</div>
           )}
           <div className="actions" style={{ marginTop: 12 }}>
-            <button className="btn" type="button" disabled={busy} onClick={saveLocal}>Yerel üret</button>
-            <button className="btn primary" type="button" disabled={busy || !aiPlan} onClick={() => void saveCloud()}>{busy ? 'Hazırlanıyor…' : 'Sunucu ile plan'}</button>
+            {/* Tek "plan oluştur": ZORRO açıksa sunucuda, değilse kayıtlarından yerel plan. */}
+            <button className="btn primary" type="button" disabled={busy} onClick={() => (aiPlan ? void saveCloud() : saveLocal())}>{busy ? 'Hazırlanıyor…' : data.plan.length ? 'Planı yenile' : 'Plan oluştur'}</button>
             <button className="btn" type="button" onClick={() => {
               if (!data.plan.length) return toast('Önce plan oluştur.');
               setData(appendGeneratedTasks(data, data.plan.map((x) => ({
@@ -140,48 +121,14 @@ export function PlanPage() {
 
         <div className="card" style={{ marginTop: 16 }}>
           <div className="section-title"><h3>Koçun Programı</h3></div>
-          <p className="muted">Koçunun yüklediği PDF. Kendi ders programı PDF’nden ayrıdır.</p>
-          {coachPdfs.length ? coachPdfs.map((r) => (
-            <div className="plan-item" key={r.id}>
-              <span>
-                {r.file_name}
-                <br />
-                <small className="muted">{new Date(r.created_at).toLocaleString('tr-TR')}</small>
-              </span>
-              <button
-                className="btn secondary"
-                type="button"
-                onClick={() => {
-                  void createCoachProgramPdfSignedUrl(r.storage_path).then((url) => {
-                    if (!url) {
-                      toast('PDF açılamadı.');
-                      return;
-                    }
-                    window.open(url, '_blank', 'noopener,noreferrer');
-                  });
-                }}
-              >
-                PDF’yi aç
-              </button>
-            </div>
-          )) : <div className="empty">Koç henüz program PDF’i yüklemedi.</div>}
+          <p className="muted" style={{ marginTop: 0 }}>Koçunun programı Ders Programı sayfasında; Akıllı Plan onu değiştirmez veya kopyalamaz.</p>
+          <div className="actions"><button className="btn secondary" type="button" onClick={() => go('schedule')}>Ders Programı’nı aç</button></div>
         </div>
       </div>
 
       <div>
-        <div className="card">
-          <div className="section-title"><h3>Son deneme</h3></div>
-          {state.lastExam ? (
-            <>
-              <p><b>{state.lastExam.name}</b> · {fmtDate(state.lastExam.date)}</p>
-              <p>TYT {state.lastExam.tyt} · AYT {state.lastExam.ayt}{state.lastExam.delta != null ? ` · Δ ${state.lastExam.delta > 0 ? '+' : ''}${state.lastExam.delta}` : ''}</p>
-              {state.insights.narrative ? <p className="muted">{state.insights.narrative}</p> : null}
-              <div className="actions"><button className="btn secondary" type="button" onClick={() => go('exams')}>Denemeler</button></div>
-            </>
-          ) : <div className="empty">Kayıtlı deneme yok.</div>}
-        </div>
 
-        <div className="card" style={{ marginTop: 16 }}>
+        <div className="card">
           <div className="section-title"><h3>Program değişikliği</h3></div>
           {state.planChange.needed && !holdChange ? (
             <>
@@ -206,18 +153,12 @@ export function PlanPage() {
           {state.upcomingExams.length ? state.upcomingExams.map((e) => (
             <div key={e.examId} className="topic-row">
               <div className="topic-head"><b>{e.title}</b><span className="chip">{e.daysLeft} gün · {e.period}</span></div>
-              <small className="muted">{e.kind === 'yazili' ? 'Yazılı' : e.kind} · Eksik: {e.missing.slice(0, 3).join(', ') || '—'} · Devam: {e.ongoing.slice(0, 2).join(', ') || '—'}</small>
+              <small className="muted">{e.kind === 'yazili' ? 'Yazılı' : e.kind === 'yks' ? 'TYT / AYT' : e.kind.toLocaleUpperCase('tr-TR')} · Eksik: {e.missing.slice(0, 3).join(', ') || '—'} · Devam: {e.ongoing.slice(0, 2).join(', ') || '—'}</small>
               {e.days.map((d) => <p key={d.title} className="muted" style={{ margin: '4px 0' }}>{d.title} — {d.body}</p>)}
             </div>
           )) : <div className="empty">Takvim’de yakın sınav yok.</div>}
         </div>
 
-        <div className="card" style={{ marginTop: 16 }}>
-          <div className="section-title"><h3>Haftalık tempo</h3></div>
-          {state.capacity.weekTrend.map((d) => (
-            <div className="kpi" key={d.date}><div>{d.day}</div><b>{d.minutes} dk</b></div>
-          ))}
-        </div>
       </div>
     </div>
   );

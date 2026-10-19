@@ -78,7 +78,6 @@ describe('production audit contracts', () => {
       'src/pages/TasksPage.tsx',
       'src/pages/CoachesPage.tsx',
       'src/pages/AdminPage.tsx',
-      'src/components/ExamAnalysisPanel.tsx',
       'src/lib/billing.ts',
       'src/lib/cloudPlatform.ts',
     ];

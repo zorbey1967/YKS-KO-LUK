@@ -125,6 +125,23 @@ export function studentOwnedSchedule(data: AppData): Schedule {
   return data.schedule.source === 'coach' ? emptySchedule() : data.schedule;
 }
 
+/**
+ * Öğrencinin kendi programını yazar (tek kopya: data.schedule).
+ * Eski kayıtta koç programı data.schedule içindeyse önce coachSchedule'a taşınır; koç programı silinmez.
+ */
+export function saveOwnSchedule(data: AppData, days: Schedule['days'], source = 'self'): AppData {
+  const legacyCoach = data.schedule.source === 'coach' && !data.coachSchedule?.days?.some((d) => d.blocks?.length);
+  const cleaned = days
+    .map((d) => ({ day: d.day, blocks: d.blocks.filter((b) => String(b.title || '').trim()).map((b) => ({ ...b, title: b.title.trim().slice(0, 60), minutes: Math.max(5, Math.min(300, Number(b.minutes) || 40)) })) }))
+    .filter((d) => d.blocks.length);
+  const own = legacyCoach ? emptySchedule() : studentOwnedSchedule(data);
+  return {
+    ...data,
+    coachSchedule: legacyCoach ? { ...data.schedule } : data.coachSchedule,
+    schedule: { ...own, days: cleaned, source: source === 'coach' ? 'self' : source, updatedAt: new Date().toISOString() },
+  };
+}
+
 export function coachOwnedSchedule(data: AppData): Schedule {
   const c = data.coachSchedule;
   if (c?.days?.some((d) => d.blocks?.length)) return c;
@@ -588,9 +605,10 @@ export function liveLibraryMinutes(data: AppData, now = Date.now()) {
 }
 
 export function progressFingerprint(data: AppData, live = 0) {
+  // syncRev bilinçli olarak yok: her bulut kaydında artar ama öğrenci verisini değiştirmez;
+  // dahil olsaydı her senkrondan sonra AI analizi ve ilerleme önbelleği boşuna yenilenirdi.
   return [
-    data.syncRev,
-    data.grade, data.track, data.dept, data.rank, data.weekHours, data.examDate,
+    data.grade, data.age, data.track, data.dept, data.rank, data.weekHours, data.examDate,
     data.planDate || '',
     data.schedule.updatedAt,
     data.schedule.source,
@@ -604,7 +622,7 @@ export function progressFingerprint(data: AppData, live = 0) {
     data.exams.map((e) => `${e.id}:${e.name}:${e.date}:${e.tyt}:${e.ayt}:${e.correct ?? ''}:${e.wrong ?? ''}:${e.blank ?? ''}:${(e.subjects || []).map((s) => `${s.name}:${s.net}:${s.correct ?? ''}:${s.wrong ?? ''}:${s.blank ?? ''}`).join(',')}`).join(';'),
     data.sessions.map((s) => `${s.id}:${s.minutes}:${s.topic || ''}:${s.kind || ''}:${s.subject || ''}`).join(','),
     data.tasks.map((t) => `${t.id}:${t.done ? 1 : 0}:${t.origin || ''}:${t.title}`).join(','),
-    data.examTargets.map((e) => `${e.id}:${e.date}:${e.title}:${e.subject || ''}`).join(','),
+    data.examTargets.map((e) => `${e.id}:${e.date}:${e.title}:${e.kind}:${e.subject || ''}:${(e.topics || []).join('|')}:${e.isPrimary ? 1 : 0}`).join(','),
     data.learningNotes.map((n) => `${n.at}:${n.topic}`).join(','),
     data.plan.map((p) => `${p.text}:${p.minutes}`).join(','),
     (data.calcs || []).map((c) => `${c.id}:${c.net}`).join(','),
@@ -629,12 +647,31 @@ export function getStudentProgress(data: AppData, live?: number): StudentState {
   return state;
 }
 
+function educationBandLabel(band: ReturnType<typeof getStudentEducationContext>['band']): string {
+  if (band === 'primary') return 'ilkokul';
+  if (band === 'middle') return 'ortaokul';
+  if (band === 'lgs') return 'ortaokul 8. sınıf (LGS)';
+  if (band === 'high_early') return 'lise 9–10';
+  if (band === 'high_yks') return 'lise 11–12 (YKS hazırlığı)';
+  if (band === 'mezun') return 'mezun (YKS)';
+  if (band === 'university') return 'üniversite';
+  if (band === 'kpss') return 'KPSS adayı';
+  return 'belirtilmedi';
+}
+
+/** ZORRO için tek satırlık düzey: yaş, sınıf, eğitim düzeyi ve alan. */
+export function studentLevelLine(data: AppData): string {
+  const edu = getStudentEducationContext(data);
+  return `Öğrenci düzeyi: ${educationBandLabel(edu.band)}${edu.grade ? ` (${edu.grade})` : ''}${edu.age > 0 ? `, yaş ${edu.age}` : ''}${edu.fieldShort ? `, alan ${edu.fieldShort}` : ''}. ${edu.isYksPrep ? 'YKS terimleri kullanılabilir.' : 'YKS/TYT/AYT önerme.'}`;
+}
+
 export function studentStateLines(data: AppData): string[] {
   const s = getStudentProgress(data);
   const edu = getStudentEducationContext(data);
   const fieldHint = aytFieldHint(edu);
   const lines = [
-    `Sınıf: ${s.grade || 'belirtilmedi'}. Alan: ${s.track || 'belirtilmedi'}${edu.fieldShort ? ` (${edu.fieldShort})` : ''}. Hedef: ${s.dept || 'belirtilmedi'}${s.rank > 0 ? ` sıra ${s.rank}` : ''}.`,
+    `Sınıf: ${s.grade || 'belirtilmedi'}${edu.age > 0 ? `, yaş ${edu.age}` : ''}. Alan: ${s.track || 'belirtilmedi'}${edu.fieldShort ? ` (${edu.fieldShort})` : ''}. Hedef: ${s.dept || 'belirtilmedi'}${s.rank > 0 ? ` sıra ${s.rank}` : ''}.`,
+    studentLevelLine(data),
     `Tipik günlük kapasite: ${s.capacity.typicalDayMinutes} dk. Bugün çalışma saati ${s.capacity.todayTimer} dk, kütüphane ${s.capacity.todayLibrary} dk.`,
   ];
   if (fieldHint) lines.push(`Alanına uygun odak: ${fieldHint}. Başka alanın AYT konularını önerme.`);

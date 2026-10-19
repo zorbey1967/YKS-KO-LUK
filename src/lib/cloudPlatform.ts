@@ -733,6 +733,11 @@ export type AdminPaymentRow = {
   provider: string;
   providerPaymentId: string;
   createdAt: string;
+  /** 050: ödemenin paketi, kapsadığı dönem sonu, iade zamanı/tutarı. Eski şemada boş. */
+  planId?: string;
+  coversEnd?: string;
+  refundedAt?: string;
+  refundedTotalTry?: number;
 };
 
 export async function adminListPayments(): Promise<AdminPaymentRow[] | null> {
@@ -749,6 +754,10 @@ export async function adminListPayments(): Promise<AdminPaymentRow[] | null> {
       provider: String(r.provider || ''),
       providerPaymentId: String(r.provider_payment_id || ''),
       createdAt: String(r.created_at || ''),
+      planId: r.plan_id ? String(r.plan_id) : undefined,
+      coversEnd: r.covers_end ? String(r.covers_end) : undefined,
+      refundedAt: r.refunded_at ? String(r.refunded_at) : undefined,
+      refundedTotalTry: r.refunded_total_try != null ? Number(r.refunded_total_try) || 0 : undefined,
     }));
   } catch {
     return null;

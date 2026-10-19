@@ -16,6 +16,7 @@ export const SQL_DRAFTS: { id: string; title: string; file: string; status: Draf
   { id: '038', title: 'Storage ingest kapısı, kayıt izni, AI kuyruk RPC', file: '038_storage_ingest_recording_gate.sql', status: 'local_draft' },
   { id: '039', title: 'Onaylı randevu iptal talebi (respond değişmez)', file: '039_approved_appointment_cancel.sql', status: 'local_draft' },
   { id: '040', title: 'Onaylı iptal denetimi ve yarış kilidi', file: '040_approved_cancel_audit.sql', status: 'local_draft' },
+  { id: '050', title: 'Profil kilidi, kayıt bilgisi, yenileme/iade, doğrulamalı deneme', file: '050_commercial_readiness.sql', status: 'local_draft' },
 ];
 
 export function draftStatusLabel(s: DraftFlag) {

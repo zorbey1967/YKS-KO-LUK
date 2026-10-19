@@ -12,6 +12,7 @@
     "test:pg:docker": "node scripts/run-pg-entitlement-test.mjs",
     "test:pg:security": "node scripts/run-pg-security-test.mjs",
     "test:pg:four": "node scripts/run-pg-four-sql.mjs",
+    "test:pg:commercial": "node scripts/run-pg-commercial.mjs",
     "preview": "vite preview",
     "extract-bank": "node scripts/extract-bank.mjs",
     "pack:bank": "node scripts/pack-bank.mjs",

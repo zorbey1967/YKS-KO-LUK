@@ -198,18 +198,8 @@ export function scheduleFromUnknown(raw: unknown, fallback: Schedule): Schedule 
   };
 }
 
-export function extractJsonObject(text: string) {
-  const fence = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
-  const blob = fence?.[1] || text;
-  const start = blob.indexOf('{');
-  const end = blob.lastIndexOf('}');
-  if (start < 0 || end <= start) return null;
-  try {
-    return JSON.parse(blob.slice(start, end + 1)) as unknown;
-  } catch {
-    return null;
-  }
-}
+/** Tek JSON ayrıştırıcı llmPrompt'ta; eski import yolu için yeniden dışa aktarılır. */
+export { extractJsonObject } from './llmPrompt';
 
 export function applyScheduleNotes(schedule: Schedule, note: string): Schedule {
   const days = schedule.days.map((d) => ({ ...d, blocks: [...d.blocks] }));

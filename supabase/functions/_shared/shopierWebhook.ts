@@ -7,6 +7,12 @@ import type { ShopierOrder } from "./shopierApi.ts";
  * Başlık adı ve hex/base64 kodlaması developer.shopier.com sayfalarında yok;
  * üyelik yine de yalnızca GET /orders/{id} sonrası açılır.
  * İmza eşleşmezse retrieve yapılmaz.
+ *
+ * TODO(ticari açılış): Shopier imza formatı (başlık adı, HMAC-SHA256 hex/base64, imzalanan gövde)
+ * gerçek bir küçük ödeme + iade bildirimiyle henüz DOĞRULANMADI. Doğrulanana kadar:
+ *   - imza geçersizse 401 döner, sipariş okunmaz, üyelik açılmaz (güvenli taraf);
+ *   - imza doğru olsa bile üyelik yalnızca GET /orders/{id} sonucuna göre açılır/kapanır.
+ * Format farklı çıkarsa sadece bu dosyadaki shopierSignatureOk güncellenir.
  */
 export async function shopierHmacSha256(token: string, raw: string) {
   const key = await crypto.subtle.importKey(

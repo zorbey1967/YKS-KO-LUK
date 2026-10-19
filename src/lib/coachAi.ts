@@ -2,7 +2,7 @@ import type { AppData, PlanBlock } from './types';
 import { chatReply, generatePlan, iconForTopic, planToText } from './coach';
 import { detectExamBand, detectSubject, tutorUserPrompt } from './aiTutor';
 import { findBankQuestions } from './bank';
-import { packAiResult, extractJsonObject } from './llmPrompt';
+import { packAiResult } from './llmPrompt';
 import { localTeachLesson, publicCoachBrand, sanitizeZoroReply } from './zoroText';
 import { supabase, supabaseAnonKey, supabaseUrl } from './supabase';
 import { routeToTutorIntent, routeZorroMessage, wantsDirectSolution, historyLimit, type ZorroRoute } from './zorroIntent';
@@ -10,6 +10,7 @@ import { selectZorroContext } from './zorroContext';
 import { zorroActions, type ZorroUiAction } from './zorroSuggest';
 import { extractLearningSignal } from './zorroMemory';
 import type { LearningNote } from './types';
+import { QUESTION_BANK_ENABLED } from './features';
 
 export type CoachSource = 'ai' | 'local';
 export type CoachAnswer = {
@@ -61,7 +62,23 @@ function fromPacked(raw: unknown, fallbackPlan?: PlanBlock[]) {
   return { txt, plan, model: publicCoachBrand() };
 }
 
-async function invokeAi(body: Record<string, unknown>, ms: number): Promise<{ ok: true; data: unknown; model: string } | { ok: false; error: string; debug?: string }> {
+type AiResult = { ok: true; data: unknown; model: string } | { ok: false; error: string; debug?: string };
+const aiInflight = new Map<string, Promise<AiResult>>();
+
+/**
+ * Tüm ZORRO yetenekleri (sohbet, plan, program, durum yorumu) bu tek çağrıdan geçer.
+ * Aynı gövde zaten yoldaysa ikinci istek atılmaz; aynı söz paylaşılır (çift tık, iki ekran).
+ */
+function invokeAi(body: Record<string, unknown>, ms: number): Promise<AiResult> {
+  const key = body.image_b64 ? '' : JSON.stringify(body);
+  const hit = key ? aiInflight.get(key) : undefined;
+  if (hit) return hit;
+  const p = invokeAiOnce(body, ms).finally(() => { if (key) aiInflight.delete(key); });
+  if (key) aiInflight.set(key, p);
+  return p;
+}
+
+async function invokeAiOnce(body: Record<string, unknown>, ms: number): Promise<AiResult> {
   if (!supabaseUrl || !supabaseAnonKey || !supabase) {
     return { ok: false, error: USER_FAIL, debug: 'supabase_config' };
   }
@@ -101,6 +118,7 @@ async function invokeAi(body: Record<string, unknown>, ms: number): Promise<{ ok
     }
     if (res.status === 401) return { ok: false, error: 'Oturum doğrulanamadı. Hesabım’dan tekrar giriş yap.', debug: '401' };
     if (res.status === 402) return { ok: false, error: String(rec?.error || 'Deneme veya üyelik gerekli.'), debug: '402' };
+    if (res.status === 429) return { ok: false, error: String(rec?.error || 'ZORRO kullanım sınırına ulaştın. Biraz sonra tekrar dene.'), debug: String(rec?.code || '429') };
     if (res.status === 404) return { ok: false, error: USER_FAIL, debug: '404' };
     console.warn('student-ai', res.status, rec?.error || rawText.slice(0, 120));
     return { ok: false, error: USER_FAIL, debug: String(res.status) };
@@ -111,6 +129,8 @@ async function invokeAi(body: Record<string, unknown>, ms: number): Promise<{ ok
 }
 
 function bankSnippet(q: string, data: AppData, route: ZorroRoute) {
+  // Soru bankası gizliyken ZORRO'ya banka metni gönderilmez (öğrenci "banka" ifadesi görmez).
+  if (!QUESTION_BANK_ENABLED) return '';
   if (route !== 'quiz' && route !== 'tutor' && route !== 'review') return '';
   const t = q.toLocaleLowerCase('tr-TR');
   const diff = t.includes('zor') ? 'Zor' : t.includes('kolay') ? 'Kolay' : t.includes('orta') ? 'Orta' : undefined;
@@ -122,7 +142,7 @@ function bankSnippet(q: string, data: AppData, route: ZorroRoute) {
     limit: route === 'quiz' ? 3 : 1,
   });
   if (!bank.length) return '\nSoru bankasında eşleşen madde yok. Uydurma ID verme. AI ile uydurduğun soruyu “banka sorusu” diye sunma.';
-  return `\nGERÇEK SORU BANKASI (cevap gizli, AI üretimi değil):\n${bank.map((b, i) => `${i + 1}. ${b.q}\nŞıklar: ${b.o.map((o, n) => `${String.fromCharCode(65 + n)}) ${o}`).join(' / ')}`).join('\n')}`;
+  return `\nGERÇEK SORU (kayıtlı madde; cevap gizli, AI üretimi değil):\n${bank.map((b, i) => `${i + 1}. ${b.q}\nŞıklar: ${b.o.map((o, n) => `${String.fromCharCode(65 + n)}) ${o}`).join(' / ')}`).join('\n')}`;
 }
 
 export async function askCoach(q: string, data: AppData, history: ChatTurn[], image?: TutorImage | null): Promise<CoachAnswer> {
@@ -161,7 +181,8 @@ export async function askCoach(q: string, data: AppData, history: ChatTurn[], im
     return { text: lesson, source: 'local', model: publicCoachBrand(), route, actions, learning };
   }
   return {
-    text: USER_FAIL,
+    // Üyelik / kota / oturum mesajı genel hatadan önce gösterilir.
+    text: cloud.ok ? USER_FAIL : cloud.error,
     source: 'local',
     model: publicCoachBrand(),
     plan: local.plan,
@@ -184,7 +205,7 @@ export async function askZorroPlain(q: string, context: string): Promise<CoachAn
     const hit = fromPacked(cloud.data);
     if (hit.txt) return { text: sanitizeZoroReply(hit.txt), source: 'ai', model: publicCoachBrand() };
   }
-  return { text: USER_FAIL, source: 'local', error: cloud.ok ? 'empty' : cloud.debug };
+  return { text: cloud.ok ? USER_FAIL : cloud.error, source: 'local', error: cloud.ok ? 'empty' : cloud.debug };
 }
 
 export async function askDailyPlan(data: AppData, minutes: number, focus: string): Promise<{ blocks: PlanBlock[]; summary: string; source: CoachSource; model?: string }> {
@@ -202,40 +223,9 @@ export async function askDailyPlan(data: AppData, minutes: number, focus: string
       return { blocks: hit.plan, summary: hit.txt || 'Zorro günlük planı hazır.', source: 'ai', model: publicCoachBrand() };
     }
   }
-  return { blocks: local, summary: USER_FAIL, source: 'local' };
+  return { blocks: local, summary: cloud.ok ? USER_FAIL : cloud.error, source: 'local' };
 }
 
 export async function invokeScheduleAi(body: Record<string, unknown>) {
   return invokeAi(body, 45000);
 }
-
-export async function askExamPlan(data: AppData, instruction: string) {
-  const cloud = await invokeAi({
-    action: 'chat',
-    q: instruction,
-    context: selectZorroContext(data, instruction, 'plan'),
-  }, 40000);
-  if (!cloud.ok) return { ok: false as const, error: cloud.error };
-  const rec = asRecord(cloud.data) || {};
-  const parsed = extractJsonObject(String(rec.text || rec.reply || rec.summary || '')) || rec;
-  const stagesRaw = parsed.stages;
-  const stages = Array.isArray(stagesRaw)
-    ? stagesRaw.map((s) => {
-      const r = asRecord(s);
-      return { title: String(r?.title || '').trim(), body: String(r?.body || r?.text || '').trim() };
-    }).filter((s) => s.title || s.body)
-    : [];
-  const summary = String(parsed.summary || rec.summary || rec.reply || '').trim();
-  if (!summary && !stages.length) return { ok: false as const, error: USER_FAIL };
-  return {
-    ok: true as const,
-    model: publicCoachBrand(),
-    summary,
-    weekHint: String(parsed.weekHint || '').trim(),
-    advice: String(parsed.advice || '').trim(),
-    stages,
-    lastWeek: String(parsed.lastWeek || '').trim(),
-  };
-}
-
-

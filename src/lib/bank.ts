@@ -6,8 +6,15 @@ import { slugifyLevel } from '../../supabase/functions/_shared/bankPackSchema.ts
 let manifestCache: BankManifest | null = null;
 const levelCache = new Map<string, Record<string, BankQuestion[]>>();
 
+/**
+ * Paketli soru verisi (cevaplar dahil) yalnızca geliştirmede yüklenir. Üretim derlemesinde
+ * `import.meta.env.DEV` false olduğundan bu dinamik import ve src/data/bankData parçası pakete
+ * girmez; sorular yalnızca yetki kontrollü bank-pack fonksiyonundan gelir. Paket yoksa boş döner,
+ * ödeme yapmamış kullanıcıya JS dosyasından soru sızmaz.
+ */
 async function localBank() {
-  return import('../data/bankData');
+  if (import.meta.env.DEV) return import('../data/bankData');
+  return null;
 }
 
 function packErrorText(e: unknown) {
@@ -27,14 +34,16 @@ async function invokeBankPack(body: Record<string, unknown>) {
   return { error: null as string | null, data: payload };
 }
 
-async function bundledManifestData() {
+const EMPTY_MANIFEST: BankManifest = { version: 0, generatedAt: '', questionCount: 0, levels: [], curriculum: {} };
+
+async function bundledManifestData(): Promise<BankManifest> {
   const mod = await localBank();
-  return mod.bundledManifest();
+  return mod ? mod.bundledManifest() : EMPTY_MANIFEST;
 }
 
-async function bundledLevelData(levelName: string) {
+async function bundledLevelData(levelName: string): Promise<Record<string, BankQuestion[]>> {
   const mod = await localBank();
-  return shuffleBank(mod.questionsForLevel(levelName));
+  return mod ? shuffleBank(mod.questionsForLevel(levelName)) : {};
 }
 
 export async function loadManifest(): Promise<BankManifest> {
@@ -58,8 +67,10 @@ export async function loadManifest(): Promise<BankManifest> {
       /* yerel paket */
     }
   }
-  manifestCache = await bundledManifestData();
-  return manifestCache;
+  const fallback = await bundledManifestData();
+  // Üretimde boş sonuç önbelleğe alınmaz: yetki/paket düzelince yeniden denenir.
+  if (fallback.questionCount > 0) manifestCache = fallback;
+  return fallback;
 }
 
 export async function loadLevel(slug: string, levelName: string): Promise<Record<string, BankQuestion[]>> {
@@ -88,7 +99,7 @@ export async function loadLevel(slug: string, levelName: string): Promise<Record
     }
   }
   const bundled = await bundledLevelData(levelName);
-  levelCache.set(cacheKey, bundled);
+  if (Object.keys(bundled).length) levelCache.set(cacheKey, bundled);
   return bundled;
 }
 

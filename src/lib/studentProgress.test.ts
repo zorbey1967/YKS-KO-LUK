@@ -75,9 +75,11 @@ describe('sınıf müfredatı ve konu durumu', () => {
 describe('çalışma ve kütüphane süresi', () => {
   it('timer ve kütüphane dakikalarını ayırır', () => {
     const d = base();
+    // Sabit tarih yerine bugünün İstanbul tarihi: test takvim gününe bağlı kalmaz.
+    const day = istanbulDateKey();
     d.sessions = [
-      { id: 'a', date: '2026-10-16', minutes: 72, seconds: 0, subject: 'Matematik', createdAt: '2026-10-16T10:00:00.000Z' },
-      { id: 'b', date: '2026-10-16', minutes: 100, seconds: 0, subject: 'Sessiz Kütüphane', kind: 'library', createdAt: '2026-10-16T12:00:00.000Z' },
+      { id: 'a', date: day, minutes: 72, seconds: 0, subject: 'Matematik', createdAt: `${day}T07:00:00.000Z` },
+      { id: 'b', date: day, minutes: 100, seconds: 0, subject: 'Sessiz Kütüphane', kind: 'library', createdAt: `${day}T09:00:00.000Z` },
     ];
     const cap = buildCapacity(d, 0);
     expect(cap.todayTimer).toBe(72);

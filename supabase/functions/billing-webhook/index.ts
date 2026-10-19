@@ -6,9 +6,9 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { normalizePlanId } from "../_shared/billingCatalog.ts";
 import {
+  applyPaymentRefund,
   applyVerifiedPayment,
   isUniqueViolation,
-  markPaymentRefunded,
   recordBillingEvent,
   recordPayment,
 } from "../_shared/billingApply.ts";
@@ -19,6 +19,7 @@ import { shopierRetrievedOrderMatches } from "../_shared/shopierCheckout.ts";
 import {
   shopierActivateOk,
   shopierEventHeader,
+  shopierRefundedTotal,
   shopierSignatureHeader,
   shopierWebhookAuth,
 } from "../_shared/shopierWebhook.ts";
@@ -156,9 +157,15 @@ Deno.serve(async (req) => {
     if (!ev.ok) return json({ error: ev.error }, 500);
 
     if (/refund/i.test(eventName)) {
-      const refunded = await markPaymentRefunded(admin, { provider: "shopier", paymentId: order.id });
+      // 050: tam iadede o ödemenin süresi düşülür / erişim kapanır; kısmi iadede erişim değişmez.
+      // İade toplamı bildirim gövdesinden değil, GET /orders/{id} ile alınan siparişten okunur.
+      const refunded = await applyPaymentRefund(admin, {
+        provider: "shopier",
+        paymentId: order.id,
+        refundedTotalTry: shopierRefundedTotal(order),
+      });
       if (!refunded.ok) return json({ error: refunded.error }, 500);
-      return json({ ok: true, applied: false, refunded: refunded.updated > 0 });
+      return json({ ok: true, applied: false, refunded: refunded.applied, revoked: refunded.revoked, reason: refunded.reason });
     }
 
     if (!session || !productId) {

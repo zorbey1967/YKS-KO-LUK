@@ -69,7 +69,7 @@ export function workingModeChips(data: AppData, loggedIn: boolean, advanced = tr
     { label: 'Öğren', display: 'Öğren', prompt: 'Mod: Öğren. Seviyeme göre kısa anlat; sonra bir kontrol sorusu sor. Direkt cevabı dayatma.' },
     { label: 'Soru Çöz', display: 'Soru Çöz', prompt: 'Mod: Soru çöz. Soru yoksa benden iste. Direkt çözüm demedikçe önce ipucu ver.' },
     { label: 'Hızlı Tekrar', display: 'Hızlı Tekrar', prompt: weak ? `Mod: Tekrar. Öncelik ${weak.topic} (kayıtlı %${weak.acc}).` : 'Mod: Tekrar. Kayıtlı zayıf konu yoksa benden konu iste; uydurma.' },
-    { label: 'Quiz', display: 'Quiz', prompt: 'Mini test: soru bankasında madde varsa onu sor, cevabı hemen söyleme. Banka maddesini AI sorusu diye sunma.' },
+    { label: 'Quiz', display: 'Quiz', prompt: QUESTION_BANK_ENABLED ? 'Mini test: soru bankasında madde varsa onu sor, cevabı hemen söyleme. Banka maddesini AI sorusu diye sunma.' : 'Mini test: düzeyime uygun 3 kısa soru sor, cevabı hemen söyleme; ben yazınca kontrol et.' },
   ];
   if (advanced) {
     chips.push(
@@ -89,7 +89,7 @@ export function workingModeChips(data: AppData, loggedIn: boolean, advanced = tr
     chips.push({
       label: 'Performansım',
       display: 'Performansım',
-      prompt: 'Kayıtlı soru bankası, deneme ve net özetle. Yeterli deneme yoksa “yeterli veri yok” de.',
+      prompt: QUESTION_BANK_ENABLED ? 'Kayıtlı soru bankası, deneme ve net özetle. Yeterli deneme yoksa “yeterli veri yok” de.' : 'Kayıtlı deneme ve net özetle. Yeterli deneme yoksa “yeterli veri yok” de.',
     });
   }
   if (hasPlan) {

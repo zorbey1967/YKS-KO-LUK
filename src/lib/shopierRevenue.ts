@@ -12,16 +12,24 @@ function uniqueByPaymentId(rows: AdminPaymentRow[]) {
   return out;
 }
 
-/** Shopier brüt / iade / net; koç defteri ayrı. Aynı sipariş id bir kez sayılır. */
+/**
+ * Shopier brüt / iade / net; koç defteri ayrı. Aynı sipariş id bir kez sayılır.
+ * İade edilen ödeme ayrı satır değildir: aynı satır status=refunded olur (050). Bu yüzden
+ * brüt = başarılı + iade edilmiş tahsilat; iade = tam iade tutarları + kısmi iadeler; net = brüt − iade.
+ */
 export function shopierRevenueFromPayments(rows: AdminPaymentRow[] | null | undefined) {
   const all = uniqueByPaymentId((rows || []).filter((r) => r.provider === 'shopier'));
-  const succeeded = all.filter((r) => r.status === 'succeeded');
+  const collected = all.filter((r) => r.status === 'succeeded' || r.status === 'refunded');
   const refunded = all.filter((r) => r.status === 'refunded');
   const failed = all.filter((r) => r.status === 'failed');
-  const gross = succeeded.reduce((s, r) => s + r.amountTry, 0);
-  const refunds = refunded.reduce((s, r) => s + r.amountTry, 0);
+  const gross = collected.reduce((s, r) => s + r.amountTry, 0);
+  const fullRefunds = refunded.reduce((s, r) => s + (r.refundedTotalTry && r.refundedTotalTry > 0 ? Math.min(r.refundedTotalTry, r.amountTry) : r.amountTry), 0);
+  const partialRefunds = all
+    .filter((r) => r.status === 'succeeded' && (r.refundedTotalTry || 0) > 0)
+    .reduce((s, r) => s + Math.min(r.refundedTotalTry || 0, r.amountTry), 0);
+  const refunds = fullRefunds + partialRefunds;
   return {
-    orderCount: succeeded.length,
+    orderCount: collected.length,
     refundCount: refunded.length,
     failedCount: failed.length,
     grossTry: Math.round(gross * 100) / 100,

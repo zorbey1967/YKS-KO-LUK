@@ -82,16 +82,6 @@ export function remainingClock(date: string, startTime?: string, now = Date.now(
   return { days, hours, minutes, ms: Math.max(0, ms), phase, label: `${days} gün`, headline };
 }
 
-export function countdownKindLabel(kind: string, title: string) {
-  const k = kind.toLocaleUpperCase('tr-TR');
-  if (k.includes('LGS')) return 'LGS’ye kalan süre';
-  if (k.includes('KPSS')) return 'KPSS’ye kalan süre';
-  if (k.includes('AYT')) return 'AYT’ye kalan süre';
-  if (k.includes('TYT')) return 'TYT’ye kalan süre';
-  if (k.includes('YKS')) return 'YKS’ye kalan süre';
-  return `${title}’ye kalan süre`;
-}
-
 export function notifyMilestone(date: string, today: string): '7' | '3' | '1' | '0' | null {
   if (date === today) return '0';
   if (date === addDays(today, 1)) return '1';

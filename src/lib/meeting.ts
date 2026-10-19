@@ -522,3 +522,29 @@ export function formatLessonClock(sec: number | null) {
   const r = s % 60;
   return `${String(m).padStart(2, '0')}:${String(r).padStart(2, '0')}`;
 }
+
+type MyAppointmentsResult = Awaited<ReturnType<typeof listMyAppointments>> & { coachId?: string | null };
+const myApptCache = new Map<string, { at: number; p: Promise<MyAppointmentsResult> }>();
+
+/**
+ * Öğrencinin randevuları (koç kimliği dahil) — kısa süreli önbellek + aynı anda tek istek.
+ * Ana Sayfa ve Takvim aynı veriyi gösterdiği için her sayfa/gün değişiminde iki ayrı sorgu atılmaz.
+ * Randevu yazılan sayfalar (Koçlar, Görüşmelerim) önbelleği kullanmaz ve invalidateMyAppointments çağırabilir.
+ */
+export function myAppointmentsCached(userId: string, ttlMs = 30_000): Promise<MyAppointmentsResult> {
+  const hit = myApptCache.get(userId);
+  if (hit && Date.now() - hit.at < ttlMs) return hit.p;
+  const p = (async (): Promise<MyAppointmentsResult> => {
+    const mine = await fetchMyCoach(userId);
+    const cid = mine && mine.status === 'active' ? mine.id : null;
+    const res = await listMyAppointments(userId, cid);
+    return { ...res, coachId: cid };
+  })();
+  myApptCache.set(userId, { at: Date.now(), p });
+  void p.then((r) => { if (!r.ok) myApptCache.delete(userId); }, () => myApptCache.delete(userId));
+  return p;
+}
+
+export function invalidateMyAppointments() {
+  myApptCache.clear();
+}

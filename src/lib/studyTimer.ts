@@ -24,7 +24,7 @@ export type StudyKind =
 export const STUDY_KINDS: { id: StudyKind; label: string; hint: string }[] = [
   { id: 'free', label: 'Serbest çalışma', hint: 'Kendi sürenle odaklan' },
   { id: 'pomodoro', label: 'Pomodoro', hint: '25 dk odak, kısa ara' },
-  { id: 'questions', label: 'Soru çözümü', hint: 'Banka veya set' },
+  { id: 'questions', label: 'Soru çözümü', hint: 'Kitap veya set' },
   { id: 'learn', label: 'Konu öğrenme', hint: 'Yeni konu' },
   { id: 'review', label: 'Konu tekrarı', hint: 'Aralıklı tekrar' },
   { id: 'exam', label: 'Deneme sınavı', hint: 'Süre tutarak deneme' },

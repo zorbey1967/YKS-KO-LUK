@@ -110,9 +110,9 @@ export function MembershipPage() {
         <div className="eyebrow" style={{ color: '#cfe1ff' }}>Üyelik</div>
         <h2>Pro ve Premium</h2>
         <p>
-          Öğrenci hesabında {TRIAL_DAYS} günlük Premium deneme bu sayfadan bir kez başlatılır; ücret alınmaz.
-          Süre bitince kilitler yeniden çalışır. Ücretli dönem Shopier’de doğrulanmış tek seferlik çekimle 30 gün açılır.
-          Otomatik yenileme yok. Başlangıç paketi: kampanyalı Premium {formatTry(chargeAmountTry('premium'))} / 30 gün (katalog).
+          E-postası doğrulanmış öğrenci hesabında {TRIAL_DAYS} günlük Premium deneme bu sayfadan bir kez başlatılır; ücret alınmaz.
+          Ücretli dönem Shopier’de doğrulanmış tek seferlik ödemeyle 30 gün açılır. Otomatik yenileme ve kendiliğinden çekim yok.
+          Süren bitmeden yeniden alırsan yeni 30 gün mevcut bitişin üstüne eklenir.
         </p>
       </div>
 
@@ -161,18 +161,26 @@ export function MembershipPage() {
                 <span className="price-period"> / ay</span>
               </div>
               <p className="muted" style={{ margin: '8px 0 0' }}>
-                İlk çekim: {formatTry(now)}. Kampanya sürerken sonraki çekim de {formatTry(now)}; kampanya kapanınca yeni çekimler {formatTry(p.listPriceTry)}.
+                Tek seferlik ödeme: {formatTry(now)}, 30 gün erişim. Kampanya kapanınca yeni ödemeler {formatTry(p.listPriceTry)}.
                 {CAMPAIGN.endsAt ? '' : ' Kampanya bitiş tarihi yok; sayaç yok.'}
               </p>
               <p className="muted" style={{ margin: '8px 0 0' }}>
-                Ödeme doğrulanınca 30 günlük dönem başlar. İptal talebi dönemin sonuna kadar erişimi kesmez; kart çekimi ancak sağlayıcı aboneliği varsa durur.
+                Paket değiştirirsen kalan günlerin yeni pakette aynen korunur. Ödeme iade edilirse o ödemenin 30 günü düşülür.
               </p>
               <ul className="muted" style={{ margin: '8px 0 0', paddingLeft: 18 }}>
                 {p.bullets.filter((b) => QUESTION_BANK_ENABLED || !/soru bankası/i.test(b)).map((b) => <li key={b}>{b}</li>)}
               </ul>
               <div className="actions" style={{ marginTop: 12 }}>
                 <button className="btn primary" type="button" disabled={busy !== null || !user} onClick={() => void pay(p.id)}>
-                  {busy === p.id ? 'Shopier’e gidiliyor…' : !user ? 'Giriş gerekli' : `Shopier ile ${p.name} satın al`}
+                  {busy === p.id
+                    ? 'Shopier’e gidiliyor…'
+                    : !user
+                      ? 'Giriş gerekli'
+                      : snap.status === 'active' && snap.planId === p.id
+                        ? `${p.name}: 30 gün uzat`
+                        : snap.status === 'active'
+                          ? (p.id === 'pro' ? 'Pro’ya geç' : 'Premium’a geç')
+                          : `Shopier ile ${p.name} satın al`}
                 </button>
               </div>
             </div>

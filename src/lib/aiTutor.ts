@@ -6,6 +6,7 @@ import { todaySchedule, weekdayNameIstanbul } from './insights';
 import { addCalendarDays } from './calendar';
 import { istanbulToday } from './meeting';
 import { formatZoroHtml } from './zoroText';
+import { QUESTION_BANK_ENABLED } from './features';
 
 export type TutorIntent = 'teach' | 'solve' | 'review' | 'quiz' | 'exam' | 'schedule' | 'goal' | 'analysis' | 'chat';
 export type TutorBadge = 'Ders Anlatımı' | 'Soru Çözümü' | 'Konu Tekrarı' | 'Mini Test' | 'Planlama' | 'Sınav' | 'Hedef' | 'Deneme Analizi' | 'Sohbet';
@@ -116,7 +117,7 @@ export function tutorContext(data: AppData, q: string, intent: TutorIntent) {
   }
   if (intent === 'quiz') {
     lines.push(`Seviye: ${band}. ${subject ? `Ders ${subject}.` : ''}`);
-    lines.push('Soru bankası maddesi varsa onu kullan; yoksa uydurma ID verme, “bankada yok” de.');
+    lines.push(QUESTION_BANK_ENABLED ? 'Soru bankası maddesi varsa onu kullan; yoksa uydurma ID verme, “bankada yok” de.' : 'Düzeye uygun kısa soru sor; cevabı hemen verme.');
     return lines.join('\n');
   }
   if (intent === 'exam') {
@@ -139,7 +140,7 @@ export function tutorContext(data: AppData, q: string, intent: TutorIntent) {
   if (intent === 'analysis') {
     lines.push(s.lastExam ? `Kayıtlı deneme: ${s.lastExam}.` : 'Deneme: Bu bilgi henüz hesabında bulunmuyor.');
     lines.push(s.lastNet ? `Kayıtlı net: ${s.lastNet}.` : 'Net: Bu bilgi henüz hesabında bulunmuyor.');
-    lines.push(s.solved ? `Soru bankası: ${s.solved} soru, kayıtlı doğruluk %${s.acc}.` : 'Soru bankası sonucu: Bu bilgi henüz hesabında bulunmuyor.');
+    if (QUESTION_BANK_ENABLED) lines.push(s.solved ? `Soru bankası: ${s.solved} soru, kayıtlı doğruluk %${s.acc}.` : 'Soru bankası sonucu: Bu bilgi henüz hesabında bulunmuyor.');
     return lines.join('\n');
   }
   if (intent === 'goal') {
@@ -156,7 +157,7 @@ export function tutorUserPrompt(q: string, intent: TutorIntent) {
     teach: 'Sadece sorulan konuyu anlat. JSON yazma. Formül: f(x)=x², f′(x)=2x. Program/sınav ekleme. Anlatınca bir kontrol sorusu sor.',
     solve: 'Direkt çözüm istenmediyse önce ipucu. "cevap kaç" / "direkt çöz" ise kısa tam çözüm. Emin değilsen uydurma.',
     review: 'Kısa tekrar, 5 madde.',
-    quiz: 'Gerçek soru bankası maddesi context’te varsa onu sor. Uydurma banka ID yok.',
+    quiz: QUESTION_BANK_ENABLED ? 'Gerçek soru bankası maddesi context’te varsa onu sor. Uydurma banka ID yok.' : 'Düzeyime uygun kısa bir soru sor; cevabı ben yazınca kontrol et.',
     exam: 'Yalnızca hesaplanmış kalan günü kullan. Yeni tarih üretme.',
     schedule: 'Kayıtlı bugün/yarın bloklarına bak. Yoksa yok de. “Hazırlanıyorum” tek başına plan üretmez.',
     goal: 'Yalnızca kayıtlı hedef.',

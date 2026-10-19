@@ -4,7 +4,7 @@ export const GRADES = [
   '1. Sınıf', '2. Sınıf', '3. Sınıf', '4. Sınıf',
   '5. Sınıf', '6. Sınıf', '7. Sınıf', '8. Sınıf',
   '9. Sınıf', '10. Sınıf', '11. Sınıf', '12. Sınıf',
-  'Mezun / YKS', 'KPSS Adayı',
+  'Mezun / YKS', 'Üniversite', 'KPSS Adayı',
 ] as const;
 
 export function gradeNumber(grade: string) {
@@ -19,6 +19,7 @@ export function typicalAge(grade: string) {
   const n = gradeNumber(grade);
   if (n <= 12) return 5 + n;
   if (grade.includes('KPSS')) return 24;
+  if (/Üniversite/.test(grade)) return 20;
   return 18;
 }
 
@@ -43,6 +44,7 @@ export function showsKpss(data: AppData) {
 
 export function examTitle(data: AppData) {
   if (!data.grade && !data.track) return 'Öğrenci';
+  if (/Üniversite/.test(data.grade)) return 'Üniversite';
   const k = examKind(data);
   if (k === 'KPSS') return 'KPSS';
   if (k === 'YKS') return 'YKS';

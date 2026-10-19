@@ -1,4 +1,5 @@
 import type { AppData, TopicProgress } from './types';
+import { QUESTION_BANK_ENABLED } from './features';
 
 const JUMP_KEY = 'yks_qb_jump';
 
@@ -37,6 +38,8 @@ export type WeakBankTopic = TopicProgress & {
 };
 
 export function weakBankTopics(data: AppData, limit = 5): WeakBankTopic[] {
+  // Soru bankası gizliyken banka istatistiği öneri, ZORRO ve koç özetine akmaz.
+  if (!QUESTION_BANK_ENABLED) return [];
   return Object.values(data.qb)
     .map((m) => {
       const p = parseBankKey(m.key);
@@ -49,6 +52,7 @@ export function weakBankTopics(data: AppData, limit = 5): WeakBankTopic[] {
 }
 
 export function lastBankTopic(data: AppData): WeakBankTopic | null {
+  if (!QUESTION_BANK_ENABLED) return null;
   const rows = Object.values(data.qb)
     .map((m) => {
       const p = parseBankKey(m.key);

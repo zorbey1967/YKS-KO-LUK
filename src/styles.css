@@ -76,7 +76,8 @@ h1{font-size:28px;margin:3px 0 0}h2{margin:0 0 7px}h3{margin:0}
 .check.done{background:var(--ok);border-color:var(--ok);color:#fff}
 .task.done .task-main strong{text-decoration:line-through;color:var(--muted)}
 .task-main{min-width:0;flex:1}
-.task-main small{color:var(--muted)}
+.task-main strong{display:block;overflow-wrap:anywhere}
+.task-main small{display:block;color:var(--muted);margin-top:2px}
 .chip{display:inline-flex;align-items:center;gap:5px;padding:5px 8px;border-radius:999px;background:var(--soft);color:var(--primary);font-size:11px;font-weight:800}
 .table{width:100%;border-collapse:collapse}
 .table th,.table td{text-align:left;padding:11px 8px;border-bottom:1px solid var(--line);font-size:13px}
@@ -120,7 +121,6 @@ h1{font-size:28px;margin:3px 0 0}h2{margin:0 0 7px}h3{margin:0}
 .cal-cell.selected{background:var(--soft);border-color:var(--primary2)}
 .cal-cell.muted{opacity:.4}
 .cal-num{font-weight:900;font-size:12px}
-.cal-min{font-size:9px;color:var(--muted);margin-top:8px}
 .calc-big{font-size:38px;font-weight:950}
 .qb-level-grid,.qb-subject-grid,.qb-topic-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
 .qb-choice,.qb-topic,.answer{border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:16px;padding:16px;text-align:left}
@@ -343,50 +343,10 @@ h1{font-size:28px;margin:3px 0 0}h2{margin:0 0 7px}h3{margin:0}
   .meeting-avatar{width:64px;height:64px;border-radius:22px;font-size:22px}
   .meeting-placeholder-title{font-size:16px}
 }
-.exam-hub{margin-bottom:8px}
-.exam-hub-hero h2{font-size:clamp(22px,4vw,32px);line-height:1.2;max-width:22ch}
-.exam-tabs{display:flex;gap:8px;margin:14px 0;flex-wrap:wrap}
-.exam-tabs button,.exam-seg button{
-  border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:999px;padding:8px 14px;font-weight:700;font-size:13px
-}
-.exam-tabs button.active,.exam-seg button.active{background:var(--soft);border-color:var(--primary2);color:var(--primary)}
-.exam-seg{display:flex;gap:6px}
-.exam-empty{text-align:center;padding:28px 20px}
-.exam-subh{margin:18px 0 10px;font-size:14px}
-.exam-mini-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
-.exam-mini{
-  text-align:left;border:1px solid var(--line);background:var(--card);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:4px;box-shadow:var(--shadow)
-}
-.exam-mini strong{font-size:15px}
-.exam-mini span{color:var(--muted);font-size:13px;font-weight:700}
-.exam-mini em{font-style:normal;font-size:11px;font-weight:800;color:var(--primary)}
-.exam-mini.is-primary{outline:2px solid var(--primary2)}
 .exam-row{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line);width:100%;background:transparent;border-left:0;border-right:0;border-top:0;color:inherit;text-align:left}
 .exam-row small{display:block;margin-top:4px}
 .exam-row-actions{display:flex;gap:6px;flex-wrap:wrap;flex:0 0 auto}
 .exam-check{display:flex;align-items:center;gap:8px;margin:8px 0;font-weight:650}
-.exam-badges{display:flex;flex-wrap:wrap;gap:3px;margin-top:6px}
-.exam-badge{font-size:9px;font-weight:800;letter-spacing:.02em;background:var(--soft);color:var(--primary);border-radius:6px;padding:2px 5px}
-.exam-count{
-  margin-top:4px;border-radius:24px;padding:28px 22px 22px;color:#eef4ff;
-  background:linear-gradient(165deg,#1a3a6e 0%,#173b73 55%,#1d4a82 100%);
-  box-shadow:var(--shadow);overflow:hidden
-}
-.exam-count-kicker{font-weight:800;letter-spacing:.08em;font-size:12px;opacity:.85}
-.exam-count-kind{margin:6px 0 16px;font-weight:650;opacity:.9}
-.exam-count-lead,.exam-count-foot{margin:0;text-align:center;letter-spacing:.18em;font-size:12px;font-weight:800;opacity:.75}
-.exam-count-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:12px 0;text-align:center}
-.exam-count-row strong{display:block;font-size:clamp(36px,8vw,56px);line-height:1;font-weight:900;font-variant-numeric:tabular-nums}
-.exam-count-row span{font-size:11px;letter-spacing:.12em;font-weight:800;opacity:.8}
-.exam-count-done{font-size:28px;font-weight:800;text-align:center;padding:18px 0}
-.exam-count-bar{height:4px;background:rgba(255,255,255,.18);border-radius:99px;margin-top:18px;overflow:hidden}
-.exam-count-bar span{display:block;height:100%;background:rgba(255,255,255,.85);border-radius:99px;transition:width .4s ease}
-.exam-count--mid{background:linear-gradient(165deg,#1a5578 0%,#1c6a86 100%)}
-.exam-count--focus{background:linear-gradient(165deg,#2a5a72 0%,#b36a32 100%)}
-.exam-count--warn{background:linear-gradient(165deg,#8a4a22 0%,#c46a28 100%)}
-.exam-count--alert{background:linear-gradient(165deg,#7a2430 0%,#c43b4b 100%)}
-.exam-count--today,.exam-count--past{background:linear-gradient(165deg,#5c2430 0%,#8a3040 100%)}
-.exam-home-widget .btn{margin-top:4px}
 .plan-compare{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
 .plan-compare--3{grid-template-columns:repeat(3,minmax(0,1fr))}
 .plan-tile.is-current{outline:2px solid var(--primary2)}
@@ -402,7 +362,6 @@ h1{font-size:28px;margin:3px 0 0}h2{margin:0 0 7px}h3{margin:0}
   .plan-compare{grid-template-columns:1fr}
 }
 @media(max-width:768px){
-  .exam-count{padding:22px 16px}
   .exam-row{flex-direction:column;align-items:stretch}
   .exam-row-actions .btn{flex:1}
 }
@@ -436,7 +395,6 @@ h1{font-size:28px;margin:3px 0 0}h2{margin:0 0 7px}h3{margin:0}
 .timer-onboard ol{margin:8px 0 0;padding-left:18px;color:var(--text)}
 .timer-onboard li{margin:4px 0}
 .suggest-evidence{margin:8px 0 0;padding-left:18px;color:var(--muted);font-size:13px;font-weight:600}
-.suggest-card{margin-bottom:0}
 @media(min-width:1100px){
   .timer-page{min-height:calc(100dvh - 160px)}
   .timer-card,.timer-side{height:100%}
@@ -448,10 +406,6 @@ h1{font-size:28px;margin:3px 0 0}h2{margin:0 0 7px}h3{margin:0}
   .timer-meta{max-width:none}
   .chip-btn{flex:1 1 calc(50% - 8px)}
 }
-.ai-flow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px}
-.ai-flow-arrow{opacity:.55;font-weight:700}
-.coach-program-card{border-left:3px solid var(--accent,#2563eb)}
-.student-program-card{border-left:3px solid #0d9488}
 .library-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(140px,100%),1fr));gap:12px;margin-top:8px}
 .library-card{border:1px solid var(--line);border-radius:16px;padding:12px;text-align:center;background:var(--bg);color:inherit;font:inherit;cursor:default}
 button.library-card{cursor:pointer;width:100%;appearance:none;-webkit-appearance:none}
@@ -465,3 +419,198 @@ button.library-card{cursor:pointer;width:100%;appearance:none;-webkit-appearance
 .meeting-board-color{width:22px;height:22px;border-radius:50%;border:0;padding:0}
 .meeting-board-canvas{width:100%;height:220px;border-radius:12px;touch-action:none;background:#0b1220;border:1px solid rgba(255,255,255,.08)}
 
+
+/* ── Sınav türü tonları (takvim rozeti, kart, form çipi aynı rengi kullanır) ── */
+:root{
+  --t-tyt:#2e67b5;--t-tyt-bg:#e7f0ff;
+  --t-ayt:#7a3fc2;--t-ayt-bg:#f1e9ff;
+  --t-school:#0f7f72;--t-school-bg:#e2f6f2;
+  --t-uni:#0f7f72;--t-uni-bg:#e2f6f2;
+  --t-lgs:#b4570f;--t-lgs-bg:#fff0e1;
+  --t-kpss:#9a3b62;--t-kpss-bg:#fde8f1;
+  --t-deneme:#a96f00;--t-deneme-bg:#fff4d6;
+  --t-other:#5b6576;--t-other-bg:#eef1f5;
+  --c-appt:#c43b4b;--c-task:#13845b;--c-study:#6b778b;
+}
+[data-theme="dark"]{
+  --t-tyt:#8bb8ff;--t-tyt-bg:#17294a;
+  --t-ayt:#c3a2ff;--t-ayt-bg:#2a1d45;
+  --t-school:#5fd3c3;--t-school-bg:#123330;
+  --t-uni:#5fd3c3;--t-uni-bg:#123330;
+  --t-lgs:#ffb36b;--t-lgs-bg:#3a2513;
+  --t-kpss:#ff9cc6;--t-kpss-bg:#3a1828;
+  --t-deneme:#e7b657;--t-deneme-bg:#332a12;
+  --t-other:#aab6c8;--t-other-bg:#1d2939;
+  --c-appt:#ff7483;--c-task:#45c995;--c-study:#9eacc0;
+}
+.tone-tyt{--tone:var(--t-tyt);--tone-bg:var(--t-tyt-bg)}
+.tone-ayt{--tone:var(--t-ayt);--tone-bg:var(--t-ayt-bg)}
+.tone-school{--tone:var(--t-school);--tone-bg:var(--t-school-bg)}
+.tone-uni{--tone:var(--t-uni);--tone-bg:var(--t-uni-bg)}
+.tone-lgs{--tone:var(--t-lgs);--tone-bg:var(--t-lgs-bg)}
+.tone-kpss{--tone:var(--t-kpss);--tone-bg:var(--t-kpss-bg)}
+.tone-deneme{--tone:var(--t-deneme);--tone-bg:var(--t-deneme-bg)}
+.tone-other{--tone:var(--t-other);--tone-bg:var(--t-other-bg)}
+
+/* Sınav satırı */
+.exam-item{display:flex;align-items:center;gap:12px;width:100%;padding:10px 0;border:0;border-bottom:1px solid var(--line);background:transparent;color:inherit;text-align:left}
+.exam-item:last-child{border-bottom:0}
+.exam-item:hover .exam-item-main strong{color:var(--primary2)}
+.exam-item:focus-visible{outline:2px solid var(--primary2);outline-offset:2px;border-radius:12px}
+.exam-item-date{flex:0 0 46px;height:50px;border-radius:13px;background:var(--tone-bg);color:var(--tone);display:grid;place-content:center;text-align:center;line-height:1}
+.exam-item-date b{font-size:19px;font-variant-numeric:tabular-nums}
+.exam-item-date small{font-size:10px;font-weight:800;text-transform:lowercase;margin-top:3px}
+.exam-item-main{flex:1;min-width:0;display:grid;gap:4px}
+.exam-item-main strong{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.exam-item-main small{display:flex;flex-wrap:wrap;gap:6px;align-items:center;color:var(--muted);font-size:12px}
+.exam-kind{display:inline-block;font-size:11px;font-weight:800;color:var(--tone);background:var(--tone-bg);border-radius:6px;padding:2px 7px}
+.exam-flag{font-size:11px;font-weight:800;color:var(--primary);border:1px solid var(--primary2);border-radius:6px;padding:1px 6px}
+.exam-topics-line{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.exam-status{flex:0 0 auto;font-size:12px;font-weight:800;color:var(--muted);white-space:nowrap}
+.exam-status.status-today{color:var(--bad)}
+.exam-status.status-awaiting_result{color:var(--warn)}
+.exam-status.status-done{color:var(--ok)}
+.exam-item.status-done .exam-item-date,.exam-item.status-awaiting_result .exam-item-date{opacity:.65}
+
+/* Sınav formu ve ayrıntı */
+.exam-form{width:min(520px,100%);display:grid;gap:14px}
+.exam-form .section-title{margin:0}
+.exam-form .actions{margin-top:2px}
+.exam-form-step{border:0;margin:0;padding:0;min-width:0}
+.exam-form-step legend{font-size:12px;font-weight:800;margin:0 0 8px;padding:0}
+.exam-form .field small{display:block;margin-top:6px}
+.exam-kind-chip.on{background:var(--tone);color:#fff}
+[data-theme="dark"] .exam-kind-chip.on{color:#0d1420}
+.exam-topic-tags{margin-bottom:8px}
+.exam-topic-tags .chip{border:0;cursor:pointer}
+.exam-topic-suggest{margin-top:8px}
+.exam-topic-suggest .chip-btn{flex:0 0 auto;min-height:32px}
+.exam-form-delete{margin-left:auto}
+.exam-detail{width:min(500px,100%);border-top:5px solid var(--tone)}
+.exam-detail-head{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.exam-detail-head .exam-status{margin-left:auto}
+.exam-detail-title{font-size:22px;margin:12px 0 4px;line-height:1.25}
+.exam-detail-date{margin:0;color:var(--muted);font-weight:700}
+.exam-detail-actions .btn.danger{margin-left:auto}
+
+/* ── Takvim ── */
+.cal-layout{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(300px,1fr);gap:16px;align-items:start}
+.cal-toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.cal-toolbar h3{font-size:20px;text-transform:capitalize;min-width:9ch}
+.cal-nav{display:flex;gap:6px;align-items:center}
+.cal-nav .icon-btn{font-size:20px;line-height:1}
+.cal-add{margin-left:auto}
+.cal-cell{position:relative;display:flex;flex-direction:column;gap:4px;min-height:84px}
+.cal-cell.has-exam{border-color:color-mix(in srgb,var(--primary2) 35%,var(--line))}
+.cal-cell.today .cal-num{background:var(--primary);color:#fff;border-radius:8px;padding:1px 6px}
+.cal-num{align-self:flex-start}
+.cal-exams{display:grid;gap:3px;min-width:0}
+.cal-exam{display:block;font-size:10px;font-weight:800;line-height:1.3;color:var(--tone);background:var(--tone-bg);border-radius:5px;padding:2px 5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cal-more{font-size:10px;font-weight:800;color:var(--muted)}
+.cal-dots{display:flex;gap:4px;margin-top:auto}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--muted);flex:0 0 auto}
+.dot-appt{background:var(--c-appt)}.dot-task{background:var(--c-task)}.dot-study{background:var(--c-study)}
+.tone-bg-tyt{background:var(--t-tyt)}.tone-bg-ayt{background:var(--t-ayt)}.tone-bg-school{background:var(--t-school)}.tone-bg-deneme{background:var(--t-deneme)}
+.cal-legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:14px;font-size:12px;color:var(--muted)}
+.cal-legend span{display:inline-flex;align-items:center;gap:6px}
+.cal-day{position:sticky;top:16px}
+.cal-day-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:6px}
+.cal-day-head h3{font-size:17px;line-height:1.3;margin-bottom:6px}
+.cal-group{margin-top:14px}
+.cal-group h4,.dash-subh,.dash-program h4{margin:0 0 6px;font-size:12px;color:var(--muted);font-weight:800;letter-spacing:.02em}
+.cal-line{display:flex;gap:10px;align-items:baseline;padding:7px 0;border-bottom:1px dashed var(--line);font-size:13px}
+.cal-line:last-child{border-bottom:0}
+.cal-line span:not(.cal-time){flex:1;min-width:0}
+.cal-time{flex:0 0 44px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--muted)}
+.cal-study{margin:12px 0 0}
+.cal-empty{padding:18px 8px}
+.cal-upcoming{border-top:1px solid var(--line);padding-top:12px;margin-top:18px}
+
+/* ── Ana sayfa ── */
+.dash{display:grid;gap:16px}
+.dash-hero h2{font-size:clamp(24px,3.4vw,34px);line-height:1.15;margin:4px 0 8px}
+.dash-date{margin:0 0 2px!important;font-size:13px;font-weight:700;opacity:.85}
+.dash-next{font-size:15px;line-height:1.5}
+.dash-next b{color:#fff}
+.dash-next small{opacity:.85}
+.dash-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start}
+.dash-row>.card,.dash-row>section{margin:0!important;min-width:0}
+.dash > .card{margin:0!important}
+.dash-today{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.dash-today .stat{padding:14px 16px;margin:0}
+.dash-today .stat .value{font-size:24px}
+.dash-today .progress{margin-top:8px;height:6px}
+.dash-tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.dash-tile{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-height:76px;padding:10px 6px;border:1px solid var(--line);border-radius:16px;background:var(--bg);color:var(--text);font-weight:800;font-size:12px;text-align:center;line-height:1.25}
+.dash-tile span{font-size:22px}
+.dash-tile:hover{border-color:var(--primary2);background:var(--soft);color:var(--primary)}
+.dash-tile:focus-visible{outline:2px solid var(--primary2);outline-offset:2px}
+.dash-program{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:6px}
+.dash-goal-dept{font-size:18px;font-weight:900;margin:0 0 4px}
+.dash-count{display:flex;align-items:center;gap:12px;width:100%;margin-top:14px;padding:12px 14px;border:0;border-radius:16px;background:var(--soft);color:var(--text);text-align:left}
+.dash-count:hover{outline:2px solid var(--primary2)}
+.dash-count b{font-size:38px;line-height:1;color:var(--primary);font-variant-numeric:tabular-nums}
+.dash-count span{font-weight:800;font-size:13px;line-height:1.35}
+.dash-count small{color:var(--muted);font-weight:600}
+.dash-sw{margin:0;padding-left:18px;font-size:13px;line-height:1.6}
+.dash-ai-text{margin:12px 0 0;line-height:1.6;font-size:14px;white-space:pre-line}
+.dash-activity{margin:0;padding-left:18px;font-size:13px;line-height:1.7;color:var(--muted)}
+
+@media(max-width:1100px){
+  .cal-layout,.dash-row{grid-template-columns:1fr}
+  .cal-day{position:static}
+}
+@media(max-width:768px){
+  .dash-today{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+  .dash-today .stat{padding:12px 10px}
+  .dash-today .stat .value{font-size:18px}
+  .dash-today .stat .sub{font-size:11px}
+  .dash-tiles{gap:8px}
+  .dash-tile{padding:8px 4px;font-size:11px;min-height:68px}
+  .calendar-head,.calendar-grid{gap:4px}
+  .cal-cell{min-height:58px;padding:5px;border-radius:10px}
+  .cal-exam{font-size:0;padding:0;height:5px;border-radius:3px;background:var(--tone)}
+  .cal-more{font-size:9px}
+  .cal-add{margin-left:0;flex:1 1 100%}
+  .cal-toolbar h3{flex:1}
+  .exam-item-date{flex-basis:42px;height:46px}
+  .exam-form .chip-btn{flex:0 0 auto}
+  .exam-detail-actions .btn{flex:1 1 calc(50% - 9px)}
+  .exam-detail-actions .btn.danger{margin-left:0}
+}
+@media(max-width:360px){
+  .dash-today{grid-template-columns:1fr}
+  .dash-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+.cal-filters{display:flex;flex-wrap:wrap;gap:6px;margin:-4px 0 12px}
+.cal-filters .chip-btn{flex:0 0 auto;min-height:36px;padding:6px 12px;background:var(--card);border:1px solid var(--line);color:var(--muted)}
+.cal-filters .chip-btn.on{background:var(--soft);color:var(--primary);border-color:var(--primary2)}
+@media(max-width:768px){
+  .cal-filters{overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;padding-bottom:2px}
+  .cal-filters .chip-btn{min-height:40px}
+}
+.exam-topic-go{border:0;cursor:pointer;min-height:32px}
+
+/* ── Ders Programı ── */
+.sched-page{display:grid;gap:16px}
+.sched-page>.card{margin:0}
+.sched-days{display:grid;gap:8px}
+.sched-day{border:1px solid var(--line);border-radius:14px;background:var(--bg)}
+.sched-day.open{border-color:var(--primary2);background:var(--card)}
+.sched-day-head{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;min-height:48px;padding:10px 14px;border:0;background:transparent;color:inherit;text-align:left;font:inherit}
+.sched-day-head:focus-visible{outline:2px solid var(--primary2);border-radius:14px}
+.sched-blocks{display:grid;gap:8px;padding:0 12px 12px}
+.sched-block{display:grid;grid-template-columns:96px minmax(0,1.2fr) minmax(0,1fr) 80px auto;gap:8px;align-items:center}
+.sched-block input{width:100%;min-width:0;border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:10px;padding:9px 10px;min-height:42px}
+.sched-block input:focus{border-color:var(--primary2);outline:none;box-shadow:0 0 0 3px rgba(46,103,181,.1)}
+@media(max-width:768px){
+  .sched-block{grid-template-columns:118px minmax(0,1fr) 76px;grid-template-areas:"time title title" "topic topic min" "del del del";padding:10px;border:1px dashed var(--line);border-radius:12px}
+  .sched-block input[aria-label="Saat"]{grid-area:time}
+  .sched-block input[aria-label="Ders"]{grid-area:title}
+  .sched-block input[aria-label="Konu"]{grid-area:topic}
+  .sched-block input[aria-label="Dakika"]{grid-area:min}
+  .sched-block .btn{grid-area:del}
+  button.chip{min-height:36px;padding:7px 12px}
+}
+
+.zorro-chips .chip{flex:0 0 auto;white-space:nowrap}

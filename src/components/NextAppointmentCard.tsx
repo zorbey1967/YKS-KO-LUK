@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { fetchMyCoach } from '../lib/cloudPlatform';
 import { getCoachDisplayName, getPersonDisplayName } from '../lib/displayName';
 import { appointmentStatusLabel } from '../lib/coaches';
-import { listMyAppointments, splitAppointmentsBySlot, type MyAppointment } from '../lib/meeting';
+import { myAppointmentsCached, splitAppointmentsBySlot, type MyAppointment } from '../lib/meeting';
 import { MeetingJoinButton } from './MeetingJoinButton';
 
 export function NextAppointmentCard() {
@@ -17,9 +16,8 @@ export function NextAppointmentCard() {
     if (!user) return;
     let alive = true;
     void (async () => {
-      const mine = await fetchMyCoach(user.id);
-      const cid = mine && mine.status === 'active' ? mine.id : null;
-      const res = await listMyAppointments(user.id, cid);
+      const res = await myAppointmentsCached(user.id);
+      const cid = res.coachId || null;
       if (!alive) return;
       if (!res.ok) {
         setReady(true);

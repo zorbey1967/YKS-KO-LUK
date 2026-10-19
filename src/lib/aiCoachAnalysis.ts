@@ -92,14 +92,30 @@ function factsForModel(data: AppData, board: AnalyticsBoard) {
 }
 
 let aiReportCache: { fp: string; report: AiCoachReport } | null = null;
+let aiInflight: { fp: string; p: Promise<AiCoachReport> } | null = null;
 
 export function resetAiCoachCache() {
   aiReportCache = null;
 }
 
-export async function requestAiCoachAnalysis(data: AppData): Promise<AiCoachReport> {
+/** Peek: Ana Sayfa ve Analiz aynı raporu gösterir; veri değişmediyse model tekrar çağrılmaz. */
+export function cachedAiCoachReport(data: AppData): AiCoachReport | null {
+  return aiReportCache?.fp === progressFingerprint(data) ? aiReportCache.report : null;
+}
+
+/** Aynı veri için tek model çağrısı (önbellek + eşzamanlı istek birleştirme). */
+export function requestAiCoachAnalysis(data: AppData): Promise<AiCoachReport> {
   const fp = progressFingerprint(data);
-  if (aiReportCache?.fp === fp) return aiReportCache.report;
+  if (aiReportCache?.fp === fp) return Promise.resolve(aiReportCache.report);
+  if (aiInflight?.fp === fp) return aiInflight.p;
+  const p = runAiCoachAnalysis(data, fp).finally(() => {
+    if (aiInflight?.p === p) aiInflight = null;
+  });
+  aiInflight = { fp, p };
+  return p;
+}
+
+async function runAiCoachAnalysis(data: AppData, fp: string): Promise<AiCoachReport> {
   const board = buildAnalyticsBoard(data);
   const local = localAiCoachReport(data, board);
   if (local.empty) {
@@ -114,7 +130,8 @@ export async function requestAiCoachAnalysis(data: AppData): Promise<AiCoachRepo
   const report = cloud.source === 'ai' && cloud.text && !/yanıt veremiyor|üye/i.test(cloud.text)
     ? { ...local, narrative: cloud.text, source: 'ai' as const }
     : local;
-  aiReportCache = { fp, report };
+  // Model yanıt vermediyse yerel özet gösterilir ama önbelleğe alınmaz: öğrenci tekrar deneyebilir.
+  if (report.source === 'ai') aiReportCache = { fp, report };
   return report;
 }
 

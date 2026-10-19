@@ -3,7 +3,6 @@ import { useApp } from '../context/AppContext';
 import { SUPABASE_UNAVAILABLE, supabase, withTimeout } from '../lib/supabase';
 import { normalizeData, saveData } from '../lib/storage';
 import { coachAdvice } from '../lib/coach';
-import { GoalEditor } from '../components/GoalEditor';
 import { COACH_TRACKS, clearCoachSession, compressCoachPhoto, type CoachTrack } from '../lib/coaches';
 import { submitCoachApplication } from '../lib/cloudPlatform';
 import { landingPageForRole } from '../lib/roleNav';
@@ -23,7 +22,7 @@ const SIGNUP_EXAMS = ['YKS', 'LGS', 'KPSS', 'Okul'] as const;
 type AccountRole = 'ogrenci' | 'koc';
 
 export function AccountPage() {
-  const { user, profile, data, setData, authMsg, setAuthMsg, toast, cloudStatus, theme, toggleTheme, go, isAdmin, refreshAuth, accessGate } = useApp();
+  const { user, profile, data, setData, authMsg, setAuthMsg, toast, cloudStatus, go, isAdmin, refreshAuth, accessGate } = useApp();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [firstName, setFirstName] = useState(() => splitPersonName(profile?.name || '').firstName);
@@ -180,8 +179,8 @@ export function AccountPage() {
         options: { data: meta, emailRedirectTo: authEmailRedirectTo(window.location.origin) },
       }));
       if (error) throw error;
-      if (res.user && !res.session) setAuthMsg('Kayıt tamam. E-posta doğrulaması için gelen kutunu kontrol et. Doğruladıktan sonra başvurun yönetici onayına düşer.');
-      else setAuthMsg('Hesabın açıldı. E-posta doğrulandıysa başvurun yönetici onayı bekler.');
+      if (res.user && !res.session) setAuthMsg('Kayıt tamam. Gelen kutundaki bağlantıyla e-postanı doğrula; ardından giriş yapabilirsin.');
+      else setAuthMsg('Hesabın açıldı.');
     } catch (e) {
       setAuthMsg(publicAuthError(e));
     } finally {
@@ -464,8 +463,14 @@ export function AccountPage() {
       </div>
       {!isCoach && accessGate === 'ok' ? (
         <>
-      <div style={{ marginTop: 16 }}>
-        <GoalEditor compact />
+      <div className="card" style={{ marginTop: 16 }}>
+        <div className="section-title">
+          <h3>Eğitim ve hedef</h3>
+          <button className="btn secondary" type="button" onClick={() => go('goal')}>Hedefim’de düzenle</button>
+        </div>
+        <p className="muted" style={{ margin: 0 }}>
+          {[data.grade, data.track, data.age > 0 ? `${data.age} yaş` : '', data.dept].filter(Boolean).join(' · ') || 'Sınıf, alan ve hedef henüz seçilmedi.'}
+        </p>
       </div>
       <div className="card" style={{ marginTop: 16 }}>
         <div className="section-title"><h3>Koç notu</h3></div>
@@ -473,7 +478,7 @@ export function AccountPage() {
       </div>
         </>
       ) : null}
-      <div className="grid two" style={{ marginTop: 16 }}>
+      <div style={{ marginTop: 16 }}>
         <div className="card">
           <div className="section-title"><h3>Veri yedeği</h3></div>
           <p className="muted">JSON olarak dışa aktar / geri yükle. İçe aktarma mevcut yerel verinin üzerine yazar.</p>
@@ -512,10 +517,6 @@ export function AccountPage() {
               }} />
             </label>
           </div>
-        </div>
-        <div className="card">
-          <div className="section-title"><h3>Görünüm</h3></div>
-          <div className="switch"><span>Koyu tema</span><button className={`toggle ${theme === 'dark' ? 'on' : ''}`} type="button" onClick={toggleTheme}><i /></button></div>
         </div>
       </div>
     </>

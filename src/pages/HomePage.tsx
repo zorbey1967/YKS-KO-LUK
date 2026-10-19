@@ -1,51 +1,36 @@
-import { useMemo, useRef, useState } from 'react';
+import { useMemo } from 'react';
 import { useApp } from '../context/AppContext';
-import { examCountdown } from '../lib/insights';
-import { ExamHomeWidget } from '../components/ExamHomeWidget';
 import { NextAppointmentCard } from '../components/NextAppointmentCard';
-import { examTitle } from '../lib/stage';
-import { displayRank } from '../lib/types';
-import { getCoachDisplayName, getPersonDisplayName } from '../lib/displayName';
-import { StudySuggestCard } from '../components/StudySuggestCard';
-import { requestAiCoachAnalysis } from '../lib/aiCoachAnalysis';
+import { useStudySuggestion } from '../components/StudySuggest';
 import { TaskRows } from '../components/TaskRows';
-import { formatMinutes, getStudentProgress, progressFingerprint } from '../lib/studentProgress';
+import { ExamListRow } from '../components/ExamListRow';
+import { useExamDialogs } from '../components/ExamDialogs';
+import { AiCoachCard } from '../components/AiCoachCard';
+import { NAV, displayRank } from '../lib/types';
+import { getCoachDisplayName, getPersonDisplayName } from '../lib/displayName';
+import { formatMinutes, getStudentProgress } from '../lib/studentProgress';
+import { getStudentEducationContext } from '../lib/studentEducation';
+import { examDaysLeft, fmtExamDateLong, primaryExam, upcomingExams } from '../lib/examTargets';
+import { istanbulToday } from '../lib/meeting';
+import { weekdayNameIstanbul } from '../lib/insights';
+import { isNavPageVisible } from '../lib/features';
+import type { PageId } from '../lib/types';
 
+/** Hızlı erişim: ikon ve ad kenar menüyle aynı kaynaktan (NAV) gelir. */
+const QUICK_IDS: PageId[] = ['calendar', 'timer', 'tasks', 'plan', 'exams', 'schedule', 'library', 'analytics'];
+
+/**
+ * Öğrenci ana sayfası — öncelik sırası:
+ * karşılama (tek "Başla") → hedef → bugünkü çalışma → bugünün görevleri → yaklaşan sınav →
+ * bugünkü program → hızlı erişim → ZORRO önerisi → son aktiviteler.
+ * Her bilgi bir kez görünür. Açılışta model çağrılmaz.
+ */
 export function HomePage({ onNewTask }: { onNewTask: () => void }) {
   const { data, go, profile, user, isPlatformOwner } = useApp();
   const state = useMemo(() => getStudentProgress(data), [data]);
-  const count = examCountdown(data.examDate);
-  const todayDone = data.tasks.filter((t) => t.done).length;
-  const [aiBusy, setAiBusy] = useState(false);
-  const [aiText, setAiText] = useState('');
-  const [aiErr, setAiErr] = useState('');
-  const aiCache = useRef<{ fp: string; text: string } | null>(null);
-
-  async function analyzeToday() {
-    const fp = progressFingerprint(data);
-    if (aiCache.current?.fp === fp) {
-      setAiText(aiCache.current.text);
-      setAiErr('');
-      return;
-    }
-    setAiBusy(true);
-    setAiErr('');
-    try {
-      const report = await requestAiCoachAnalysis(data);
-      if (report.empty) {
-        setAiText('');
-        setAiErr('Analiz için yeterli kayıt yok. Konu, deneme veya çalışma ekledikten sonra tekrar deneyin.');
-        return;
-      }
-      const text = report.narrative || 'Kayıtlı verilere göre kısa bir özet üretilemedi.';
-      aiCache.current = { fp, text };
-      setAiText(text);
-    } catch {
-      setAiErr('Durum özeti şu an alınamadı. Lütfen tekrar deneyin.');
-    } finally {
-      setAiBusy(false);
-    }
-  }
+  const ctx = useMemo(() => getStudentEducationContext(data), [data.grade, data.age, data.track]);
+  const dialogs = useExamDialogs();
+  const suggestion = useStudySuggestion();
 
   if (profile?.role === 'coach') {
     const display = getCoachDisplayName(profile.name);
@@ -64,8 +49,6 @@ export function HomePage({ onNewTask }: { onNewTask: () => void }) {
       </>
     );
   }
-
-  const name = getPersonDisplayName(profile?.name, user ? 'Öğrenci' : 'Misafir');
 
   if (!user) {
     return (
@@ -90,180 +73,152 @@ export function HomePage({ onNewTask }: { onNewTask: () => void }) {
     );
   }
 
+  const name = getPersonDisplayName(profile?.name, 'Öğrenci');
+  const today = istanbulToday();
+  const upcoming = upcomingExams(data.examTargets || [], today);
+  const target = primaryExam(upcoming) || null;
+  const targetDays = target ? examDaysLeft(target, today) : 0;
+  const nextExams = upcoming.filter((t) => t.id !== target?.id).slice(0, 3);
+  const todayTasks = data.tasks.filter((t) => t.date === today);
+  const doneToday = todayTasks.filter((t) => t.done).length;
+  const openTasks = data.tasks.filter((t) => !t.done);
+  const listTasks = (todayTasks.length ? todayTasks : openTasks).slice(0, 4);
+  const coachOpen = openTasks.filter((t) => t.origin === 'coach').length;
+  const weekday = weekdayNameIstanbul(today);
+  const profileLine = [ctx.gradeLabel, ctx.fieldShort, ctx.periodLabel].filter(Boolean).join(' · ');
+  const quick = QUICK_IDS.map((id) => NAV.find((n) => n.id === id)).filter((n): n is NonNullable<typeof n> => Boolean(n) && isNavPageVisible(n!.id));
+
   return (
-    <>
-      <div className="hero">
-        <div className="eyebrow" style={{ color: '#cfe1ff' }}>Öğrenci merkezi</div>
+    <div className="dash">
+      <section className="hero dash-hero">
+        <p className="dash-date">{fmtExamDateLong(today)}{profileLine ? ` · ${profileLine}` : ''}</p>
         <h2>{isPlatformOwner ? 'Yönetici hesabı' : `Merhaba, ${name}`}</h2>
-        <p>
-          Sistem seni tanıyor: sınıf, hedef, konular, denemeler ve çalışma sürelerin tek yerde Akıllı Plan’a gider.
-          {data.examDate
-            ? (count.past ? ` ${examTitle(data)} tarihi geçti.` : ` ${examTitle(data)}’ye ${count.label}.`)
-            : ' Sınav tarihleri Sınav Merkezi’nde.'}
-          {data.rank > 0 ? ` Hedef sıra ${displayRank(data.rank)}.` : ''}
+        <p className="dash-next">
+          {suggestion.title
+            ? <>Sıradaki: <b>{suggestion.title}</b>{suggestion.meta ? ` · ${suggestion.meta}` : ''}<br /><small>{suggestion.rec.reason}</small></>
+            : suggestion.rec.reason}
         </p>
         <div className="hero-actions">
-          <button className="btn primary" type="button" onClick={() => go('plan')}>HAZIRIM / HADİ BAŞLA</button>
-          <button className="btn" type="button" onClick={() => window.dispatchEvent(new Event('yks-open-zorro'))}>ZORRO ile konuş</button>
+          <button className="btn primary" type="button" onClick={suggestion.start}>{suggestion.cta}</button>
+          {suggestion.snooze ? <button className="btn" type="button" onClick={suggestion.snooze}>Yarına ertele</button> : null}
         </div>
-      </div>
+      </section>
 
-      <div className="card" style={{ marginTop: 16 }}>
-        <div className="section-title"><h3>Bugün Nasılsın?</h3></div>
-        <div className="grid stats">
-          <div className="card stat"><div className="label">BUGÜN NE KADAR ÇALIŞTIM?</div><div className="value">{formatMinutes(state.capacity.todayTotal)}</div><div className="sub">çalışma saati {formatMinutes(state.capacity.todayTimer)}</div></div>
-          <div className="card stat"><div className="label">SESSİZ KÜTÜPHANEDE NE KADAR KALDIM?</div><div className="value">{formatMinutes(state.capacity.todayLibrary)}</div><div className="sub">hafta {formatMinutes(state.capacity.weekLibrary)}</div></div>
-          <div className="card stat"><div className="label">GÖREVLER</div><div className="value">{state.todayTaskTitles.filter((t) => t.startsWith('✓')).length}</div><div className="sub">{state.todayTaskTitles.length ? `${state.todayTaskTitles.length} bugün` : `${state.tasks.open} açık`}</div></div>
-          <div className="card stat"><div className="label">BUGÜN KONU</div><div className="value" style={{ fontSize: 18 }}>{state.todayTopics[0] ? state.todayTopics.length : '—'}</div><div className="sub">{state.todayTopics.slice(0, 2).join(' · ') || 'kayıt yok'}</div></div>
-          <div className="card stat"><div className="label">SON ÇALIŞMA</div><div className="value" style={{ fontSize: 16 }}>{state.activity[0] ? 'var' : '—'}</div><div className="sub">{state.activity[0]?.text || 'henüz yok'}</div></div>
-          <div className="card stat"><div className="label">HAFTALIK İLERLEME</div><div className="value">{formatMinutes(state.capacity.weekMinutes)}</div><div className="sub">{state.weekGoal.hoursLabel} · %{state.weekGoal.pct}</div></div>
-          <div className="card stat"><div className="label">SON DENEME DURUMU</div><div className="value" style={{ fontSize: 18 }}>{state.lastExam ? state.lastExam.tyt : '—'}</div><div className="sub">{state.lastExam?.delta != null ? `Δ ${state.lastExam.delta > 0 ? '+' : ''}${state.lastExam.delta}` : 'kayıt yok'}</div></div>
-        </div>
-      </div>
-
-      <div className="card" style={{ marginTop: 16 }}>
-        <div className="section-title"><h3>Hesabıma göre bugün ne yapmalıyım?</h3></div>
-        {state.todayFocus[0] ? <p><b>{state.todayFocus[0].clock ? `${state.todayFocus[0].clock} ` : ''}{state.todayFocus[0].subject}{state.todayFocus[0].topic ? ` / ${state.todayFocus[0].topic}` : ''}</b> — {state.todayFocus[0].reason}</p> : <p className="muted">Önce Hesabım’dan sınıfını seç veya konu/deneme ekle. Uydurma öneri yok.</p>}
-        <div className="actions">
-          <button className="btn primary" type="button" onClick={() => go('plan')}>HAZIRIM / HADİ BAŞLA</button>
-        </div>
-      </div>
-
-      <div className="card" style={{ marginTop: 16 }}>
-        <div className="section-title"><h3>Yaptıkların</h3></div>
-        {state.activity.length ? (
-          <ul className="muted" style={{ marginTop: 0 }}>
-            {state.activity.map((a, i) => <li key={`${a.at}-${i}`}>{a.text}</li>)}
-          </ul>
-        ) : <p className="muted">Henüz kayıtlı çalışma, deneme veya tamamlanan görev yok.</p>}
-      </div>
-
-      <div className="card" style={{ marginTop: 16 }}>
-        <div className="section-title"><h3>Akıllı Plan’ın bugünkü önerisi</h3></div>
-        {state.todayFocus.length ? state.todayFocus.map((x) => (
-          <div className="plan-item" key={`${x.order}-${x.subject}`}>
-            <span>{x.order}. {x.subject}{x.topic ? ` — ${x.topic}` : ''}<br /><small className="muted">{x.minutes} dk · {x.reason}</small></span>
+      <div className="dash-row">
+        <section className="card dash-goal" aria-label="Hedefim">
+          <div className="section-title">
+            <h3>Hedefim</h3>
+            <button className="btn secondary" type="button" onClick={() => go('goal')}>{data.dept || data.rank > 0 ? 'Düzenle' : 'Belirle'}</button>
           </div>
-        )) : <p className="muted">Öneri için Hesabım’dan sınıfını seç veya konu/deneme ekle. Uydurma plan yok.</p>}
-        <div className="actions">
-          <button className="btn primary" type="button" onClick={() => go('plan')}>Akıllı Plan</button>
-          <button className="btn secondary" type="button" onClick={() => go('timer')}>Çalışma saati</button>
-        </div>
-      </div>
+          {data.dept ? <p className="dash-goal-dept">{data.dept}</p> : null}
+          <p className="muted" style={{ margin: 0 }}>
+            {[data.rank > 0 ? `Hedef sıra ${displayRank(data.rank)}` : '', data.weekHours > 0 ? `haftada ${data.weekHours} saat` : ''].filter(Boolean).join(' · ') || 'Bölüm, sıra ve haftalık saatini belirle; öneriler buna göre şekillenir.'}
+          </p>
+          {target ? (
+            <button type="button" className="dash-count" onClick={() => dialogs.openDetail(target)}>
+              <b>{targetDays}</b>
+              <span>{targetDays === 0 ? 'bugün' : 'gün kaldı'} · {target.title}<br /><small>{fmtExamDateLong(target.date)}</small></span>
+            </button>
+          ) : null}
+        </section>
 
-      <ExamHomeWidget />
-
-      <div className="grid two" style={{ marginTop: 16 }}>
-        <div className="card">
-          <div className="section-title"><h3>Son Deneme Durumu</h3></div>
-          {state.lastExam ? (
-            <p>TYT {state.lastExam.tyt}{state.lastExam.delta != null ? ` · Δ ${state.lastExam.delta > 0 ? '+' : ''}${state.lastExam.delta}` : ''}</p>
-          ) : <p className="muted">Henüz yeterli deneme verisi bulunmuyor.</p>}
-          <p className="muted">{state.examFeedback.text}</p>
-        </div>
-        <div className="card">
-          <div className="section-title"><h3>Güçlü Olduğun Alanlar</h3></div>
-          {state.insights.strengths[0] ? <p>{state.insights.strengths.join(', ')}</p> : <p className="muted">Güçlü alan için kayıtlı ders neti yok.</p>}
-          <div className="section-title" style={{ marginTop: 12 }}><h3>Geliştirmen Gereken Alanlar</h3></div>
-          {state.insights.weaknesses[0] ? <p>{state.insights.weaknesses.join(', ')}</p> : <p className="muted">Zayıf alan tahmini yapılmadı.</p>}
-          <p className="muted">Tamamlanan görev: {todayDone}</p>
-        </div>
-      </div>
-
-      <div style={{ marginTop: 16 }}>
-        <StudySuggestCard />
-      </div>
-      <div style={{ marginTop: 16 }}>
-        <NextAppointmentCard />
-      </div>
-
-      <div className="card" style={{ marginTop: 16 }}>
-        <div className="section-title"><h3>Neden buradan çalışmalısın?</h3></div>
-        <p className="muted" style={{ marginTop: 0 }}>
-          Bu sistemi neden kullanmalısın? Çalışmaların tek yerde toplanır; programın onayın olmadan değişmez.
-        </p>
-        <ul className="muted">
-          <li>Çalışma süreni takip eder</li>
-          <li>Konu ilerlemeni takip eder</li>
-          <li>Denemelerini analiz eder</li>
-          <li>Eksiklerini belirler</li>
-          <li>Hedefini dikkate alır</li>
-          <li>Koçunun programını gösterir</li>
-          <li>Kendi çalışma programını takip eder</li>
-          <li>Yaklaşan sınavlarını dikkate alır</li>
-          <li>Yapay zekâ ile performansını yorumlar</li>
-          <li>Akıllı Plan’ı buna göre oluşturur</li>
-        </ul>
-      </div>
-
-      <div className="card" style={{ marginTop: 16 }}>
-        <div className="section-title"><h3>Yapay Zeka Senin İçin Nasıl Çalışıyor?</h3></div>
-        <p style={{ marginTop: 0 }}>
-          Hedefini, konu ilerlemeni, deneme sonuçlarını, çalışma sürelerini ve programını birlikte analiz ederek sana kişiselleştirilmiş çalışma önerileri oluşturuyoruz.
-        </p>
-        <p className="muted">Ne kadar çok veri oluşursa öneriler o kadar kişiselleşir. Sayfa açılınca model çağrılmaz; veri yoksa sonuç uydurulmaz.</p>
-        <p className="muted">Yapay zekayı senin için nasıl kullanıyoruz? Konular, denemeler, çalışma ve kütüphane süreleri, kendi programın, koç programı, hedef, sınavlar ve görevler birlikte değerlendirilir.</p>
-        <ul className="muted">
-          <li>Denemelerini analiz eder</li>
-          <li>Konu eksiklerini bulur</li>
-          <li>Çalışma temposunu inceler</li>
-          <li>Hedefini dikkate alır</li>
-          <li>Kendi ders programını dikkate alır</li>
-          <li>Koç programını dikkate alır; sessizce değiştirmez</li>
-          <li>Yaklaşan sınavlarını dikkate alır</li>
-          <li>Gelişimine göre plan değişikliği önerir, onayınla uygular</li>
-        </ul>
-        <div className="ai-flow" aria-label="Veri akışı">
-          {['Verilerin', 'Analiz', 'Eksikler / güçlü yönler', 'Plan önerisi', 'Senin onayın', 'Uygulama', 'Yeni sonuçlar', 'Tekrar analiz'].map((x) => (
-            <span className="chip" key={x}>{x}</span>
-          ))}
-        </div>
-        <div className="actions">
-          <button className="btn primary" type="button" disabled={aiBusy} onClick={() => void analyzeToday()}>
-            {aiBusy ? 'Analiz ediliyor…' : 'Bugünkü durumunu analiz et'}
-          </button>
-        </div>
-        {aiText ? <p style={{ marginTop: 12 }}>{aiText}</p> : null}
-        {aiErr ? <p className="muted" style={{ marginTop: 12 }}>{aiErr}</p> : null}
-      </div>
-
-      <div className="card coach-program-card" style={{ marginTop: 16 }}>
-        <div className="section-title"><h3>Koçun Programı</h3></div>
-        <p className="muted">Koçunun yüklediği PDF Akıllı Plan’da görünür. Kendi ders programı PDF’nden ayrıdır.</p>
-        <div className="actions">
-          <button className="btn secondary" type="button" onClick={() => go('plan')}>Koçun Programı’nı aç</button>
-        </div>
-      </div>
-
-      <div className="card student-program-card" style={{ marginTop: 16 }}>
-        <div className="section-title"><h3>Bugünkü Programım</h3></div>
-        {state.scheduleToday.length || state.weekFocus.some((d) => d.minutes) ? (
-          <>
-            {state.scheduleToday.length ? <p>Bugün: {state.scheduleToday.map((b) => `${b.title} ${b.minutes} dk`).join(' · ')}</p> : <p className="muted">Bugün için kendi bloğun yok.</p>}
-            <div className="actions">
-              <button className="btn secondary" type="button" onClick={() => go('schedule')}>Ders Programım</button>
+        <section className="dash-today" aria-label="Bugünkü çalışma">
+          <div className="card stat">
+            <div className="label">Bugün çalışma</div>
+            <div className="value">{formatMinutes(state.capacity.todayTotal)}</div>
+            <div className="sub">{state.capacity.todayLibrary ? `kütüphane ${formatMinutes(state.capacity.todayLibrary)}` : `günlük tempo ~${formatMinutes(state.capacity.typicalDayMinutes)}`}</div>
+          </div>
+          <div className="card stat">
+            <div className="label">Bu hafta</div>
+            <div className="value">{formatMinutes(state.capacity.weekMinutes)}</div>
+            <div className="sub">{data.weekHours > 0 ? `hedefin %${state.weekGoal.pct}’i` : 'haftalık hedef yok'}</div>
+            {data.weekHours > 0 ? <div className="progress" role="progressbar" aria-label="Haftalık hedef" aria-valuenow={state.weekGoal.pct} aria-valuemin={0} aria-valuemax={100}><i style={{ width: `${state.weekGoal.pct}%` }} /></div> : null}
+          </div>
+          <div className="card stat">
+            <div className="label">Son deneme</div>
+            <div className="value">{state.lastExam ? state.lastExam.tyt : '—'}</div>
+            <div className="sub">
+              {state.lastExam
+                ? (state.lastExam.delta != null ? `öncekine göre ${state.lastExam.delta > 0 ? '+' : ''}${state.lastExam.delta}` : state.lastExam.name)
+                : 'sonuç yok'}
             </div>
-          </>
-        ) : <p className="muted">Henüz kendi programını yazmadın. Koç programının üzerine yazılmaz.</p>}
+          </div>
+        </section>
       </div>
 
-      <div className="card" style={{ marginTop: 16 }}>
-        <div className="section-title"><h3>Koçun verdiği görevler</h3></div>
-        {data.tasks.some((t) => t.origin === 'coach') ? (
-          <TaskRows tasks={data.tasks.filter((t) => t.origin === 'coach')} />
-        ) : <p className="muted">Açık koç görevi yok.</p>}
+      <div className="dash-row">
+        <section className="card">
+          <div className="section-title">
+            <h3>{todayTasks.length ? `Bugünün görevleri · ${doneToday}/${todayTasks.length}` : 'Açık görevler'}</h3>
+            <button className="btn secondary" type="button" onClick={onNewTask}>+ Görev</button>
+          </div>
+          {coachOpen ? <p className="muted" style={{ marginTop: 0 }}>Koçundan {coachOpen} açık görev var.</p> : null}
+          {listTasks.length ? <TaskRows tasks={listTasks} hideStart /> : <p className="muted" style={{ margin: 0 }}>Görev yok.</p>}
+          {openTasks.length > listTasks.length ? (
+            <div className="actions"><button className="btn" type="button" onClick={() => go('tasks')}>Tüm görevler ({openTasks.length})</button></div>
+          ) : null}
+        </section>
+
+        <section className="card">
+          <div className="section-title">
+            <h3>Yaklaşan sınavlar</h3>
+            <button className="btn secondary" type="button" onClick={() => dialogs.openNew()}>+ Sınav</button>
+          </div>
+          {nextExams.length
+            ? nextExams.map((t) => <ExamListRow key={t.id} exam={t} onOpen={dialogs.openDetail} />)
+            : <p className="muted" style={{ margin: 0 }}>{target ? 'Hedef sınavın dışında yaklaşan sınav yok.' : 'Yaklaşan sınav yok. Yazılı veya denemelerini ekle; öneriler buna göre ayarlanır.'}</p>}
+          <div className="actions"><button className="btn" type="button" onClick={() => go('calendar')}>Takvim</button></div>
+        </section>
       </div>
 
-      <div className="card" style={{ marginTop: 16 }}>
-        <div className="section-title"><h3>Çalışma araçları</h3></div>
-        <div className="actions">
-          <button className="btn secondary" type="button" onClick={() => go('plan')}>Akıllı Plan</button>
-          <button className="btn secondary" type="button" onClick={() => go('exams')}>Denemeler</button>
-          <button className="btn secondary" type="button" onClick={onNewTask}>Görev ekle</button>
-          <button className="btn secondary" type="button" onClick={() => go('library')}>Kütüphane</button>
-          <button className="btn secondary" type="button" onClick={() => go('analytics')}>Analiz</button>
-        </div>
+      <div className="dash-row">
+        <section className="card">
+          <div className="section-title"><h3>Bugünkü program</h3><span>{weekday}</span></div>
+          {state.scheduleToday.length || state.coachToday.length ? (
+            <div className="dash-program">
+              {state.scheduleToday.length ? (
+                <div>
+                  <h4>Ders Programım</h4>
+                  {state.scheduleToday.map((b, i) => <div className="cal-line" key={`o-${i}`}><span>{b.title}</span><b>{b.minutes} dk</b></div>)}
+                </div>
+              ) : null}
+              {state.coachToday.length ? (
+                <div>
+                  <h4>Koçun Programı</h4>
+                  {state.coachToday.map((b, i) => <div className="cal-line" key={`c-${i}`}><span>{b.title}</span><b>{b.minutes} dk</b></div>)}
+                </div>
+              ) : null}
+            </div>
+          ) : <p className="muted" style={{ marginTop: 0 }}>Bugün için program bloğu yok.</p>}
+          <div className="actions"><button className="btn" type="button" onClick={() => go('schedule')}>{state.scheduleToday.length ? 'Programı düzenle' : 'Program oluştur'}</button></div>
+        </section>
+
+        <nav className="card dash-quick" aria-label="Hızlı erişim">
+          <div className="section-title"><h3>Hızlı erişim</h3></div>
+          <div className="dash-tiles">
+            {quick.map((q) => (
+              <button key={q.id} type="button" className="dash-tile" onClick={() => go(q.id)}>
+                <span aria-hidden="true">{q.icon}</span>{q.label}
+              </button>
+            ))}
+          </div>
+        </nav>
       </div>
-    </>
+
+      <NextAppointmentCard />
+
+      <div className="dash-row">
+        <AiCoachCard />
+        <section className="card">
+          <div className="section-title"><h3>Son yaptıkların</h3></div>
+          {state.activity.length ? (
+            <ul className="dash-activity">
+              {state.activity.slice(0, 5).map((a, i) => <li key={`${a.at}-${i}`}>{a.text}</li>)}
+            </ul>
+          ) : <p className="muted" style={{ margin: 0 }}>Henüz kayıtlı çalışma, deneme veya tamamlanan görev yok.</p>}
+        </section>
+      </div>
+      {dialogs.element}
+    </div>
   );
 }

@@ -164,18 +164,31 @@ export async function applyVerifiedPayment(
   return { ok: true as const, duplicatePayment: Boolean(data.duplicate_payment) };
 }
 
-/** İade satırı: aynı provider_payment_id üzerine status=refunded. Dönem otomatik kesilmez. */
-export async function markPaymentRefunded(
+/**
+ * İade (050 apply_payment_refund, atomik). Tam iadede o ödemenin kapsadığı süre düşülür;
+ * kalan süre yoksa erişim kapanır. Kısmi iadede erişim değişmez (reason=kismi_iade).
+ * RPC yoksa veya hata verirse ok:false döner; webhook 500 verir ve sağlayıcı tekrar dener
+ * (sessizce "yalnız kayıt" yoluna düşülmez).
+ */
+export async function applyPaymentRefund(
   admin: SupabaseClient,
-  row: { provider: string; paymentId: string },
+  row: { provider: string; paymentId: string; refundedTotalTry: number },
 ) {
-  const { data, error } = await admin
-    .from("billing_payments")
-    .update({ status: "refunded" })
-    .eq("provider", row.provider)
-    .eq("provider_payment_id", row.paymentId)
-    .eq("status", "succeeded")
-    .select("id");
-  if (error) return fail(error, "iade kaydı yazılamadı");
-  return { ok: true as const, updated: Array.isArray(data) ? data.length : 0 };
+  if (typeof admin.rpc !== "function") return { ok: false as const, error: "iade RPC yok" };
+  const rpc = await admin.rpc("apply_payment_refund", {
+    p_provider: row.provider,
+    p_payment_id: row.paymentId,
+    p_refunded_total: Number.isFinite(row.refundedTotalTry) ? row.refundedTotalTry : 0,
+  });
+  if (rpc.error) return { ok: false as const, error: rpc.error.message || "iade RPC yok" };
+  const data = rpc.data && typeof rpc.data === "object"
+    ? rpc.data as { ok?: boolean; applied?: boolean; revoked?: boolean; reason?: string }
+    : {};
+  if (data.ok === false) return { ok: false as const, error: "iade yazılamadı" };
+  return {
+    ok: true as const,
+    applied: Boolean(data.applied),
+    revoked: Boolean(data.revoked),
+    reason: String(data.reason || ""),
+  };
 }

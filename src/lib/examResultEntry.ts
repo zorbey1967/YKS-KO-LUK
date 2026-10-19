@@ -7,7 +7,8 @@ export type ExamResultMode = 'yazili' | 'deneme' | 'tyt' | 'ayt' | 'lgs' | 'kpss
 
 export function examResultMode(kind: string): ExamResultMode {
   const k = String(kind || '').toLocaleLowerCase('tr-TR');
-  if (/yazılı|yazili/.test(k)) return 'yazili';
+  // Puanla sonuçlanan sınavlar: okul yazılısı, üniversite vize/final/bütünleme ve "Diğer".
+  if (/yazılı|yazili|vize|final|bütünleme|butunleme|diğer|diger/.test(k)) return 'yazili';
   if (/lgs/.test(k)) return 'lgs';
   if (/kpss/.test(k)) return 'kpss';
   if (/\bayt\b/.test(k)) return 'ayt';

@@ -1,6 +1,7 @@
 import type { AppData } from './types';
 import { examCountdown, weekMinutes } from './insights';
 import { examKind } from './stage';
+import { QUESTION_BANK_ENABLED } from './features';
 
 /** Sıralama tahmini yok; tempo, trend ve hata döngüsü. */
 export function eliteReport(data: AppData) {
@@ -15,7 +16,7 @@ export function eliteReport(data: AppData) {
   const lastAyt = ayt.length ? ayt[ayt.length - 1] : undefined;
   const weekTarget = Math.max(0, (data.weekHours || 0) * 60);
   const dailyMin = weekTarget > 0 ? Math.round(weekTarget / 7) : 40;
-  const stats = Object.values(data.questionStats);
+  const stats = QUESTION_BANK_ENABLED ? Object.values(data.questionStats) : [];
   const attempts = stats.reduce((a, s) => a + s.attempts, 0);
   const correct = stats.reduce((a, s) => a + s.correct, 0);
   const acc = attempts ? Math.round((correct / attempts) * 100) : 0;
@@ -46,7 +47,7 @@ export function eliteReport(data: AppData) {
   } else if (kind === 'YKS') {
     lines.push(`${phase}: her yanlışta etiket (bilgi / işlem / süre / dikkatsizlik), ertesi gün aynı türden 5 soru.`);
     if (weakLesson) lines.push(`Son nette en düşük ders ${weakLesson} — bugün süre tutarak 20 soru.`);
-    if (acc && acc < 65) lines.push(`Banka doğruluk %${acc}. Yeni konu açmadan yanlış kuyruğunu bitir.`);
+    if (acc && acc < 65) lines.push(`Soru doğruluğun %${acc}. Yeni konu açmadan yanlış kuyruğunu bitir.`);
     if (tyt.length >= 2) lines.push(`TYT ilk→son ${tytDelta >= 0 ? '+' : ''}${tytDelta.toFixed(1)} net.`);
     if (ayt.length >= 2) lines.push(`AYT ilk→son ${aytDelta >= 0 ? '+' : ''}${aytDelta.toFixed(1)} net.`);
   } else if (kind === 'KPSS') {

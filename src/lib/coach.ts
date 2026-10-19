@@ -8,6 +8,7 @@ import { eliteReport } from './elite';
 import { today } from './util';
 import { weakBankTopics } from './practice';
 import { localTeachLesson } from './zoroText';
+import { QUESTION_BANK_ENABLED } from './features';
 
 export type CoachSnap = {
   kind: 'YKS' | 'KPSS' | 'Okul';
@@ -40,7 +41,7 @@ export function coachSnapshot(data: AppData): CoachSnap {
   const openTasks = todayTasks.filter((x) => !x.done);
   const topics = data.topics.slice().sort((a, b) => a.level - b.level);
   const exams = data.exams.slice().sort((a, b) => b.date.localeCompare(a.date));
-  const stats = Object.values(data.questionStats);
+  const stats = QUESTION_BANK_ENABLED ? Object.values(data.questionStats) : [];
   const solved = stats.reduce((a, s) => a + s.attempts, 0);
   const correct = stats.reduce((a, s) => a + s.correct, 0);
   const acc = solved ? Math.round((correct / solved) * 100) : 0;
@@ -102,7 +103,7 @@ export function coachContext(data: AppData) {
     s.weak.length ? `Zayıf konular (kayıtlı): ${s.weak.join(', ')}.` : 'Kayıtlı zayıf konu yok.',
     s.lastExam ? `Son deneme: ${s.lastExam}.` : 'Deneme kaydı yok.',
     s.lastNet ? `Son net: ${s.lastNet}.` : '',
-    s.solved ? `Soru bankası: ${s.solved} soru, doğruluk %${s.acc}.` : 'Soru bankasında henüz deneme yok.',
+    QUESTION_BANK_ENABLED ? (s.solved ? `Soru bankası: ${s.solved} soru, doğruluk %${s.acc}.` : 'Soru bankasında henüz deneme yok.') : '',
     s.todayBlocks ? `Bugünün programı: ${s.todayBlocks}.` : 'Bugün için haftalık program bloğu yok.',
   ].filter(Boolean).join('\n');
 }
@@ -295,7 +296,7 @@ export function chatReply(q: string, data: AppData): { text: string; plan?: Plan
     return {
       text: s.acc && s.acc < 80
         ? `Doğruluk %${s.acc}. Döngü: soruyu tekrar çöz → hata türünü yaz (bilgi / işlem / dikkatsizlik) → aynı konudan 3 benzer soru → ertesi gün 5 soruluk kontrol.`
-        : 'Yanlış biriktikçe konu listesi çıkar. Soru bankasından işaretlediklerini bugün tekrar çöz.',
+        : 'Yanlış biriktikçe konu listesi çıkar. İşaretlediğin soruları bugün tekrar çöz.',
     };
   }
   if (t.includes('program') || t.includes('ders program') || /ne çalışmalıyım|çalışamadım|yarın.*çalış/.test(t)) {

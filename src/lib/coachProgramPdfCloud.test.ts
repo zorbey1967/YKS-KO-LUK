@@ -28,7 +28,11 @@ describe('koç programı PDF izolasyonu', () => {
     expect(coaches).not.toContain('saveStudentWeekPlan');
     const plan = readFileSync(join(process.cwd(), 'src/pages/PlanPage.tsx'), 'utf8');
     expect(plan).toContain('clearStudentSmartPlan');
-    expect(plan).toContain('listMyCoachProgramPdfs');
     expect(plan).toContain('Koçun Programı');
+    // Koç PDF'leri tek yerde: Ders Programı sayfası (Akıllı Plan yalnızca yönlendirir).
+    expect(plan).not.toContain('listMyCoachProgramPdfs');
+    const schedule = readFileSync(join(process.cwd(), 'src/pages/SchedulePage.tsx'), 'utf8');
+    expect(schedule).toContain('listMyCoachProgramPdfs');
+    expect(schedule).toContain('<h3>Koçun Programı</h3>');
   });
 });

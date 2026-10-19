@@ -34,21 +34,24 @@ describe('soru bankası feature flag', () => {
 describe('analiz AI tetikleyici', () => {
   it('sayfa açılışında student-ai çağırmaz', () => {
     const page = readFileSync(join(process.cwd(), 'src/pages/AnalyticsPage.tsx'), 'utf8');
-    expect(page).toContain('AI İLE ANALİZ ET');
-    expect(page).toContain('AI ile Analiz Et');
+    expect(page).toContain('Sınav kâğıdı analizi');
     expect(page).toContain('ANALİZ SONUCU');
     expect(page).toContain('Yüklenen dosyaları analiz et');
     expect(page).toContain('Analiz etmek istediğiniz sınav/deneme fotoğraflarını');
     expect(page).toContain('disabled={docBusy || !files.length}');
     expect(page).toContain('analyzeExamDocumentFiles');
-    expect(page).toContain('AI Değerlendirmesi');
+    // Durum yorumu Ana Sayfa ile aynı tek bileşen (ikinci bir AI değerlendirme kartı yok).
+    expect(page).toContain('<AiCoachCard variant="full" />');
+    expect(page).not.toContain('AI Değerlendirmesi');
     expect(page).toContain('Deneme Analizi');
     expect(page).toContain('Genel Durum');
     expect(page).not.toContain('Ders Analizi');
     expect(page).toContain('Çalışma Analizi');
     expect(page).toContain('TYT');
     expect(page).toContain('AYT');
-    expect(page).toContain('requestAiCoachAnalysis');
+    const card = readFileSync(join(process.cwd(), 'src/components/AiCoachCard.tsx'), 'utf8');
+    expect(card).toContain('requestAiCoachAnalysis');
+    expect(card).not.toMatch(/useEffect\(/);
     expect(page).not.toMatch(/setTab\(/);
     expect(page).not.toMatch(/\['konu',\s*'KONU'\]/);
     expect(page).not.toContain('KONU PERFORMANSI');
@@ -67,33 +70,28 @@ describe('analiz AI tetikleyici', () => {
 });
 
 describe('ana sayfa öğrenci merkezi', () => {
-  it('Hadi Başla ve AI açıklaması vardır; açılışta student-ai yok', () => {
+  it('bölümler tekil; açılışta student-ai yok; AI yalnızca butonla', () => {
     const page = readFileSync(join(process.cwd(), 'src/pages/HomePage.tsx'), 'utf8');
-    expect(page).toContain('HAZIRIM / HADİ BAŞLA');
-    expect(page).toContain('Yapay zekayı senin için nasıl kullanıyoruz?');
-    expect(page).toContain('Yapay Zeka Senin İçin Nasıl Çalışıyor?');
-    expect(page).toContain('Bu sistemi neden kullanmalısın?');
-    expect(page).toContain('Neden buradan çalışmalısın?');
-    expect(page).toContain('Bugün Nasılsın?');
-    expect(page).toContain('Yaptıkların');
-    expect(page).toContain('Hesabıma göre bugün ne yapmalıyım?');
-    expect(page).toContain('Koçun Programı');
-    expect(page).toContain('Bugünkü Programım');
+    for (const h of ['Bugün çalışma', 'Bugünün görevleri', 'Bu hafta', 'Son deneme', 'Yaklaşan sınavlar', 'Bugünkü program', 'Hedefim', 'Son yaptıkların']) {
+      expect(page, h).toContain(h);
+    }
+    expect(page).toContain('Hızlı erişim');
+    expect(page).toContain('useStudySuggestion');
+    expect(page).toContain('<AiCoachCard />');
+    expect(page).toContain('hideStart');
     expect(page).toContain('Ders Programım');
-    expect(page).toContain('Koçun verdiği görevler');
+    expect(page).toContain('Koçun Programı');
     expect(page).toContain('TaskRows');
-    expect(page).toContain('BUGÜN NE KADAR ÇALIŞTIM?');
-    expect(page).toContain('SESSİZ KÜTÜPHANEDE NE KADAR KALDIM?');
-    expect(page).toContain('Güçlü Olduğun Alanlar');
-    expect(page).toContain('Geliştirmen Gereken Alanlar');
-    expect(page).toContain('HAFTALIK İLERLEME');
-    expect(page).toContain('kişiselleştirilmiş çalışma önerileri');
-    expect(page).toContain('Bugünkü durumunu analiz et');
-    expect(page).toContain('requestAiCoachAnalysis');
+    expect(page).toContain('useExamDialogs');
     expect(page).toContain('getStudentProgress');
+    // Ana Sayfa'da tek "Başla" (öneri); ZORRO düğmesi AiCoachCard'da ve menüde.
+    expect((page.match(/>Başla</g) || []).length).toBe(0);
     expect(page).not.toMatch(/useEffect\(/);
     expect(page).not.toContain('askCoach');
     expect(page).not.toContain('askDailyPlan');
+    // Eski tekrar eden tanıtım blokları yok.
+    expect(page).not.toContain('Neden buradan çalışmalısın?');
+    expect(page.match(/HAZIRIM \/ HADİ BAŞLA/g) || []).toHaveLength(0);
   });
 });
 
@@ -101,12 +99,11 @@ describe('Akıllı Plan AI tetikleyici', () => {
   it('Plan sayfası açılışında student-ai çağırmaz', () => {
     const page = readFileSync(join(process.cwd(), 'src/pages/PlanPage.tsx'), 'utf8');
     expect(page).toContain('askDailyPlan');
-    const mountEffect = page.match(/useEffect\(\(\) => \{([\s\S]*?)\}, \[user\?\.id\]\);/);
-    expect(mountEffect?.[1]).toContain('listMyCoachProgramPdfs');
-    expect(mountEffect?.[1]).not.toContain('askDailyPlan');
-    expect(mountEffect?.[1]).not.toContain('saveCloud');
-    expect(page).toContain('listMyCoachProgramPdfs');
+    // Açılışta hiçbir efekt yok: model yalnızca "Plan oluştur" ile çağrılır.
+    expect(page).not.toMatch(/useEffect\(/);
     expect(page).toContain('getStudentProgress');
+    expect(page).not.toContain('Yerel üret');
+    expect(page).not.toContain('Sunucu ile plan');
     expect(page).toContain('Şimdilik Değiştirme');
     expect(page).toContain('Akıllı Plan; deneme sonuçlarına');
     expect(page).toContain('Planı Sil');

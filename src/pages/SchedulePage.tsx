@@ -9,7 +9,146 @@ import {
   type SchedulePdfSubmission,
 } from '../lib/schedulePdfCloud';
 import { suggestedDailyMinutes, examKind } from '../lib/stage';
-import { studentOwnedSchedule } from '../lib/studentProgress';
+import { coachOwnedSchedule, saveOwnSchedule, studentOwnedSchedule } from '../lib/studentProgress';
+import {
+  createCoachProgramPdfSignedUrl,
+  listMyCoachProgramPdfs,
+  type CoachProgramPdf,
+} from '../lib/coachProgramPdfCloud';
+import { WEEK_DAYS } from '../lib/weekPlan';
+import { iconForTopic } from '../lib/coach';
+import type { ScheduleBlock, ScheduleDay } from '../lib/types';
+
+function editableDays(days: ScheduleDay[]): ScheduleDay[] {
+  return WEEK_DAYS.map((day) => ({ day, blocks: (days.find((d) => d.day === day)?.blocks || []).map((b) => ({ ...b })) }));
+}
+
+/**
+ * Programım: öğrencinin tek ders programı (data.schedule). Takvim ve Ana Sayfa buradan okur;
+ * PDF analizi veya Akıllı Plan önerisi de buraya yazar ve burada düzenlenir.
+ */
+function ScheduleEditor() {
+  const { data, setData, toast } = useApp();
+  const own = studentOwnedSchedule(data);
+  const [days, setDays] = useState<ScheduleDay[]>(() => editableDays(own.days));
+  const [dirty, setDirty] = useState(false);
+  const [openDay, setOpenDay] = useState<string>(() => own.days.find((d) => d.blocks.length)?.day || WEEK_DAYS[0]);
+
+  useEffect(() => {
+    if (!dirty) setDays(editableDays(studentOwnedSchedule(data).days));
+  }, [data.schedule.updatedAt, data.schedule.days]);
+
+  function patch(day: string, i: number, next: Partial<ScheduleBlock>) {
+    setDirty(true);
+    setDays((cur) => cur.map((d) => (d.day !== day ? d : { ...d, blocks: d.blocks.map((b, j) => (j === i ? { ...b, ...next } : b)) })));
+  }
+  function add(day: string) {
+    setDirty(true);
+    setOpenDay(day);
+    setDays((cur) => cur.map((d) => (d.day !== day ? d : { ...d, blocks: [...d.blocks, { title: '', minutes: 40, icon: '📚', start: '' }] })));
+  }
+  function remove(day: string, i: number) {
+    setDirty(true);
+    setDays((cur) => cur.map((d) => (d.day !== day ? d : { ...d, blocks: d.blocks.filter((_, j) => j !== i) })));
+  }
+  function save() {
+    const withIcons = days.map((d) => ({ ...d, blocks: d.blocks.map((b) => ({ ...b, icon: b.icon && b.icon !== '📚' ? b.icon : iconForTopic(b.title || '') })) }));
+    setData((prev) => saveOwnSchedule(prev, withIcons, own.source && own.source !== 'coach' ? own.source : 'self'));
+    setDirty(false);
+    toast('Programın kaydedildi; Takvim ve Ana Sayfa güncellendi.');
+  }
+
+  const total = days.reduce((a, d) => a + d.blocks.reduce((x, b) => x + (Number(b.minutes) || 0), 0), 0);
+  return (
+    <div className="card">
+      <div className="section-title">
+        <h3>Programım</h3>
+        <span>{total ? `haftada ${Math.round(total / 60)} saat` : 'boş'}</span>
+      </div>
+      <p className="muted" style={{ marginTop: 0 }}>Günlere ders ekle; Takvim’de ve Ana Sayfa’da görünür. PDF analizi ve Akıllı Plan önerisi de buraya yazılır, istediğin gibi düzenleyebilirsin.</p>
+      <div className="sched-days">
+        {days.map((d) => {
+          const isOpen = openDay === d.day;
+          const mins = d.blocks.reduce((x, b) => x + (Number(b.minutes) || 0), 0);
+          return (
+            <div key={d.day} className={`sched-day${isOpen ? ' open' : ''}`}>
+              <button type="button" className="sched-day-head" aria-expanded={isOpen} onClick={() => setOpenDay(isOpen ? '' : d.day)}>
+                <b>{d.day}</b>
+                <span className="muted">{d.blocks.length ? `${d.blocks.length} ders · ${mins} dk` : 'boş'}</span>
+              </button>
+              {isOpen ? (
+                <div className="sched-blocks">
+                  {d.blocks.map((b, i) => (
+                    <div className="sched-block" key={i}>
+                      <input aria-label="Saat" type="time" value={b.start || ''} onChange={(e) => patch(d.day, i, { start: e.target.value })} />
+                      <input aria-label="Ders" placeholder="Ders (örn. Matematik)" value={b.title} maxLength={60} onChange={(e) => patch(d.day, i, { title: e.target.value })} />
+                      <input aria-label="Konu" placeholder="Konu (isteğe bağlı)" value={b.topic || ''} maxLength={60} onChange={(e) => patch(d.day, i, { topic: e.target.value })} />
+                      <input aria-label="Dakika" type="number" min={5} max={300} step={5} value={b.minutes} onChange={(e) => patch(d.day, i, { minutes: Number(e.target.value) || 0 })} />
+                      <button className="btn danger" type="button" aria-label={`${d.day} dersini sil`} onClick={() => remove(d.day, i)}>Sil</button>
+                    </div>
+                  ))}
+                  <button className="btn secondary" type="button" onClick={() => add(d.day)}>+ Ders ekle</button>
+                </div>
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
+      <div className="actions">
+        <button className="btn primary" type="button" disabled={!dirty} onClick={save}>Programı kaydet</button>
+        {dirty ? <button className="btn" type="button" onClick={() => { setDays(editableDays(own.days)); setDirty(false); }}>Vazgeç</button> : null}
+      </div>
+    </div>
+  );
+}
+
+/** Koçun Programı: koçun yazdığı bloklar ve yüklediği PDF'ler (salt okunur; öğrenci programına kopyalanmaz). */
+function CoachProgram() {
+  const { data, toast, user } = useApp();
+  const coach = coachOwnedSchedule(data);
+  const [pdfs, setPdfs] = useState<CoachProgramPdf[]>([]);
+  useEffect(() => {
+    if (!user?.id) {
+      setPdfs([]);
+      return;
+    }
+    let alive = true;
+    void listMyCoachProgramPdfs().then((res) => {
+      if (alive && res.ok) setPdfs(res.rows.filter((r) => r.student_id === user.id));
+    });
+    return () => { alive = false; };
+  }, [user?.id]);
+  const days = coach.days.filter((d) => d.blocks.length);
+  return (
+    <div className="card">
+      <div className="section-title"><h3>Koçun Programı</h3><span>salt okunur</span></div>
+      {days.length ? days.map((d) => (
+        <div key={d.day} className="cal-group">
+          <h4>{d.day}</h4>
+          {d.blocks.map((b, i) => (
+            <div className="cal-line" key={i}>
+              <span className="cal-time">{b.start || '—'}</span>
+              <span>{[b.title, b.topic].filter(Boolean).join(' · ')}</span>
+              <b>{b.minutes} dk</b>
+            </div>
+          ))}
+        </div>
+      )) : null}
+      {pdfs.map((r) => (
+        <div className="plan-item" key={r.id}>
+          <span>{r.file_name}<br /><small className="muted">{new Date(r.created_at).toLocaleString('tr-TR')}</small></span>
+          <button className="btn secondary" type="button" onClick={() => {
+            void createCoachProgramPdfSignedUrl(r.storage_path).then((url) => {
+              if (!url) return toast('PDF açılamadı.');
+              window.open(url, '_blank', 'noopener,noreferrer');
+            });
+          }}>PDF’yi aç</button>
+        </div>
+      ))}
+      {!days.length && !pdfs.length ? <p className="muted" style={{ margin: 0 }}>Koçun henüz program paylaşmadı.</p> : null}
+    </div>
+  );
+}
 
 export function SchedulePage() {
   const { data, setData, toast, user } = useApp();
@@ -150,8 +289,11 @@ export function SchedulePage() {
   }
 
   return (
-    <div className="card" style={{ marginTop: 16 }}>
-      <div className="section-title"><h3>Program PDF</h3><span>{data.grade}</span></div>
+    <div className="sched-page">
+    <ScheduleEditor />
+    <div className="card">
+      <div className="section-title"><h3>Program PDF</h3><span>okul / dershane programı</span></div>
+      <p className="muted" style={{ marginTop: 0 }}>PDF’yi yükle; “PDF’yi Analiz Et” ZORRO ile programını çıkarır ve yukarıdaki Programım’a yazar.</p>
       <label
         className="dropzone"
         onDragOver={(e) => e.preventDefault()}
@@ -193,6 +335,8 @@ export function SchedulePage() {
           ))}
         </div>
       ) : null}
+    </div>
+    <CoachProgram />
     </div>
   );
 }

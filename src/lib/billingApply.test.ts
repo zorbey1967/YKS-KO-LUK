@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   activatePaid,
+  applyPaymentRefund,
   applyVerifiedPayment,
   isUniqueViolation,
   recordBillingEvent,
@@ -206,5 +207,29 @@ describe('record helpers', () => {
       paymentId: 'p1',
     });
     expect(pay.error).toBeTruthy();
+  });
+});
+
+describe('applyPaymentRefund (050)', () => {
+  it('RPC parametreleri ve sonuç alanları', async () => {
+    const seen: { fn: string; args: Record<string, unknown> }[] = [];
+    const admin = {
+      rpc: async (fn: string, args: Record<string, unknown>) => {
+        seen.push({ fn, args });
+        return { data: { ok: true, applied: true, revoked: true, reason: '' }, error: null };
+      },
+    } as unknown as SupabaseClient;
+    const r = await applyPaymentRefund(admin, { provider: 'shopier', paymentId: 'O-1', refundedTotalTry: 200 });
+    expect(seen).toEqual([{ fn: 'apply_payment_refund', args: { p_provider: 'shopier', p_payment_id: 'O-1', p_refunded_total: 200 } }]);
+    expect(r).toEqual({ ok: true, applied: true, revoked: true, reason: '' });
+  });
+
+  it('kısmi iade erişimi değiştirmez; RPC hatası webhook’u 500’e düşürür', async () => {
+    const partial = { rpc: async () => ({ data: { ok: true, applied: false, reason: 'kismi_iade' }, error: null }) } as unknown as SupabaseClient;
+    expect(await applyPaymentRefund(partial, { provider: 'shopier', paymentId: 'O-2', refundedTotalTry: 50 }))
+      .toEqual({ ok: true, applied: false, revoked: false, reason: 'kismi_iade' });
+    const broken = { rpc: async () => ({ data: null, error: { message: 'function does not exist' } }) } as unknown as SupabaseClient;
+    const r = await applyPaymentRefund(broken, { provider: 'shopier', paymentId: 'O-3', refundedTotalTry: Number.NaN });
+    expect(r.ok).toBe(false);
   });
 });

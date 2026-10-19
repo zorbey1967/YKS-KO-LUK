@@ -19,7 +19,7 @@ import {
 import { addCoachSlot, assignCoachHomework, closeCoachSlot, decideApprovedAppointmentCancel, fetchActiveCoaches, fetchCoachDesk, fetchCoachStudentBrief, fetchLinkedStudents, fetchMyCoach, listMySlots, listOpenSlots, requestAppointment, requestCancelApprovedAppointment, respondAppointment, runAppointmentJobs, setCoachHomeworkDone, type LinkedStudentRow } from '../lib/cloudPlatform';
 import { CoachStudyBriefView } from '../components/CoachStudyBrief';
 import type { CoachStudyBrief } from '../lib/coachBrief';
-import { istanbulToday, istanbulWallIso, listMyAppointments, nextBookSlot, splitAppointmentsBySlot, type MyAppointment } from '../lib/meeting';
+import { invalidateMyAppointments, istanbulToday, istanbulWallIso, listMyAppointments, nextBookSlot, splitAppointmentsBySlot, type MyAppointment } from '../lib/meeting';
 import { SESSION_REQUIRED, supabase } from '../lib/supabase';
 import { today } from '../lib/util';
 import { MeetingJoinButton } from '../components/MeetingJoinButton';
@@ -325,6 +325,7 @@ export function CoachesPage() {
     }
     if (session) await applyCloudDesk(session.coachId);
     if (user) {
+      invalidateMyAppointments();
       const mine = await listMyAppointments(user.id, cloudCoachId);
       if (mine.ok) {
         setMyAppts(mine.rows);
@@ -417,7 +418,7 @@ export function CoachesPage() {
               <button className="btn secondary" type="button" onClick={() => {
                 void requestCancelApprovedAppointment(a.id).then((res) => {
                   toast(res.ok ? res.message : res.error);
-                  if (user) void listMyAppointments(user.id, cloudCoachId).then((r) => { if (r.ok) setMyAppts(r.rows); });
+                  if (user) { invalidateMyAppointments(); void listMyAppointments(user.id, cloudCoachId).then((r) => { if (r.ok) setMyAppts(r.rows); }); }
                 });
               }}>İptal talebi</button>
             ) : null}
@@ -426,13 +427,13 @@ export function CoachesPage() {
                 <button className="btn primary" type="button" onClick={() => {
                   void decideApprovedAppointmentCancel(a.id, true).then((res) => {
                     toast(res.ok ? res.message : res.error);
-                    if (user) void listMyAppointments(user.id, cloudCoachId).then((r) => { if (r.ok) setMyAppts(r.rows); });
+                    if (user) { invalidateMyAppointments(); void listMyAppointments(user.id, cloudCoachId).then((r) => { if (r.ok) setMyAppts(r.rows); }); }
                   });
                 }}>İptali onayla</button>
                 <button className="btn secondary" type="button" onClick={() => {
                   void decideApprovedAppointmentCancel(a.id, false).then((res) => {
                     toast(res.ok ? res.message : res.error);
-                    if (user) void listMyAppointments(user.id, cloudCoachId).then((r) => { if (r.ok) setMyAppts(r.rows); });
+                    if (user) { invalidateMyAppointments(); void listMyAppointments(user.id, cloudCoachId).then((r) => { if (r.ok) setMyAppts(r.rows); }); }
                   });
                 }}>Talebi reddet</button>
               </>

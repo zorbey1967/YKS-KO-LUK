@@ -8,7 +8,8 @@ import { lastBankTopic, setBankJump, weakBankTopics } from '../lib/practice';
 import { QUESTION_BANK_ENABLED } from '../lib/features';
 import { paidAccessLocked } from '../lib/subscription';
 import { isAffirmative, parseExamAddIntent, publicSourceLabel } from '../lib/zoroText';
-import { emptyExamTarget, upsertExam } from '../lib/examTargets';
+import { emptyExamTarget, inferExamKind, saveExamTarget } from '../lib/examTargets';
+import { ZORRO_OPEN_EVENT } from '../lib/zorroBus';
 import { workingModeChips, type ZorroUiAction } from '../lib/zorroSuggest';
 import { topicMastery } from '../lib/zorroMastery';
 import { mergeLearningNote } from '../lib/zorroMemory';
@@ -54,6 +55,8 @@ export function CoachChat() {
   const gen = useRef(0);
   const box = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const pendingPrompt = useRef<string | null>(null);
+  const [promptTick, setPromptTick] = useState(0);
   const fileRef = useRef<HTMLInputElement>(null);
 
   function startFreshChat() {
@@ -80,14 +83,27 @@ export function CoachChat() {
   }
 
   useEffect(() => {
-    const openZorro = () => {
+    const openZorro = (e: Event) => {
+      const prompt = (e as CustomEvent<{ prompt?: string }>).detail?.prompt;
+      if (prompt) {
+        pendingPrompt.current = prompt;
+        setPromptTick((n) => n + 1);
+      }
       setOpen(true);
       void refreshHistory();
       window.setTimeout(() => inputRef.current?.focus(), 40);
     };
-    window.addEventListener('yks-open-zorro', openZorro);
-    return () => window.removeEventListener('yks-open-zorro', openZorro);
+    window.addEventListener(ZORRO_OPEN_EVENT, openZorro);
+    return () => window.removeEventListener(ZORRO_OPEN_EVENT, openZorro);
   }, [user?.id]);
+
+  // Başka ekrandan gelen soru (örn. Ana Sayfa "ZORRO'ya sor"): panel açılınca bir kez gönderilir.
+  useEffect(() => {
+    if (!open || busy || !pendingPrompt.current) return;
+    const p = pendingPrompt.current;
+    pendingPrompt.current = null;
+    void send(p);
+  }, [open, busy, promptTick]);
 
   useEffect(() => {
     startFreshChat();
@@ -177,12 +193,12 @@ export function CoachChat() {
       pendingExam.current = null;
       const draft = emptyExamTarget();
       draft.title = offer.title;
-      draft.kind = 'Deneme';
+      draft.kind = inferExamKind(offer.title);
       draft.origin = 'user';
       draft.date = offer.date;
-      draft.startTime = offer.time;
       draft.isPrimary = false;
-      setData((d) => ({ ...d, examTargets: upsertExam(d.examTargets || [], draft), examDate: d.examDate }));
+      // Takvimle aynı kayıt yolu: yalnızca tarih (saat/süre yok), tekil ana sınav, legacy examDate.
+      setData((d) => saveExamTarget(d, draft));
       await finish({
         id: uid('b'),
         who: 'bot',
@@ -199,7 +215,7 @@ export function CoachChat() {
       await finish({
         id: uid('b'),
         who: 'bot',
-        text: `${offer.date}${offer.time ? ` ${offer.time}` : ''} için “${offer.title}” kaydını takvime eklememi ister misin? (Evet / Hayır)`,
+        text: `${offer.date} için “${offer.title}” kaydını takvime eklememi ister misin? (Evet / Hayır)`,
         source: 'local',
         badge: 'Takvim',
         createdAt: new Date().toISOString(),

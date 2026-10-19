@@ -9,6 +9,7 @@ import { SITE_NAME } from '../lib/site';
 import { isSupabaseConfigured } from '../lib/supabase';
 import { getCoachDisplayName, getPersonDisplayName } from '../lib/displayName';
 import type { ReactNode } from 'react';
+import { openZorro } from '../lib/zorroBus';
 
 export function Layout({ children }: { children: ReactNode }) {
   const { page, go, menuOpen, setMenuOpen, profile, user, toggleTheme, theme, toastMsg, data, isAdmin, cloudStatus, accessGate } = useApp();
@@ -73,7 +74,7 @@ export function Layout({ children }: { children: ReactNode }) {
           ))}
           {!isCoach && user && accessGate === 'ok' ? (
             <>
-              <button type="button" onClick={() => window.dispatchEvent(new Event('yks-open-zorro'))}>
+              <button type="button" onClick={() => openZorro()}>
                 🦁 <span>ZORRO</span>
               </button>
               <button type="button" onClick={() => window.dispatchEvent(new Event('yks-open-support'))}>
@@ -91,7 +92,7 @@ export function Layout({ children }: { children: ReactNode }) {
                 {isCoach ? (
                   <span>Koç</span>
                 ) : (
-                  <span>{displayText(data.grade)} • {displayAge(data.age)} • {data.examDate ? (count.past ? 'sınav tarihi geçti' : count.label) : 'sınav tarihi belirtilmedi'}</span>
+                  <span>{displayText(data.grade)} • {displayAge(data.age)} • {primary?.date || data.examDate ? (count.past ? 'sınav tarihi geçti' : `${primary?.title || 'sınav'}: ${count.label}`) : 'sınav tarihi belirtilmedi'}</span>
                 )}
               </div>
             </div>

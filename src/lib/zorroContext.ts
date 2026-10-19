@@ -11,7 +11,7 @@ import { lastBankTopic, weakBankTopics } from './practice';
 import { type ZorroRoute } from './zorroIntent';
 import { masteryLine, topicMastery } from './zorroMastery';
 import { learningLines } from './zorroMemory';
-import { studentStateLines } from './studentProgress';
+import { studentLevelLine, studentStateLines } from './studentProgress';
 
 const MISSING = 'Bu bilgi henüz hesabında bulunmuyor.';
 
@@ -33,7 +33,8 @@ export function selectZorroContext(data: AppData, q: string, route: ZorroRoute):
   ];
 
   if (route === 'simple_chat') {
-    return [...rules, 'Kısa selam. Dosyanın tamamı ekli değil.'].join('\n');
+    // Selamlaşmada bile düzey bilgisi gider: ilkokula üniversite dili kullanılmaz.
+    return [...rules, studentLevelLine(data), 'Kısa selam. Dosyanın tamamı ekli değil.'].join('\n');
   }
 
   const lines = [...rules, ...studentStateLines(data)];
@@ -89,7 +90,7 @@ export function selectZorroContext(data: AppData, q: string, route: ZorroRoute):
     } else lines.push(`Deneme: ${MISSING}`);
     lines.push(s.lastNet ? `Son net hesabı: ${s.lastNet}.` : `Net: ${MISSING}`);
     const last = lastBankTopic(data);
-    lines.push(last ? `Son banka: ${last.topic} ${last.correct}/${last.answered}.` : `Soru bankası sonucu: ${MISSING}`);
+    if (QUESTION_BANK_ENABLED) lines.push(last ? `Son banka: ${last.topic} ${last.correct}/${last.answered}.` : `Soru bankası sonucu: ${MISSING}`);
     const master = topicMastery(data, subject).slice(0, 5);
     if (master.length) lines.push(master.map(masteryLine).join('\n'));
     return lines.join('\n');

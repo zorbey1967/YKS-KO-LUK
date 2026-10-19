@@ -9,7 +9,8 @@ function homeworkIdOf(task: Task) {
   return '';
 }
 
-export function TaskRows({ tasks }: { tasks: Task[] }) {
+/** hideStart: Ana Sayfa'da tek "Başla" üstteki öneride; listede tekrar edilmez. */
+export function TaskRows({ tasks, hideStart = false }: { tasks: Task[]; hideStart?: boolean }) {
   const { setData, toast, go } = useApp();
   if (!tasks.length) return <div className="empty">Henüz bir kayıt yok.</div>;
 
@@ -57,7 +58,7 @@ export function TaskRows({ tasks }: { tasks: Task[] }) {
               {x.done ? 'Yapıldı' : 'Yapılmadı'}
             </small>
           </div>
-          {!x.done ? (
+          {!x.done && !hideStart ? (
             <button
               className="btn primary"
               type="button"

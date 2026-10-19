@@ -130,17 +130,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return;
       }
       if (!res.ok && res.data) {
-        body = { ...mergeAppData(body, res.data), syncRev: res.rev };
-        persistLocal(body, u.id);
-        bumpCaches();
-        setDataState(body);
+        const merged = { ...mergeAppData(body, res.data), syncRev: res.rev };
+        // Önbellekler yalnızca içerik gerçekten değiştiyse sıfırlanır (gereksiz AI/analiz çağrısı yok).
+        if (progressFingerprint(merged) !== progressFingerprint(body)) bumpCaches();
+        const remote = res.data;
+        const mergedRev = res.rev;
+        // Gönderim sürerken yapılan yerel değişiklik ezilmez: güncel durum da sunucu verisiyle birleştirilir.
+        setDataState((cur) => {
+          const local = cur === payload ? merged : { ...mergeAppData(cur, remote), syncRev: mergedRev };
+          persistLocal(local, u.id);
+          return local;
+        });
+        body = merged;
         res = await pushStudentData(body);
       }
       if (res.ok) {
-        const next = { ...body, syncRev: res.rev };
-        persistLocal(next, u.id);
-        bumpCaches();
-        setDataState(next);
+        const rev = res.rev;
+        setDataState((cur) => {
+          const next = { ...cur, syncRev: rev };
+          persistLocal(next, u.id);
+          return next;
+        });
         setCloudStatus('Bulut senkron');
         return;
       }

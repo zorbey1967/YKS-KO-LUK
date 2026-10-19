@@ -20,7 +20,9 @@ export function normalizeData(raw: unknown): AppData {
   d.examTargets = Array.isArray((x as AppData).examTargets)
     ? (x as AppData).examTargets.map(normalizeExamTarget).filter((t): t is NonNullable<typeof t> => Boolean(t))
     : [];
-  if (!d.examTargets.length) d.examTargets = seedTargetsFromLegacy({ ...d, examTargets: [] });
+  const rawStones = (x as AppData).tombstones;
+  const legacyDeleted = Array.isArray(rawStones) && rawStones.some((t) => t?.kind === 'examTarget' && t?.id === 'ex_legacy');
+  if (!d.examTargets.length && !legacyDeleted) d.examTargets = seedTargetsFromLegacy({ ...d, examTargets: [] });
   const prefs = (x as AppData).examNotifyPrefs;
   d.examNotifyPrefs = prefs && typeof prefs === 'object'
     ? { exams: prefs.exams !== false, ai: Boolean(prefs.ai), tasks: Boolean(prefs.tasks) }

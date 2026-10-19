@@ -9,7 +9,11 @@ import { today } from '../lib/util';
 import { QUESTION_BANK_ENABLED } from '../lib/features';
 import { kindLabel, type StudyKind } from '../lib/studyTimer';
 
-export function StudySuggestCard() {
+/**
+ * "Şimdi ne çalışmalıyım?" — Ana Sayfa'daki tek "Başla" eylemi bu kancadan gelir
+ * (görev listesinde ve başka kartta ikinci bir başla düğmesi yok).
+ */
+export function useStudySuggestion() {
   const { data, setData, go } = useApp();
   const todayKey = today();
   const rec = useMemo(() => nextStudySuggestion(data, todayKey), [data, todayKey]);
@@ -42,44 +46,9 @@ export function StudySuggestCard() {
     go('timer');
   }
 
-  return (
-    <div className="card suggest-card">
-      <div className="section-title"><h3>Şimdi ne çalışmalıyım?</h3></div>
-      {rec.kind === 'onboard' ? (
-        <p className="muted" style={{ marginTop: 0 }}>{rec.reason}</p>
-      ) : (
-        <>
-          <p style={{ marginTop: 0 }}>
-            <b>{rec.topic || rec.subject}</b>
-            {rec.topic && rec.subject ? <span className="muted"> • {rec.subject}</span> : null}
-          </p>
-          <p className="muted">
-            {kindLabel(rec.kind as StudyKind)} • ~{rec.minutes} dk
-          </p>
-          <p>{rec.reason}</p>
-          {rec.evidence.length ? (
-            <ul className="suggest-evidence">
-              {rec.evidence.map((e) => (
-                <li key={`${e.kind}:${e.id}`}>{e.label}</li>
-              ))}
-            </ul>
-          ) : null}
-        </>
-      )}
-      <div className="actions">
-        <button className="btn primary" type="button" onClick={start}>
-          {rec.action === 'onboard' ? 'Konu seç / kısa test' : rec.action === 'bank' ? 'Soruyu aç' : 'Görevi başlat'}
-        </button>
-        {rec.reviewId ? (
-          <button
-            className="btn secondary"
-            type="button"
-            onClick={() => setData(snoozeReview(data, rec.reviewId!, todayKey, 1))}
-          >
-            Yarına ertele
-          </button>
-        ) : null}
-      </div>
-    </div>
-  );
+  const snooze = rec.reviewId ? () => setData(snoozeReview(data, rec.reviewId!, todayKey, 1)) : null;
+  const title = rec.kind === 'onboard' ? '' : (rec.topic || rec.subject || '');
+  const meta = rec.kind === 'onboard' ? '' : `${kindLabel(rec.kind as StudyKind)} · ~${rec.minutes} dk`;
+  const cta = rec.action === 'onboard' ? 'Akıllı Plan’ı aç' : rec.action === 'bank' ? 'Soruyu aç' : 'Başla';
+  return { rec, title, meta, cta, start, snooze };
 }

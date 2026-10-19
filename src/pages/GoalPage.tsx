@@ -31,7 +31,7 @@ export function GoalPage() {
           <p className="muted">Haftalık saat hedefi yok.</p>
         )}
         {last ? <div className="plan-item"><span>Son deneme • {last.name}</span><b>{last.tyt} net</b></div> : null}
-        <p className="muted">Sınav tarihleri Sınav Merkezi üzerinden yönetilir.</p>
+        <p className="muted">Sınav tarihleri Takvim’den eklenir; hedef sınavın Ana Sayfa’da geri sayılır.</p>
       </div>
     </div>
   );

@@ -18,7 +18,8 @@ export type Task = {
 };
 
 export type Tombstone = {
-  kind: 'session' | 'task' | 'mistake' | 'review' | 'exam';
+  /** examTarget: Takvim / Sınav Merkezi kaydı (exam: deneme sonucu). */
+  kind: 'session' | 'task' | 'mistake' | 'review' | 'exam' | 'examTarget';
   id: string;
   at: string;
 };
@@ -81,6 +82,8 @@ export type ExamTarget = {
   endTime: string;
   durationMin: number;
   note: string;
+  /** Sınavda çıkacak konular (isteğe bağlı; eski kayıtlarda yok). */
+  topics?: string[];
   priority: ExamPriority;
   isPrimary: boolean;
   notify: boolean;

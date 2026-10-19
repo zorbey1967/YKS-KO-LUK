@@ -303,6 +303,25 @@ describe('migration hedef şema (020 sonra 021+016; 013/017 atlanır)', () => {
     expect(s).not.toMatch(/drop table/i);
   });
 
+  it('050 profil kilidi, e-postasız rol, kayıt bilgisi, yenileme/iade, doğrulamalı deneme', () => {
+    const s = sql('050_commercial_readiness.sql');
+    expect(s).toContain('drop policy if exists "profiles_own_upsert" on public.profiles');
+    expect(s).toContain('revoke insert, update, delete, truncate on table public.profiles from public, anon, authenticated');
+    expect(s).toContain("'name', 'target_department', 'target_rank', 'updated_at'");
+    expect(s).not.toMatch(/@[a-z0-9.-]+\.(com|net|org)/i);
+    expect(s).toContain('signup_grade');
+    expect(s).toContain("existing_end > now_ts");
+    expect(s).toContain("ends := base + interval '30 days'");
+    expect(s).toContain('function public.apply_payment_refund(');
+    expect(s).toContain('revoke all on function public.apply_payment_refund(text, text, numeric) from public, anon, authenticated');
+    expect(s).toContain('revoke all on function public.apply_verified_payment(uuid, text, text, text, numeric, uuid, text) from public, anon, authenticated');
+    expect(s).toContain('u.email_confirmed_at is not null');
+    expect(s).toMatch(/set search_path = ''/);
+    expect(s).not.toMatch(/drop table/i);
+    expect(s).not.toMatch(/delete from public\./i);
+    expect(s).not.toMatch(/set search_path = public/i);
+  });
+
   it('048 storage foldername coaches.name gölgelemesi düzeltilir', () => {
     const s = sql('048_fix_storage_foldername_objects_name.sql');
     expect(s).toContain('storage.foldername(objects.name)');

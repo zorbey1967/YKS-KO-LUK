@@ -12,6 +12,7 @@ export type EducationBand =
   | 'high_early'
   | 'high_yks'
   | 'mezun'
+  | 'university'
   | 'kpss'
   | 'unknown';
 
@@ -25,6 +26,7 @@ export type StudentEducationContext = {
   isYksPrep: boolean;
   isLgs: boolean;
   isKpss: boolean;
+  isUniversity: boolean;
   showsSchoolWritten: boolean;
   showsTyt: boolean;
   showsAyt: boolean;
@@ -38,8 +40,12 @@ export type ExamEntryOption = {
   id: string;
   label: string;
   kind: string;
+  /** Ders sorulur: müfredattan seçim (okul) veya serbest metin (üniversite). */
   needsSubject?: boolean;
-  scoreMode: 'yazili' | 'lgs' | 'tyt' | 'ayt' | 'deneme' | 'kpss';
+  subjectInput?: 'select' | 'text';
+  /** "Diğer": adı öğrenci yazar. */
+  freeTitle?: boolean;
+  scoreMode: 'yazili' | 'lgs' | 'tyt' | 'ayt' | 'deneme' | 'kpss' | 'universite' | 'diger';
 };
 
 /** Okul yılı dönemini tarihten çıkarır (kırılgan sabit gün yok). */
@@ -71,6 +77,7 @@ export function fieldShortLabel(kind: StudentTrackKind, track = ''): string {
 export function educationBand(grade: string, track: string): EducationBand {
   if (!grade && !track) return 'unknown';
   if (grade.includes('KPSS') || normalizeStudentTrack(track) === 'kpss') return 'kpss';
+  if (/üniversite|universite/i.test(grade)) return 'university';
   if (grade.includes('Mezun') || /yks/i.test(grade)) return 'mezun';
   const n = gradeNumber(grade);
   if (n >= 1 && n <= 4) return 'primary';
@@ -104,6 +111,7 @@ export function getStudentEducationContext(data: Pick<AppData, 'grade' | 'age' |
     isYksPrep: yksPrep,
     isLgs,
     isKpss,
+    isUniversity: band === 'university',
     showsSchoolWritten: !isKpss && band !== 'mezun' && gradeNum >= 1 && gradeNum <= 12,
     showsTyt: yksPrep,
     showsAyt: yksPrep && trackKind !== 'tyt' && trackKind !== 'kpss' && trackKind !== 'other',
@@ -159,40 +167,63 @@ export function examResultEntryOptions(ctx: StudentEducationContext): ExamEntryO
   ];
 }
 
-/** Takvim / Sınav Merkezi ekleme seçenekleri. */
+const OPT_YAZILI: ExamEntryOption = { id: 'yazili', label: 'Yazılı', kind: 'Yazılı', needsSubject: true, subjectInput: 'select', scoreMode: 'yazili' };
+const OPT_DENEME: ExamEntryOption = { id: 'deneme', label: 'Deneme', kind: 'Deneme', scoreMode: 'deneme' };
+const OPT_DIGER: ExamEntryOption = { id: 'diger', label: 'Diğer', kind: 'Diğer', freeTitle: true, scoreMode: 'diger' };
+const OPT_TYT: ExamEntryOption = { id: 'tyt', label: 'TYT', kind: 'TYT', scoreMode: 'tyt' };
+
+/** AYT alanları; öğrencinin alanı kayıtlıysa doğrudan o, değilse formda alan sorulur. */
+export const AYT_FIELDS = ['SAY', 'EA', 'SÖZ', 'DİL'] as const;
+
+function hasAytField(ctx: StudentEducationContext) {
+  return ctx.trackKind === 'say' || ctx.trackKind === 'ea' || ctx.trackKind === 'soz' || ctx.trackKind === 'dil';
+}
+
+function aytOption(ctx: StudentEducationContext): ExamEntryOption {
+  const f = hasAytField(ctx) ? ` ${ctx.fieldShort}` : '';
+  return { id: 'ayt', label: `AYT${f}`, kind: `AYT${f}`, scoreMode: 'ayt' };
+}
+
+/**
+ * Takvimden sınav ekleme türleri — yalnızca sınıf/yaşa göre (tarih dışında alan yok).
+ *   İlkokul / ortaokul: Yazılı, Deneme, Diğer (8. sınıfta LGS eklenir)
+ *   Lise (9–12):        Yazılı, TYT, AYT, Deneme, Diğer
+ *   Mezun:              TYT, AYT, Deneme, Diğer
+ *   Üniversite:         Vize, Final, Bütünleme, Diğer
+ *   KPSS:               KPSS, Deneme, Diğer
+ */
 export function calendarExamEntryOptions(ctx: StudentEducationContext): ExamEntryOption[] {
   if (ctx.isKpss) {
-    return [{ id: 'kpss', label: 'KPSS', kind: 'KPSS', scoreMode: 'kpss' }];
+    return [{ id: 'kpss', label: 'KPSS', kind: 'KPSS', scoreMode: 'kpss' }, OPT_DENEME, OPT_DIGER];
+  }
+  if (ctx.isUniversity) {
+    const uni = (id: string, label: string): ExamEntryOption => ({
+      id, label, kind: label, needsSubject: true, subjectInput: 'text', scoreMode: 'universite',
+    });
+    return [uni('vize', 'Vize'), uni('final', 'Final'), uni('butunleme', 'Bütünleme'), OPT_DIGER];
   }
   if (ctx.isLgs) {
-    return [
-      { id: 'lgs', label: 'LGS Sınavı', kind: 'LGS', scoreMode: 'lgs' },
-      { id: 'yazili', label: 'Yazılılar', kind: 'Yazılı', needsSubject: true, scoreMode: 'yazili' },
-    ];
+    return [OPT_YAZILI, { id: 'lgs', label: 'LGS', kind: 'LGS', scoreMode: 'lgs' }, OPT_DENEME, OPT_DIGER];
   }
-  if (ctx.band === 'mezun' || (ctx.isYksPrep && ctx.band === 'unknown')) {
-    const opts: ExamEntryOption[] = [
-      { id: 'tyt', label: 'TYT', kind: 'TYT', scoreMode: 'tyt' },
-    ];
-    if (ctx.fieldShort && ctx.showsAyt) {
-      opts.push({ id: 'ayt', label: `AYT ${ctx.fieldShort}`, kind: `AYT ${ctx.fieldShort}`, scoreMode: 'ayt' });
-    }
-    return opts;
+  if (ctx.band === 'high_early' || ctx.band === 'high_yks') {
+    return [OPT_YAZILI, OPT_TYT, aytOption(ctx), OPT_DENEME, OPT_DIGER];
   }
-  if (ctx.band === 'high_yks') {
-    const opts: ExamEntryOption[] = [
-      { id: 'yazili', label: 'Yazılı', kind: 'Yazılı', needsSubject: true, scoreMode: 'yazili' },
-      { id: 'tyt', label: 'TYT', kind: 'TYT', scoreMode: 'tyt' },
-    ];
-    if (ctx.fieldShort && ctx.showsAyt) {
-      opts.push({ id: 'ayt', label: `AYT ${ctx.fieldShort}`, kind: `AYT ${ctx.fieldShort}`, scoreMode: 'ayt' });
-    }
-    return opts;
+  if (ctx.band === 'mezun' || (ctx.band === 'unknown' && ctx.isYksPrep)) {
+    return [OPT_TYT, aytOption(ctx), OPT_DENEME, OPT_DIGER];
   }
-  return [
-    { id: 'yazili', label: 'Yazılı', kind: 'Yazılı', needsSubject: true, scoreMode: 'yazili' },
-    { id: 'deneme', label: 'Deneme', kind: 'Deneme', scoreMode: 'deneme' },
-  ];
+  return [OPT_YAZILI, OPT_DENEME, OPT_DIGER];
+}
+
+/** Kayıtlı sınavın türünü seçenek listesinde bulur (eski serbest türler "Diğer"e düşer). */
+export function matchExamEntryOption(options: ExamEntryOption[], kind: string): ExamEntryOption {
+  const k = String(kind || '').trim().toLocaleLowerCase('tr-TR');
+  const exact = options.find((o) => o.kind.toLocaleLowerCase('tr-TR') === k);
+  if (exact) return exact;
+  const head = k.split(/\s+/)[0];
+  const byHead = options.find((o) => o.kind.toLocaleLowerCase('tr-TR').split(/\s+/)[0] === head);
+  if (byHead) return byHead;
+  if (/yazılı|yazili/.test(k)) return options.find((o) => o.id === 'yazili') || options[options.length - 1];
+  return options.find((o) => o.id === 'diger') || options[options.length - 1];
 }
 
 export function writtenSubjectOptions(data: Pick<AppData, 'grade' | 'track'>): string[] {
@@ -205,17 +236,20 @@ export function autoExamTitle(
   option: ExamEntryOption,
   subject = '',
 ): string {
-  if (option.scoreMode === 'yazili' && subject) {
+  const ders = String(subject || '').trim();
+  if (option.scoreMode === 'yazili' && ders) {
     const g = ctx.gradeLabel || 'Okul';
-    return `${g} ${subject} Yazılısı`;
+    return `${g} ${ders} Yazılısı`;
   }
+  if (option.scoreMode === 'universite') return ders ? `${ders} ${option.label}` : option.label;
   if (option.scoreMode === 'lgs') return 'LGS Denemesi';
   if (option.scoreMode === 'tyt') return 'TYT Denemesi';
-  if (option.scoreMode === 'ayt') return ctx.fieldShort ? `AYT ${ctx.fieldShort} Denemesi` : 'AYT Denemesi';
+  if (option.scoreMode === 'ayt') return `${option.kind} Denemesi`;
   if (option.scoreMode === 'kpss') return 'KPSS Denemesi';
   if (option.scoreMode === 'deneme') {
     return ctx.gradeLabel ? `${ctx.gradeLabel} Denemesi` : 'Deneme';
   }
+  if (option.scoreMode === 'diger') return '';
   return option.label;
 }
 

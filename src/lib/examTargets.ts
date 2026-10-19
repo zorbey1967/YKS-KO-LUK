@@ -1,23 +1,9 @@
 import type { AppData, ExamNotifyPrefs, ExamPlanRecord, ExamPriority, ExamTarget, Schedule } from './types';
 import { uid } from './util';
+import { calendarDaysUntil } from './countdown';
+import { istanbulToday } from './meeting';
 
 export type { ExamTarget, ExamPriority, ExamNotifyPrefs };
-
-export const EXAM_KIND_OPTIONS = [
-  'YKS',
-  'TYT',
-  'AYT',
-  'LGS',
-  'KPSS',
-  'KPSS Genel Yetenek',
-  'KPSS Genel Kültür',
-  'Deneme',
-  'Dil sınavı',
-  'Bursluluk',
-  'Üniversite',
-  'Özel sınav',
-  'Diğer',
-] as const;
 
 export function emptyNotifyPrefs(): ExamNotifyPrefs {
   return { exams: true, ai: false, tasks: false };
@@ -36,12 +22,44 @@ export function emptyExamTarget(): ExamTarget {
     endTime: '',
     durationMin: 0,
     note: '',
+    topics: [],
     priority: 'normal',
     isPrimary: false,
     notify: true,
     createdAt: now,
     updatedAt: now,
   };
+}
+
+/** Konu etiketleri: boşluk kırpılır, tekrar ve aşırı uzunluk atılır (en çok 12). */
+export function normalizeTopics(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  const out: string[] = [];
+  for (const x of raw) {
+    const t = String(x || '').replace(/\s+/g, ' ').trim().slice(0, 60);
+    if (t && !out.some((o) => o.toLocaleLowerCase('tr-TR') === t.toLocaleLowerCase('tr-TR'))) out.push(t);
+    if (out.length >= 12) break;
+  }
+  return out;
+}
+
+/** "Türev, İntegral; Limit" → ['Türev', 'İntegral', 'Limit'] */
+export function splitTopicInput(text: string): string[] {
+  return normalizeTopics(String(text || '').split(/[,;\n]/));
+}
+
+/** Serbest metinden (ZORRO, eski kayıt) sınav türü tahmini. */
+export function inferExamKind(text: string): string {
+  const t = String(text || '').toLocaleLowerCase('tr-TR');
+  if (/\bayt\b/.test(t)) return 'AYT';
+  if (/\btyt\b/.test(t)) return 'TYT';
+  if (/\blgs\b/.test(t)) return 'LGS';
+  if (/kpss/.test(t)) return 'KPSS';
+  if (/bütünleme|butunleme/.test(t)) return 'Bütünleme';
+  if (/\bvize\b/.test(t)) return 'Vize';
+  if (/\bfinal\b/.test(t)) return 'Final';
+  if (/yazılı|yazili/.test(t)) return 'Yazılı';
+  return 'Deneme';
 }
 
 function asPriority(s: unknown): ExamPriority {
@@ -68,6 +86,7 @@ export function normalizeExamTarget(raw: unknown): ExamTarget | null {
     endTime: String(x.endTime || '').slice(0, 5),
     durationMin: Math.max(0, Math.min(600, Number((x as { durationMin?: number }).durationMin) || 0)),
     note: String(x.note || '').slice(0, 500),
+    topics: normalizeTopics((x as { topics?: unknown }).topics),
     priority: asPriority(x.priority),
     isPrimary: Boolean(x.isPrimary),
     notify: x.notify !== false,
@@ -142,30 +161,115 @@ export function upsertExam(list: ExamTarget[], next: ExamTarget): ExamTarget[] {
   return out;
 }
 
-export function addMinutesToTime(hhmm: string, minutes: number) {
-  const m = hhmm.match(/^(\d{1,2}):(\d{2})$/);
-  if (!m || minutes <= 0) return '';
-  const total = Number(m[1]) * 60 + Number(m[2]) + minutes;
-  const h = Math.floor(total / 60) % 24;
-  const min = total % 60;
-  return `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
-}
-
-export function withExamTimes(row: ExamTarget): ExamTarget {
-  if (row.durationMin > 0 && row.startTime && !row.endTime) {
-    return { ...row, endTime: addMinutesToTime(row.startTime, row.durationMin) };
-  }
-  return row;
-}
-
 export function examDateForLegacy(targets: ExamTarget[]): string {
   return primaryExam(targets)?.date || '';
 }
 
-export function splitExams(targets: ExamTarget[], today: string) {
-  const upcoming = targets.filter((t) => t.date >= today).sort((a, b) => a.date.localeCompare(b.date));
-  const past = targets.filter((t) => t.date < today).sort((a, b) => b.date.localeCompare(a.date));
-  return { upcoming, past };
+export type ExamStatus = 'upcoming' | 'today' | 'awaiting_result' | 'done';
+
+/** Sınav kartı durumu: yaklaşan, bugün, sonuç bekliyor, sonuç girildi. */
+export function examStatus(data: Pick<AppData, 'exams'>, exam: ExamTarget, today = istanbulToday()): ExamStatus {
+  const hasResult = data.exams.some((e) => e.targetId === exam.id || (e.date === exam.date && e.name === exam.title));
+  if (hasResult) return 'done';
+  if (exam.date === today) return 'today';
+  if (exam.date > today) return 'upcoming';
+  return 'awaiting_result';
+}
+
+export function examStatusLabel(status: ExamStatus, daysLeft: number): string {
+  if (status === 'done') return 'Sonuç girildi';
+  if (status === 'today') return 'Bugün';
+  if (status === 'awaiting_result') return 'Sonuç bekliyor';
+  if (daysLeft === 1) return 'Yarın';
+  return `${daysLeft} gün kaldı`;
+}
+
+/** Bugün ve sonrası, tarihe göre. */
+export function upcomingExams(targets: ExamTarget[], today = istanbulToday()): ExamTarget[] {
+  return targets.filter((t) => t.date >= today).sort((a, b) => a.date.localeCompare(b.date) || a.title.localeCompare(b.title, 'tr'));
+}
+
+export function examDaysLeft(exam: Pick<ExamTarget, 'date'>, today = istanbulToday()): number {
+  return calendarDaysUntil(exam.date, today);
+}
+
+/** Renk/ikon grubu: takvim rozetleri ve kartlar aynı tonu kullanır. */
+export type ExamTone = 'tyt' | 'ayt' | 'school' | 'uni' | 'lgs' | 'kpss' | 'deneme' | 'other';
+export function examKindTone(kind: string): ExamTone {
+  const k = String(kind || '').toLocaleLowerCase('tr-TR');
+  if (/\btyt\b|\byks\b/.test(k)) return 'tyt';
+  if (/\bayt\b|ydt/.test(k)) return 'ayt';
+  if (/yazılı|yazili/.test(k)) return 'school';
+  if (/vize|final|bütünleme|butunleme|üniversite/.test(k)) return 'uni';
+  if (/lgs/.test(k)) return 'lgs';
+  if (/kpss/.test(k)) return 'kpss';
+  if (/deneme/.test(k)) return 'deneme';
+  return 'other';
+}
+
+const TONE_ICON: Record<ExamTone, string> = {
+  tyt: '📘', ayt: '📗', school: '✏️', uni: '🎓', lgs: '📙', kpss: '📕', deneme: '📝', other: '📌',
+};
+/** Tür ikonu: takvim, kart ve form aynı ikonu kullanır. */
+export function examKindIcon(kind: string): string {
+  return TONE_ICON[examKindTone(kind)];
+}
+
+export function fmtExamDateLong(iso: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return '';
+  const [y, m, d] = iso.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d, 12)).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', weekday: 'long', timeZone: 'UTC' });
+}
+
+export function fmtExamDateShort(iso: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return '';
+  const [y, m, d] = iso.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d, 12)).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+}
+
+/** AI planı bu sınava bağlı mı (silince / tarih değişince plan güncellenmeli). */
+export function examPlanLinked(data: Pick<AppData, 'examPlan' | 'examPlanDraft'>, exam: Pick<ExamTarget, 'id'>): boolean {
+  return data.examPlan?.examId === exam.id || data.examPlanDraft?.examId === exam.id;
+}
+
+/**
+ * Sınavı siler ve cihazlar arası senkronda geri gelmemesi için examTarget mezar taşı bırakır.
+ * Ana sınav silinirse bir sonraki sınav ana olur; legacy examDate güncellenir; bağlı AI planı kalkar.
+ * Görev, program, deneme sonucu ve PDF'e dokunmaz.
+ */
+export function removeExamTarget(data: AppData, id: string, at = new Date().toISOString()): AppData {
+  const gone = (data.examTargets || []).find((t) => t.id === id);
+  if (!gone) return data;
+  let next = (data.examTargets || []).filter((t) => t.id !== id);
+  if (gone.isPrimary && next.length) {
+    const nextPrimary = upcomingExams(next)[0] || next[0];
+    next = withPrimary(next, nextPrimary.id);
+  }
+  const clearPlan = examPlanLinked(data, gone);
+  const stones = data.tombstones || [];
+  const tombstones = stones.some((t) => t.kind === 'examTarget' && t.id === id)
+    ? stones
+    : [...stones, { kind: 'examTarget' as const, id, at }];
+  return {
+    ...data,
+    examTargets: next,
+    examDate: examDateForLegacy(next) || '',
+    examPlan: clearPlan ? null : data.examPlan,
+    examPlanDraft: clearPlan ? null : data.examPlanDraft,
+    tombstones,
+  };
+}
+
+/** Kaydet: ekle veya güncelle; ana sınav tekil; legacy examDate senkron. */
+export function saveExamTarget(data: AppData, row: ExamTarget): AppData {
+  const examTargets = upsertExam(data.examTargets || [], {
+    ...row,
+    topics: normalizeTopics(row.topics),
+    startTime: '',
+    endTime: '',
+    durationMin: 0,
+  });
+  return { ...data, examTargets, examDate: examDateForLegacy(examTargets) || data.examDate };
 }
 
 /** Yalnızca AI sınav planı; sınav, PDF, görev, randevu dokunulmaz. */

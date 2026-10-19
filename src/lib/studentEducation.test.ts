@@ -7,6 +7,7 @@ import {
   calendarExamEntryOptions,
   examResultEntryOptions,
   getStudentEducationContext,
+  matchExamEntryOption,
   writtenSubjectOptions,
 } from './studentEducation';
 import { curriculumForStudent } from './curriculum';
@@ -100,11 +101,42 @@ describe('studentEducationContext', () => {
     expect(autoExamTitle(ctx, yazili, 'Coğrafya')).toBe('10. Sınıf Coğrafya Yazılısı');
   });
 
-  it('takvim seçenekleri 10. sınıfta Yazılı/Deneme; Bursluluk yok', () => {
-    const ctx = getStudentEducationContext(student('10. Sınıf', 'Sayısal'));
-    const opts = calendarExamEntryOptions(ctx);
-    expect(opts.map((o) => o.label)).toEqual(['Yazılı', 'Deneme']);
+  it('takvim türleri sınıfa göre: ilkokul/ortaokul, lise, mezun, üniversite, KPSS', () => {
+    const labels = (g: string, t = '') => calendarExamEntryOptions(getStudentEducationContext(student(g, t))).map((o) => o.label);
+    expect(labels('4. Sınıf')).toEqual(['Yazılı', 'Deneme', 'Diğer']);
+    expect(labels('6. Sınıf')).toEqual(['Yazılı', 'Deneme', 'Diğer']);
+    expect(labels('8. Sınıf')).toEqual(['Yazılı', 'LGS', 'Deneme', 'Diğer']);
+    expect(labels('10. Sınıf', 'Sayısal')).toEqual(['Yazılı', 'TYT', 'AYT SAY', 'Deneme', 'Diğer']);
+    expect(labels('10. Sınıf', '')).toEqual(['Yazılı', 'TYT', 'AYT', 'Deneme', 'Diğer']);
+    expect(labels('12. Sınıf', 'Sözel')).toContain('AYT SÖZ');
+    expect(labels('Mezun / YKS', 'Dil')).toContain('AYT DİL');
+    expect(labels('11. Sınıf', 'Sayısal')).toEqual(['Yazılı', 'TYT', 'AYT SAY', 'Deneme', 'Diğer']);
+    expect(labels('Mezun / YKS', 'Eşit Ağırlık')).toEqual(['TYT', 'AYT EA', 'Deneme', 'Diğer']);
+    expect(labels('Üniversite')).toEqual(['Vize', 'Final', 'Bütünleme', 'Diğer']);
+    expect(labels('KPSS Adayı', 'KPSS')).toEqual(['KPSS', 'Deneme', 'Diğer']);
     expect(writtenSubjectOptions(student('10. Sınıf', 'Sayısal'))).toContain('Matematik');
+  });
+
+  it('otomatik ad: yazılı dersle, üniversite dersle, Diğer boş (öğrenci yazar)', () => {
+    const lise = getStudentEducationContext(student('11. Sınıf', 'Sayısal'));
+    const yazili = calendarExamEntryOptions(lise).find((o) => o.id === 'yazili')!;
+    expect(autoExamTitle(lise, yazili, 'Fizik')).toBe('11. Sınıf Fizik Yazılısı');
+    const uni = getStudentEducationContext(student('Üniversite', ''));
+    const vize = calendarExamEntryOptions(uni).find((o) => o.id === 'vize')!;
+    expect(autoExamTitle(uni, vize, 'Analiz I')).toBe('Analiz I Vize');
+    expect(vize.subjectInput).toBe('text');
+    const diger = calendarExamEntryOptions(uni).find((o) => o.id === 'diger')!;
+    expect(autoExamTitle(uni, diger)).toBe('');
+    expect(diger.freeTitle).toBe(true);
+  });
+
+  it('eski kayıt türü seçeneğe eşlenir; bilinmeyen tür Diğer olur', () => {
+    const ctx = getStudentEducationContext(student('11. Sınıf', 'Sayısal'));
+    const opts = calendarExamEntryOptions(ctx);
+    expect(matchExamEntryOption(opts, 'AYT SAY').id).toBe('ayt');
+    expect(matchExamEntryOption(opts, 'AYT').id).toBe('ayt');
+    expect(matchExamEntryOption(opts, 'Okul yazılısı').id).toBe('yazili');
+    expect(matchExamEntryOption(opts, 'Bursluluk').id).toBe('diger');
   });
 
   it('ExamForm / ExamsPage serbest sınav türü listesini kullanmaz', () => {
@@ -112,8 +144,11 @@ describe('studentEducationContext', () => {
     const page = readFileSync(join(process.cwd(), 'src/pages/ExamsPage.tsx'), 'utf8');
     expect(form).not.toContain('EXAM_KIND_OPTIONS');
     expect(form).toContain('calendarExamEntryOptions');
-    expect(page).toContain('ExamResultModal');
+    expect(page).toContain('useExamDialogs');
     expect(page).not.toContain('Deneme ekle');
+    // Saat / süre / bitiş saati alanı yok (yalnızca tarih).
+    expect(form).not.toMatch(/type="time"|startTime: e\.|durationMin: Number|Bitiş saati|Süre \(dk\)/);
+    expect(form).toContain('type="date"');
     expect(page).not.toMatch(/Bursluluk|Üniversite/);
   });
 });

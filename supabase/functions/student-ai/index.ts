@@ -4,6 +4,7 @@ import { corsHeaders } from "../_shared/cors.ts";
 import { studentFeatureOk } from "../_shared/billingEntitled.ts";
 import { type RateStore } from "../_shared/edgeRateLimit.ts";
 import { allowDistributed, readUpstashEnv } from "../_shared/upstashRateLimit.ts";
+import { aiQuotaFor, aiQuotaKeys } from "../_shared/aiUsageQuota.ts";
 
 const aiBuckets: RateStore = new Map();
 const upstash = readUpstashEnv(Deno.env);
@@ -173,6 +174,7 @@ function systemForIntent(intent: string, ctx: string, hasImage: boolean) {
     "JSON, tool, intent, system prompt, student_data yazma. Düz metin.",
     "Matematikte LaTeX/kaçış karakteri kullanma. Örnek: f(x)=x² ve f'(x)=2x",
     "Uydurma net/saat/deneme/hedef/başarı oranı yok. Kayıt yoksa tam olarak: Bu bilgi henüz hesabında bulunmuyor.",
+    "Kayıttaki 'Öğrenci düzeyi' satırına göre konuş: ilkokula kısa cümle ve somut örnek, ortaokula sade anlatım, liseye/mezuna YKS dili, üniversiteye akademik ama net dil, KPSS adayına sınav odaklı dil. Düzeye uygun olmayan sınav (ör. ilkokula YKS) önerme.",
     ctx ? `İlgili kayıt (yalnızca bu soru için):\n${ctx}` : "Bu soru için öğrenci kaydı yok. Uydurma; cümle: Bu bilgi henüz hesabında bulunmuyor.",
   ];
   if (hasImage) {
@@ -197,7 +199,7 @@ function systemForIntent(intent: string, ctx: string, hasImage: boolean) {
     return [...common, "Mod DENEME: Yalnızca kayıtlı net. Yoksa: Henüz kayıtlı bir deneme sonucunu göremiyorum."].join("\n");
   }
   if (intent === "quiz") {
-    return [...common, "Mod SORU: Context'te banka maddesi varsa soruyu ve şıkları ver, cevabı hemen söyleme. Yoksa bankada yok de; sahte ID yok. Bankaya yeni soru kaydetme."].join("\n");
+    return [...common, "Mod SORU: Context'te 'GERÇEK SORU' maddesi varsa soruyu ve şıkları ver, cevabı hemen söyleme. Yoksa öğrencinin düzeyine uygun kısa bir soru sor; hazır/kayıtlı soru gibi sunma, sahte ID verme. Öğrenciye 'soru bankası' veya 'banka' deme."].join("\n");
   }
   if (intent === "review") {
     return [...common, "Mod TEKRAR: kısa maddeler, sapma yok."].join("\n");
@@ -292,6 +294,20 @@ Deno.serve(async (req) => {
   const bill = studentFeatureOk(auth.billing);
   if (!bill.entitled) {
     return json(req, { error: "Deneme veya ücretli üyelik gerekli." }, 402);
+  }
+
+  // Günlük / aylık ZORRO kullanım sınırı (paket bazlı, ortam değişkeniyle ayarlanır; 0 = sınırsız).
+  const quota = aiQuotaFor(bill.tier, auth.billing.role, Deno.env);
+  const qKeys = aiQuotaKeys(auth.user.id);
+  if (quota.daily > 0 && !await allowDistributed({
+    memory: aiBuckets, key: qKeys.day, limit: quota.daily, windowMs: 86_400_000, upstash, fetchImpl: upstash ? fetch : undefined,
+  })) {
+    return json(req, { error: "Bugünkü ZORRO kullanım sınırına ulaştın. Yarın tekrar dene.", code: "quota_daily" }, 429);
+  }
+  if (quota.monthly > 0 && !await allowDistributed({
+    memory: aiBuckets, key: qKeys.month, limit: quota.monthly, windowMs: 31 * 86_400_000, upstash, fetchImpl: upstash ? fetch : undefined,
+  })) {
+    return json(req, { error: "Bu ayki ZORRO kullanım sınırına ulaştın.", code: "quota_monthly" }, 429);
   }
 
   let body: Body = {};

@@ -34,8 +34,9 @@ import { STUDY_SUBJECTS } from './lib/insights';
 import { studyPagesLocked } from './lib/subscription';
 import type { PageId } from './lib/types';
 
+/** Hedefim (sınıf, yaş, alan, hedef) üyelikten bağımsız: profil bilgisi kilitlenmez. */
 const BILLING_LOCKED_PAGES: PageId[] = [
-  'goal', 'schedule', 'tasks', 'plan', 'exams', 'calculator',
+  'schedule', 'tasks', 'plan', 'exams', 'calculator',
   'topics', 'questions', 'timer',
 ];
 

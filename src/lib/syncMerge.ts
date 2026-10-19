@@ -1,4 +1,4 @@
-import type { AppData, MistakeEntry, ReviewItem, Session, Task, Tombstone } from './types';
+import type { AppData, ExamTarget, MistakeEntry, ReviewItem, Session, Task, Tombstone } from './types';
 import { emptyData } from './types';
 import { normalizeData, uniqueById, uniqueTombstones } from './storage';
 
@@ -48,6 +48,25 @@ export function mergeTasks(a: Task[], b: Task[], stones: Tombstone[]): Task[] {
     });
   }
   return uniqueById(out);
+}
+
+/** Takvim sınavları: silinen geri gelmez, aynı id'de son güncellenen kazanır, tek ana sınav kalır. */
+export function mergeExamTargets(a: ExamTarget[], b: ExamTarget[], stones: Tombstone[]): ExamTarget[] {
+  const ids = new Set([...a, ...b].map((t) => t.id).filter(Boolean));
+  const out: ExamTarget[] = [];
+  for (const id of ids) {
+    if (dead(stones, 'examTarget', id)) continue;
+    const x = a.find((t) => t.id === id);
+    const y = b.find((t) => t.id === id);
+    if (!x) { out.push(y!); continue; }
+    if (!y) { out.push(x); continue; }
+    out.push(later(x, y, stamp(x), stamp(y)));
+  }
+  const merged = uniqueById(out);
+  const primaries = merged.filter((t) => t.isPrimary);
+  if (primaries.length <= 1) return merged;
+  const keep = [...primaries].sort((p, q) => stamp(q).localeCompare(stamp(p)))[0].id;
+  return merged.map((t) => (t.isPrimary && t.id !== keep ? { ...t, isPrimary: false } : t));
 }
 
 export function mergeSessions(a: Session[], b: Session[], stones: Tombstone[]): Session[] {
@@ -196,7 +215,7 @@ export function mergeAppData(local: AppData, remote: AppData): AppData {
     exams: exams.length ? exams : uniqueById([...L.exams, ...R.exams].map((e, i) => ({ ...e, id: e.id || `ex_${e.date}_${i}` }))),
     topics: uniqueById([...L.topics, ...R.topics]),
     questions: [...L.questions, ...R.questions].filter((q, i, arr) => arr.findIndex((x) => x.date === q.date && x.subject === q.subject) === i),
-    examTargets: uniqueById([...L.examTargets, ...R.examTargets]),
+    examTargets: mergeExamTargets(L.examTargets, R.examTargets, tombstones),
     examNotifyPrefs: { ...L.examNotifyPrefs, ...R.examNotifyPrefs },
     examNotifyLog: { ...L.examNotifyLog, ...R.examNotifyLog },
     examPlan: R.examPlan || L.examPlan,
@@ -225,6 +244,7 @@ export function tombstone(data: AppData, kind: Tombstone['kind'], id: string, at
   if (kind === 'mistake') next.mistakes = data.mistakes.filter((m) => m.id !== id);
   if (kind === 'review') next.reviews = data.reviews.filter((r) => r.id !== id);
   if (kind === 'exam') next.exams = data.exams.filter((e) => e.id !== id);
+  if (kind === 'examTarget') next.examTargets = data.examTargets.filter((e) => e.id !== id);
   return next;
 }
 
