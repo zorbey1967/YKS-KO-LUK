@@ -410,7 +410,7 @@ const STUDENT_NAV_IDS: PageId[] = [
   'plan',
   'exams',
   'calculator',
-  'questions',
+  // 'questions' (Soru merkezi) gizli: kod ve veri duruyor, menüde görünmez.
   'timer',
   'membership',
   'account',

@@ -46,6 +46,8 @@ export function coerceAppPage(
   let next = page;
   if (page === 'questionbank' && !QUESTION_BANK_ENABLED) next = 'home';
   if (page === 'topics') next = 'home';
+  // Soru merkezi gizli; eski bağlantılar ana sayfaya düşer.
+  if (page === 'questions') next = 'home';
   return coercePageForAccess(coercePageForRole(next, role, isAdmin), gate);
 }
 
