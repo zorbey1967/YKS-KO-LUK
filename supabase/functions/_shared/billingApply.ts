@@ -158,14 +158,18 @@ export async function applyVerifiedPayment(
   });
   if (rpc.error) return { ok: false as const, error: rpc.error.message || "atomik ödeme RPC yok" };
   const data = rpc.data && typeof rpc.data === "object"
-    ? rpc.data as { ok?: boolean; duplicate_payment?: boolean }
+    ? rpc.data as { ok?: boolean; duplicate_payment?: boolean; late_payment?: boolean }
     : {};
   if (data.ok === false) return { ok: false as const, error: "üyelik yazılamadı" };
-  return { ok: true as const, duplicatePayment: Boolean(data.duplicate_payment) };
+  return {
+    ok: true as const,
+    duplicatePayment: Boolean(data.duplicate_payment),
+    latePayment: Boolean(data.late_payment),
+  };
 }
 
 /**
- * İade (050 apply_payment_refund, atomik). Tam iadede o ödemenin kapsadığı süre düşülür;
+ * İade (055 apply_payment_refund, atomik). Tam iadede o ödemenin kapsadığı süre düşülür;
  * kalan süre yoksa erişim kapanır. Kısmi iadede erişim değişmez (reason=kismi_iade).
  * RPC yoksa veya hata verirse ok:false döner; webhook 500 verir ve sağlayıcı tekrar dener
  * (sessizce "yalnız kayıt" yoluna düşülmez).

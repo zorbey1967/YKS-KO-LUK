@@ -110,7 +110,7 @@ Deno.serve(async (req) => {
   if (!service) {
     return json(req, {
       ready: false,
-      error: "Checkout oturumu yazılamadı (service role yok). Üyelik açılmadı.",
+      error: "Ödeme oturumu yazılamadı. Üyelik açılmadı.",
       plan_id: planId,
       amount_try: amountTry,
     }, 503);
@@ -180,7 +180,7 @@ Deno.serve(async (req) => {
   if (sessErr || !session?.id) {
     return json(req, {
       ready: false,
-      error: "Ödeme oturumu tablosu yok veya yazılamadı (016). Sahte ödeme yok.",
+      error: "Ödeme oturumu kaydedilemedi. Sahte ödeme yok.",
       plan_id: planId,
       amount_try: amountTry,
     }, 503);

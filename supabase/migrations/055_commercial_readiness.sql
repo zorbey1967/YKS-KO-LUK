@@ -1,25 +1,31 @@
--- 050: Ticari açılış öncesi güvenlik + üyelik düzeltmeleri (tek dosya, additive, idempotent).
+-- 055: Ticari açılış öncesi güvenlik + üyelik düzeltmeleri (tek dosya, additive, idempotent).
 --
--- Neden tek dosya: canlı şema 001–010 + MCP parçaları (prod_*) + 041–049 ile kuruldu; 011–040
--- zinciri canlıda toplu uygulanmadı. Bu dosya hangi durumda olursa olsun (yalnız 041–049 ya da
--- 011–049 tam zincir) aynı sonucu verir. Satır silmez, tablo/kolon düşürmez.
+-- 050–054 (içerik denetimi, STT, OAuth niyeti, canlı e-posta hotfix'i, ödeme v2) bu dosyadan
+-- önce çalışır. 055 onların kurallarını korur ve aşağıdakileri tek yerde birleştirir.
+-- Canlı şema 001–010 + MCP parçaları (prod_*) + 041–049 (+ 053) ile kuruldu; 011–040 zinciri
+-- canlıda toplu uygulanmadı. Bu dosya iki durumda da aynı sonucu verir. Satır silmez,
+-- tablo/kolon düşürmez.
 --
 --  1. profiles: istemci yalnızca kendi satırını okuyabilir ve yalnızca ad / hedef alanlarını
 --     güncelleyebilir. INSERT, DELETE ve e-posta / rol / plan / üyelik kolonlarına yazma kapalı.
 --     (001'deki "profiles_own_upsert" FOR ALL politikası kaldırılır.)
---  2. protect_role / handle_new_user: e-posta ile yönetici atama yok (027 ile aynı kural).
---     handle_new_user kayıttaki ad-soyad, niyet, sınıf, alan ve sınav bilgisini profile yazar.
---     Yeni öğrenci hemen aktif. Onaylı koçların profil rolü bir kez 'coach' yapılır.
---  3. apply_verified_payment: süresi bitmemiş ücretli üyelikte yeni 30 gün mevcut bitişin üstüne
---     eklenir; paket değişiminde (Pro → Premium) kalan gün aynen korunur. Aynı ödeme tekrar
---     gelirse süre uzamaz.
+--  2. protect_role / handle_new_user: e-posta ile yönetici atama yok (053 ile aynı kural;
+--     istemci rol / durum / e-posta değiştiremez). handle_new_user 052'deki OAuth niyet
+--     kuralını korur ve kayıttaki ad-soyad, sınıf, alan ve sınav bilgisini profile yazar.
+--     Yeni öğrenci hemen aktif (053 ile aynı). Onaylı koçların profil rolü bir kez 'coach' yapılır.
+--  3. apply_verified_payment (054'ün yerine, kurallarını içerir):
+--       * aynı ödeme tekrar gelirse (succeeded / refunded) hiçbir şey yazılmaz;
+--       * daha eski bir ödeme oturumu, daha yeni aktif farklı paketi düşüremez (late_payment);
+--       * süresi bitmemiş ücretli üyelikte yeni 30 gün mevcut bitişin üstüne eklenir; paket
+--         değişiminde (Pro → Premium) de kalan gün korunur;
+--       * her ödeme kapsadığı aralığı (covers_start / covers_end) kaydeder (iade için).
 --  4. apply_payment_refund (yeni, yalnız sunucu): tam iadede o ödemenin kapsadığı süre düşülür,
 --     kalan süre yoksa erişim kapanır. Kısmi iade erişimi değiştirmez. Tekrar bildirim etkisiz.
 --  5. start_top_plan_trial: e-postası doğrulanmamış hesap deneme başlatamaz.
 --  6. Yönetici ödeme listeleri: search_path sabit, yalnız is_admin(); iade/kapsam alanları eklenir.
 --
--- Önkoşul: 041–049 (042 caller_account_active, billing_* tabloları).
--- Production'a bu turda uygulanmaz; önce staging'de `npm run test:pg:commercial` ile prova edilir.
+-- Önkoşul: 041–049 (042 caller_account_active, billing_* tabloları), 050–054.
+-- Önce `npm run test:pg:commercial` ile throwaway PostgreSQL'de prova edilir.
 
 -- 1) profiles ------------------------------------------------------------------------------
 
@@ -86,10 +92,10 @@ set search_path = ''
 as $$
 begin
   if tg_op = 'INSERT' then
-    if auth.uid() is not null then
-      if new.role = 'admin' then
-        new.role := 'student';
-      end if;
+    -- auth.uid() null: Auth tetikleyicisi / service_role. İstemci asla admin/koç açamaz (053).
+    if auth.uid() is not null and not public.is_admin() then
+      new.role := 'student';
+    else
       new.role := coalesce(nullif(new.role, ''), 'student');
       if new.role not in ('student', 'coach') then
         new.role := 'student';
@@ -102,6 +108,7 @@ begin
     if not public.is_admin() then
       new.role := old.role;
       new.account_status := old.account_status;
+      new.email := old.email;
     elsif new.role = 'admin' and old.role is distinct from 'admin' then
       new.role := old.role;
     elsif old.role = 'admin' and new.role is distinct from 'admin' then
@@ -134,13 +141,21 @@ declare
   meta jsonb := coalesce(new.raw_user_meta_data, '{}'::jsonb);
   full_name text;
   intent text;
+  blocked boolean := false;
 begin
   full_name := trim(concat_ws(' ', nullif(trim(meta->>'first_name'), ''), nullif(trim(meta->>'last_name'), '')));
   if full_name = '' then
     full_name := trim(coalesce(meta->>'name', meta->>'full_name', ''));
   end if;
   full_name := left(regexp_replace(full_name, '\s+', ' ', 'g'), 80);
-  intent := coalesce(nullif(meta->>'intent', ''), 'student');
+  -- 011'deki ad filtresi canlıda olmayabilir; varsa kullanılır, yoksa kayıt yine çalışır.
+  if full_name <> '' and pg_catalog.to_regprocedure('public.person_name_blocked(text)') is not null then
+    execute 'select public.person_name_blocked($1)' into blocked using full_name;
+    if coalesce(blocked, false) then
+      full_name := '';
+    end if;
+  end if;
+  intent := lower(coalesce(nullif(trim(meta->>'intent'), ''), 'student'));
   if intent not in ('student', 'coach') then
     intent := 'student';
   end if;
@@ -163,7 +178,14 @@ begin
     set email = excluded.email,
         role = case when public.profiles.role = 'admin' then 'admin' else public.profiles.role end,
         name = coalesce(nullif(trim(public.profiles.name), ''), excluded.name),
-        signup_intent = coalesce(nullif(public.profiles.signup_intent, ''), excluded.signup_intent),
+        -- 052: niyet yalnız hâlâ varsayılan öğrenci iken ve meta gelmişse güncellenir.
+        signup_intent = case
+          when public.profiles.role = 'admin' then public.profiles.signup_intent
+          when coalesce(public.profiles.signup_intent, '') in ('', 'student')
+            and excluded.signup_intent in ('student', 'coach')
+            then excluded.signup_intent
+          else public.profiles.signup_intent
+        end,
         signup_grade = coalesce(nullif(public.profiles.signup_grade, ''), excluded.signup_grade),
         signup_track = coalesce(nullif(public.profiles.signup_track, ''), excluded.signup_track),
         signup_exam = coalesce(nullif(public.profiles.signup_exam, ''), excluded.signup_exam);
@@ -212,21 +234,26 @@ security definer
 set search_path = ''
 as $$
 declare
-  inserted int := 0;
-  sub_status text;
-  existing_end timestamptz;
-  existing_start timestamptz;
-  base timestamptz;
-  ends timestamptz;
-  starts timestamptz;
-  dup boolean;
+  now_ts timestamptz := pg_catalog.clock_timestamp();
+  prev_status text;
+  prev_uid uuid;
+  pay_amt numeric;
+  pay_cur text;
   chk_amt numeric;
   chk_cur text;
   chk_uid uuid;
-  pay_amt numeric;
-  pay_cur text;
+  chk_created timestamptz;
+  cur_plan text;
+  cur_status text;
+  cur_start timestamptz;
+  cur_end timestamptz;
+  cur_provider text;
+  cur_sub_id text;
+  cur_created timestamptz;
+  base timestamptz;
+  starts timestamptz;
+  ends timestamptz;
   extended boolean := false;
-  now_ts timestamptz := pg_catalog.clock_timestamp();
 begin
   if p_user_id is null or p_payment_id is null or p_provider is null then
     raise exception 'eksik ödeme kimliği';
@@ -241,8 +268,8 @@ begin
   perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtext('bill:' || p_user_id::text));
 
   if p_checkout_id is not null then
-    select s.amount_try, s.currency, s.user_id
-      into chk_amt, chk_cur, chk_uid
+    select s.amount_try, s.currency, s.user_id, s.created_at
+      into chk_amt, chk_cur, chk_uid, chk_created
     from public.billing_checkout_sessions s
     where s.id = p_checkout_id;
     if not found then
@@ -259,16 +286,82 @@ begin
     end if;
   end if;
 
-  select s.status, s.period_end, s.period_start
-    into sub_status, existing_end, existing_start
+  -- 054: aynı ödeme daha önce işlendiyse (başarılı ya da iade edilmiş) hiçbir şey yazılmaz.
+  select p.status, p.user_id, p.amount_try, p.currency
+    into prev_status, prev_uid, pay_amt, pay_cur
+  from public.billing_payments p
+  where p.provider = p_provider and p.provider_payment_id = p_payment_id;
+  if found then
+    if abs(coalesce(pay_amt, 0) - p_amount_try) > 0.009 or upper(coalesce(pay_cur, '')) is distinct from 'TRY' then
+      raise exception 'tutar_uyusmuyor';
+    end if;
+    if prev_status in ('succeeded', 'refunded') then
+      select s.period_end into cur_end
+      from public.billing_subscriptions s
+      where s.user_id = p_user_id;
+      return pg_catalog.jsonb_build_object(
+        'ok', true,
+        'duplicate_payment', true,
+        'late_payment', false,
+        'extended', false,
+        'period_end', cur_end
+      );
+    end if;
+    if prev_uid is distinct from p_user_id then
+      raise exception 'siparis_uyusmuyor';
+    end if;
+  end if;
+
+  select s.plan_id, s.status, s.period_start, s.period_end, s.provider, s.provider_subscription_id
+    into cur_plan, cur_status, cur_start, cur_end, cur_provider, cur_sub_id
   from public.billing_subscriptions s
   where s.user_id = p_user_id
   for update;
 
-  -- Süresi bitmemiş ücretli üyelik varsa yeni dönem onun bitişinden başlar (kalan gün korunur).
-  if sub_status = 'active' and existing_end is not null and existing_end > now_ts then
-    base := existing_end;
-    starts := coalesce(existing_start, now_ts);
+  -- 054: daha eski bir ödeme oturumu, daha yeni aktif farklı paketi düşüremez.
+  -- Ödeme kaydedilir (para alındı), üyelik değişmez; webhook inceleme olayı yazar.
+  if cur_plan is not null
+     and cur_status = 'active'
+     and cur_end is not null and cur_end > now_ts
+     and cur_plan is distinct from p_plan_id
+     and chk_created is not null
+     and coalesce(cur_sub_id, '') <> '' then
+    select cs.created_at into cur_created
+      from public.billing_payments bp
+      join public.billing_checkout_sessions cs on cs.id = bp.checkout_session_id
+     where bp.user_id = p_user_id
+       and bp.provider = cur_provider
+       and bp.provider_payment_id = cur_sub_id;
+    if cur_created is not null and chk_created < cur_created then
+      insert into public.billing_payments (
+        user_id, checkout_session_id, amount_try, currency, status, provider, provider_payment_id, plan_id
+      ) values (
+        p_user_id, p_checkout_id, p_amount_try, 'TRY', 'succeeded', p_provider, p_payment_id, p_plan_id
+      )
+      on conflict (provider, provider_payment_id) do update
+        set status = 'succeeded',
+            plan_id = excluded.plan_id,
+            checkout_session_id = coalesce(public.billing_payments.checkout_session_id, excluded.checkout_session_id);
+      if p_checkout_id is not null then
+        update public.billing_checkout_sessions
+          set status = 'paid', updated_at = now_ts
+          where id = p_checkout_id;
+      end if;
+      return pg_catalog.jsonb_build_object(
+        'ok', true,
+        'duplicate_payment', false,
+        'late_payment', true,
+        'extended', false,
+        'period_end', cur_end
+      );
+    end if;
+  end if;
+
+  -- Süresi bitmemiş ücretli üyelik varsa yeni 30 gün onun bitişinden başlar; paket değişse de
+  -- kalan gün korunur.
+  if cur_status = 'active' and cur_end is not null and cur_end > now_ts then
+    base := cur_end;
+    starts := coalesce(cur_start, now_ts);
     extended := true;
   else
     base := now_ts;
@@ -283,24 +376,13 @@ begin
     p_user_id, p_checkout_id, p_amount_try, 'TRY', 'succeeded', p_provider, p_payment_id,
     p_plan_id, base, ends
   )
-  on conflict (provider, provider_payment_id) do nothing;
-  get diagnostics inserted = row_count;
-  dup := inserted = 0;
-
-  if dup then
-    select p.amount_try, p.currency
-      into pay_amt, pay_cur
-    from public.billing_payments p
-    where p.provider = p_provider and p.provider_payment_id = p_payment_id;
-    if abs(coalesce(pay_amt, 0) - p_amount_try) > 0.009 or upper(coalesce(pay_cur, '')) is distinct from 'TRY' then
-      raise exception 'tutar_uyusmuyor';
-    end if;
-    if existing_end is not null then
-      ends := existing_end;
-      starts := coalesce(existing_start, now_ts);
-    end if;
-    extended := false;
-  end if;
+  on conflict (provider, provider_payment_id) do update
+    -- Yalnız eski pending / failed / canceled kayıt buraya gelir (yukarıda elendi).
+    set status = 'succeeded',
+        plan_id = excluded.plan_id,
+        covers_start = excluded.covers_start,
+        covers_end = excluded.covers_end,
+        checkout_session_id = coalesce(public.billing_payments.checkout_session_id, excluded.checkout_session_id);
 
   insert into public.billing_subscriptions (
     user_id, plan_id, status, period_start, period_end, provider,
@@ -310,13 +392,13 @@ begin
     coalesce(nullif(p_subscription_id, ''), p_payment_id), p_amount_try, 'TRY', now_ts
   )
   on conflict (user_id) do update set
-    plan_id = case when dup then public.billing_subscriptions.plan_id else excluded.plan_id end,
+    plan_id = excluded.plan_id,
     status = 'active',
     period_start = excluded.period_start,
     period_end = excluded.period_end,
     provider = excluded.provider,
-    provider_subscription_id = case when dup then public.billing_subscriptions.provider_subscription_id else excluded.provider_subscription_id end,
-    locked_amount_try = case when dup then public.billing_subscriptions.locked_amount_try else excluded.locked_amount_try end,
+    provider_subscription_id = excluded.provider_subscription_id,
+    locked_amount_try = excluded.locked_amount_try,
     currency = 'TRY',
     canceled_at = null,
     updated_at = now_ts;
@@ -329,7 +411,7 @@ begin
 
   update public.profiles
     set
-      plan = case when dup then plan else p_plan_id end,
+      plan = p_plan_id,
       subscription_status = 'active',
       subscription_started_at = starts,
       subscription_ends_at = ends,
@@ -341,7 +423,8 @@ begin
 
   return pg_catalog.jsonb_build_object(
     'ok', true,
-    'duplicate_payment', dup,
+    'duplicate_payment', false,
+    'late_payment', false,
     'extended', extended,
     'period_end', ends
   );

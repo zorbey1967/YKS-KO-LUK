@@ -136,10 +136,13 @@ export function AnalyticsPage() {
   });
   const week = weekMinutes(data);
   const weekGoal = weekGoalPct(data);
-  const tytAytExams = data.exams
+  const denemeExams = data.exams
     .filter((e) => {
       const label = `${e.kind || ''} ${e.name || ''}`;
-      return /tyt|ayt/i.test(label) || Number(e.tyt) > 0 || Number(e.ayt) > 0;
+      return /tyt|ayt|lgs|kpss|deneme/i.test(label)
+        || Number(e.tyt) > 0
+        || Number(e.ayt) > 0
+        || (e.subjects?.length ?? 0) > 0;
     })
     .slice()
     .sort((a, b) => b.date.localeCompare(a.date) || String(b.id).localeCompare(String(a.id)));
@@ -151,7 +154,6 @@ export function AnalyticsPage() {
       <p className="muted" style={{ marginTop: 0 }}>
         {edu.gradeLabel || 'Profil'}
         {edu.fieldShort ? ` · ${edu.fieldShort}` : ''}
-        {edu.age ? ` · ${edu.age} yaş` : ''}
         {edu.periodLabel ? ` · ${edu.periodLabel}` : ''}
       </p>
 
@@ -283,7 +285,7 @@ export function AnalyticsPage() {
 
           {docResult.advice ? (
             <>
-              <div className="section-title" style={{ marginTop: 8 }}><h3>AI değerlendirmesi</h3></div>
+              <div className="section-title" style={{ marginTop: 8 }}><h3>Öneri</h3></div>
               <p>{docResult.advice}</p>
             </>
           ) : null}
@@ -322,20 +324,32 @@ export function AnalyticsPage() {
 
           <div className="card" style={{ marginBottom: 16 }}>
             <div className="section-title"><h3>Deneme Analizi</h3></div>
-            {tytAytExams.length ? tytAytExams.map((e) => {
-              const kindLabel = /ayt/i.test(String(e.kind || e.name || '')) ? 'AYT' : /tyt/i.test(String(e.kind || e.name || '')) ? 'TYT' : 'TYT / AYT';
+            {denemeExams.length ? denemeExams.map((e) => {
+              const raw = String(e.kind || e.name || '');
+              const kindLabel = /lgs/i.test(raw)
+                ? 'LGS'
+                : /kpss/i.test(raw)
+                  ? 'KPSS'
+                  : /ayt/i.test(raw)
+                    ? 'AYT'
+                    : /tyt/i.test(raw)
+                      ? 'TYT'
+                      : 'Deneme';
+              const scoreLine = /lgs|kpss/i.test(raw)
+                ? `${Number(e.tyt || 0).toFixed(1)} net`
+                : /ayt/i.test(raw) && !/tyt/i.test(raw)
+                  ? `AYT ${Number(e.ayt || e.tyt || 0).toFixed(1)}`
+                  : `TYT ${Number(e.tyt || 0).toFixed(1)}${e.ayt ? ` · AYT ${Number(e.ayt).toFixed(1)}` : ''}`;
               return (
                 <div className="plan-item" key={e.id}>
                   <span>
                     {kindLabel} · {e.name || 'Deneme'} · {e.date}
                     <br />
-                    <small className="muted">
-                      TYT {Number(e.tyt || 0).toFixed(1)} · AYT {Number(e.ayt || 0).toFixed(1)}
-                    </small>
+                    <small className="muted">{scoreLine}</small>
                   </span>
                 </div>
               );
-            }) : <p className="muted">TYT / AYT deneme kaydı yok.</p>}
+            }) : <p className="muted">Deneme kaydı yok.</p>}
           </div>
 
           <div className="card" style={{ marginBottom: 16 }}>

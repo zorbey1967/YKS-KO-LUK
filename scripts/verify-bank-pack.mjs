@@ -53,11 +53,20 @@ if (existsSync(distDir)) {
     }
   };
   walk(distDir);
+  // Soru verisi istemciye hiç gitmemeli: bankData chunk’ı, export adları veya soru fabrikası çağrıları.
+  const bankMarkers = ['questionsForLevel', 'BANK_PRE_QUALITY_MERGE', 'bundledManifest'];
+  const factoryCall = /a\("s\d+-[a-z]+-\d+",/g;
   for (const p of js) {
+    const rel = p.slice(root.length);
+    if (/bankData/i.test(rel)) fail.push(`bankData chunk dist içinde: ${rel}`);
     const text = readFileSync(p, 'utf8');
     if (text.includes('yks-bank-pack-v7') && text.includes('"levels"') && text.length > 200_000) {
-      fail.push(`pack istemci bundle: ${p.slice(root.length)}`);
+      fail.push(`pack istemci bundle: ${rel}`);
     }
+    const marker = bankMarkers.find((m) => text.includes(m));
+    if (marker) fail.push(`soru bankası işareti (${marker}) istemci bundle: ${rel}`);
+    const calls = (text.match(factoryCall) || []).length;
+    if (calls > 5) fail.push(`soru fabrikası çağrıları (${calls}) istemci bundle: ${rel}`);
   }
 }
 

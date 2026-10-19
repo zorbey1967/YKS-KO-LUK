@@ -32,20 +32,30 @@ export function ExamResultModal({
   const ctx = useMemo(() => getStudentEducationContext(data), [data]);
   const existing = findExamForTarget(data, target);
   const written = isWrittenExamKind(target.kind);
-  const kindFixed = /^(tyt|ayt)\b/i.test(String(target.kind || '').trim());
+  const resultMode = examResultMode(target.kind);
+  /** LGS/KPSS/sabit TYT|AYT: türü TYT’ye çevirme. */
+  const kindLocked = written
+    || resultMode === 'lgs'
+    || resultMode === 'kpss'
+    || /^(tyt|ayt)\b/i.test(String(target.kind || '').trim());
   const [denemeMode, setDenemeMode] = useState<'tyt' | 'ayt'>(() => initialDenemeMode(target.kind));
-  const effectiveKind = written
+  const effectiveKind = kindLocked
     ? target.kind
-    : (kindFixed ? target.kind : (denemeMode === 'ayt' ? `AYT ${ctx.fieldShort || ''}`.trim() : 'TYT'));
+    : (denemeMode === 'ayt' ? `AYT ${ctx.fieldShort || ''}`.trim() : 'TYT');
 
   const [score, setScore] = useState(() => (existing ? String(existing.tyt || '') : ''));
   const [subjects, setSubjects] = useState<ExamSubjectNet[]>(() => {
     if (existing?.subjects?.length) return existing.subjects.map((s) => ({ ...s }));
-    return emptySubjectRows(denemeSubjectRows(ctx, kindFixed ? target.kind : 'TYT'));
+    return emptySubjectRows(denemeSubjectRows(ctx, kindLocked ? target.kind : 'TYT'));
   });
 
   const total = useMemo(() => totalNetFromSubjects(subjects), [subjects]);
-  const showTytAytToggle = !written && !kindFixed && (ctx.showsTyt || ctx.showsAyt);
+  const showTytAytToggle = !kindLocked && (ctx.showsTyt || ctx.showsAyt);
+  const denemeBandLabel = resultMode === 'lgs'
+    ? 'LGS'
+    : resultMode === 'kpss'
+      ? 'KPSS'
+      : (/ayt/i.test(effectiveKind) ? 'AYT' : 'TYT');
 
   function switchMode(mode: 'tyt' | 'ayt') {
     setDenemeMode(mode);
@@ -121,7 +131,7 @@ export function ExamResultModal({
                 ) : null}
               </div>
             ) : (
-              <p className="muted" style={{ marginTop: 0 }}>{/ayt/i.test(effectiveKind) ? 'AYT' : 'TYT'} ders netleri</p>
+              <p className="muted" style={{ marginTop: 0 }}>{denemeBandLabel} ders netleri</p>
             )}
             <p className="muted">Her ders için doğru / yanlış / boş gir; netler otomatik hesaplanır.</p>
             {subjects.map((s, i) => (

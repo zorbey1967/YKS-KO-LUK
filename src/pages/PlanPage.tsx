@@ -9,7 +9,6 @@ import { resetAiCoachCache } from '../lib/aiCoachAnalysis';
 import {
   acceptPlanChange,
   clearStudentSmartPlan,
-  generateLivingPlan,
   getStudentProgress,
   invalidateStudentProgress,
 } from '../lib/studentProgress';
@@ -23,27 +22,24 @@ export function PlanPage() {
   const state = useMemo(() => getStudentProgress(data), [data]);
   const weekGoalHours = data.weekHours > 0 ? data.weekHours : null;
 
-  function saveLocal() {
-    const blocks = generateLivingPlan(data, state.capacity.typicalDayMinutes);
-    if (!blocks.length && !state.gaps.length && !state.lastExam && !state.upcomingExams.length) {
-      setNote('Yeterli deneme/konu/sınav verisi yok; uydurma plan üretilmedi.');
-      toast('Veri yok — plan uydurulmadı');
+  async function saveCloud() {
+    if (!aiPlan) {
+      toast('Akıllı Plan için üyelik veya deneme gerekir.');
       return;
     }
-    setData({ ...data, plan: blocks, planDate: today() });
-    invalidateStudentProgress();
-    setNote('Deneme netleri, yaklaşan sınavlar, çalışma hedefi, sınıf/alan ve koç programı dikkate alındı. Koç programı değiştirilmedi.');
-    toast('Plan güncellendi');
-  }
-
-  async function saveCloud() {
     setBusy(true);
     try {
       const res = await askDailyPlan(data, state.capacity.typicalDayMinutes, 'Eksik konular');
+      // Yerel yedek plan UI'ya yazılmaz: sunucu planı gelmediyse uydurma plan gösterilmez.
+      if (res.source !== 'ai' || !res.blocks.length) {
+        setNote('');
+        toast(res.summary || 'Sunucu planı alınamadı. Yerel plan otomatik kaydedilmez.');
+        return;
+      }
       setData({ ...data, plan: res.blocks, planDate: today() });
       invalidateStudentProgress();
-      setNote(res.summary + (res.source === 'ai' ? ` • ${publicCoachBrand()}` : ' • Yerel yedek'));
-      toast(res.source === 'ai' ? 'AI planı hazır' : 'Yerel koç planı hazır');
+      setNote(`${res.summary} • ${publicCoachBrand()}`);
+      toast('AI planı hazır');
     } finally {
       setBusy(false);
     }
@@ -95,11 +91,11 @@ export function PlanPage() {
               <div><strong>{x.text}</strong><small className="muted"> {x.minutes} dk</small></div>
             </div>
           )) : (
-            <div className="empty">Henüz plan yok. “Plan oluştur” ile kayıtlarına göre bugünün planını hazırla.</div>
+            <div className="empty">Henüz plan yok. “Plan oluştur” ile kayıtlarına göre bugünün planını hazırla. Sayfa açılışında AI çağrılmaz; uydurma plan yok.</div>
           )}
           <div className="actions" style={{ marginTop: 12 }}>
-            {/* Tek "plan oluştur": ZORRO açıksa sunucuda, değilse kayıtlarından yerel plan. */}
-            <button className="btn primary" type="button" disabled={busy} onClick={() => (aiPlan ? void saveCloud() : saveLocal())}>{busy ? 'Hazırlanıyor…' : data.plan.length ? 'Planı yenile' : 'Plan oluştur'}</button>
+            {/* Tek "plan oluştur": plan yalnız sunucuda üretilir (yerel yedek plan yok). */}
+            <button className="btn primary" type="button" disabled={busy || !aiPlan} onClick={() => void saveCloud()}>{busy ? 'Hazırlanıyor…' : data.plan.length ? 'Planı yenile' : 'Plan oluştur'}</button>
             <button className="btn" type="button" onClick={() => {
               if (!data.plan.length) return toast('Önce plan oluştur.');
               setData(appendGeneratedTasks(data, data.plan.map((x) => ({

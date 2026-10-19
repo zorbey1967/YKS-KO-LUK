@@ -35,6 +35,8 @@ export async function requestCheckout(planId: PlanId): Promise<CheckoutResult> {
   let msg = String(body.error || error?.message || 'Ödeme sistemi hazırlanıyor.');
   if (/failed to send|edge function|not found|404/i.test(msg)) {
     msg = 'Ödeme sistemi hazırlanıyor. Checkout fonksiyonu henüz yayınlanmadı; sahte ödeme yok.';
+  } else if (/shopier|PAT|webhook|JWT|42501|PGRST|fetch|Internal|stack|api[_ ]?key|secret|service.?role|SHOPIER_|^\s*\(016\)|\(016\)/i.test(msg)) {
+    msg = 'Ödeme şu an tamamlanamadı. Lütfen biraz sonra tekrar dene.';
   }
   const checkoutUrl = String(body.checkout_url || '');
   return {

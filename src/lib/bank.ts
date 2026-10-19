@@ -1,20 +1,15 @@
 import type { BankManifest, BankQuestion } from './types';
 import { hash32, seededOrder } from './util';
 import { isSupabaseConfigured, supabase } from './supabase';
+import { QUESTION_BANK_ENABLED } from './features';
 import { slugifyLevel } from '../../supabase/functions/_shared/bankPackSchema.ts';
 
 let manifestCache: BankManifest | null = null;
 const levelCache = new Map<string, Record<string, BankQuestion[]>>();
 
-/**
- * Paketli soru verisi (cevaplar dahil) yalnızca geliştirmede yüklenir. Üretim derlemesinde
- * `import.meta.env.DEV` false olduğundan bu dinamik import ve src/data/bankData parçası pakete
- * girmez; sorular yalnızca yetki kontrollü bank-pack fonksiyonundan gelir. Paket yoksa boş döner,
- * ödeme yapmamış kullanıcıya JS dosyasından soru sızmaz.
- */
-async function localBank() {
-  if (import.meta.env.DEV) return import('../data/bankData');
-  return null;
+/** Bayrak kapalıyken hiçbir yerden paket veya edge yüklenmez. */
+function closedManifest(): BankManifest {
+  return { version: 0, generatedAt: '', questionCount: 0, levels: [], curriculum: {} };
 }
 
 function packErrorText(e: unknown) {
@@ -34,73 +29,34 @@ async function invokeBankPack(body: Record<string, unknown>) {
   return { error: null as string | null, data: payload };
 }
 
-const EMPTY_MANIFEST: BankManifest = { version: 0, generatedAt: '', questionCount: 0, levels: [], curriculum: {} };
-
-async function bundledManifestData(): Promise<BankManifest> {
-  const mod = await localBank();
-  return mod ? mod.bundledManifest() : EMPTY_MANIFEST;
-}
-
-async function bundledLevelData(levelName: string): Promise<Record<string, BankQuestion[]>> {
-  const mod = await localBank();
-  return mod ? shuffleBank(mod.questionsForLevel(levelName)) : {};
-}
-
+/**
+ * Sorular yalnızca bank-pack edge’inden (oturum + üyelik kapısı) gelir.
+ * İstemci paketine soru verisi gömülmez; edge reddederse yerel yedek yoktur.
+ */
 export async function loadManifest(): Promise<BankManifest> {
+  if (!QUESTION_BANK_ENABLED) return closedManifest();
   if (manifestCache) return manifestCache;
-  if (!import.meta.env.DEV) {
-    const remote = await invokeBankPack({ action: 'manifest' });
-    const man = remote.data?.manifest;
-    if (man && typeof man === 'object') {
-      manifestCache = man as BankManifest;
-      return manifestCache;
-    }
-    if (remote.error) console.error('[soru-bankasi] manifest', remote.error);
-  } else {
-    try {
-      const res = await fetch('/bank/manifest.json');
-      if (res.ok) {
-        manifestCache = (await res.json()) as BankManifest;
-        return manifestCache;
-      }
-    } catch {
-      /* yerel paket */
-    }
+  const remote = await invokeBankPack({ action: 'manifest' });
+  const man = remote.data?.manifest;
+  if (man && typeof man === 'object') {
+    manifestCache = man as BankManifest;
+    return manifestCache;
   }
-  const fallback = await bundledManifestData();
-  // Üretimde boş sonuç önbelleğe alınmaz: yetki/paket düzelince yeniden denenir.
-  if (fallback.questionCount > 0) manifestCache = fallback;
-  return fallback;
+  throw new Error(remote.error || 'Soru paketi alınamadı.');
 }
 
 export async function loadLevel(slug: string, levelName: string): Promise<Record<string, BankQuestion[]>> {
+  if (!QUESTION_BANK_ENABLED) return {};
   const cacheKey = slug || levelName;
   if (levelCache.has(cacheKey)) return levelCache.get(cacheKey)!;
-  if (!import.meta.env.DEV) {
-    const remote = await invokeBankPack({ action: 'level', slug, level: levelName });
-    const pack = remote.data?.questions;
-    if (pack && typeof pack === 'object') {
-      const shuffled = shuffleBank(pack as Record<string, BankQuestion[]>);
-      levelCache.set(cacheKey, shuffled);
-      return shuffled;
-    }
-    if (remote.error) console.error('[soru-bankasi] level', levelName, remote.error);
-  } else {
-    try {
-      const res = await fetch(`/bank/${slug}.json`);
-      if (res.ok) {
-        const data = (await res.json()) as Record<string, BankQuestion[]>;
-        const shuffled = shuffleBank(data);
-        levelCache.set(cacheKey, shuffled);
-        return shuffled;
-      }
-    } catch {
-      /* yerel */
-    }
+  const remote = await invokeBankPack({ action: 'level', slug, level: levelName });
+  const pack = remote.data?.questions;
+  if (pack && typeof pack === 'object') {
+    const shuffled = shuffleBank(pack as Record<string, BankQuestion[]>);
+    levelCache.set(cacheKey, shuffled);
+    return shuffled;
   }
-  const bundled = await bundledLevelData(levelName);
-  if (Object.keys(bundled).length) levelCache.set(cacheKey, bundled);
-  return bundled;
+  throw new Error(remote.error || `${levelName} soruları alınamadı.`);
 }
 
 export function levelSlug(name: string) {
@@ -147,6 +103,7 @@ export function findBankQuestions(opts: {
   examHint?: string;
   limit?: number;
 }): BankQuestion[] {
+  if (!QUESTION_BANK_ENABLED) return [];
   const topic = (opts.topic || '').toLocaleLowerCase('tr-TR');
   const subject = (opts.subject || '').toLocaleLowerCase('tr-TR');
   const exam = (opts.examHint || '').toLocaleLowerCase('tr-TR');

@@ -6,6 +6,18 @@ import { getStudentEducationContext } from '../lib/studentEducation';
 import { examStatus } from '../lib/examTargets';
 import { ExamListRow } from '../components/ExamListRow';
 import { useExamDialogs } from '../components/ExamDialogs';
+import { examResultMode } from '../lib/examResultEntry';
+import type { Exam } from '../lib/types';
+
+function formatRecordedScore(x: Exam): string {
+  const mode = examResultMode(x.kind || '');
+  if (mode === 'yazili') return `${x.tyt} puan`;
+  if (mode === 'lgs') return `${x.tyt} net (LGS)`;
+  if (mode === 'kpss') return `${x.tyt} net (KPSS)`;
+  if (mode === 'ayt') return `AYT ${x.ayt || x.tyt}`;
+  if (x.ayt) return `TYT ${x.tyt} / AYT ${x.ayt}`;
+  return `TYT ${x.tyt}`;
+}
 
 /** Denemeler: takvimdeki sınavlar (aynı kayıt) ve girilen sonuçlar. Sınav ekleme Takvim akışıyla aynıdır. */
 export function ExamsPage() {
@@ -54,7 +66,7 @@ export function ExamsPage() {
               <br />
               <small className="muted">{fmtDate(x.date)}{x.kind ? ` · ${x.kind}` : ''}{x.subjects?.length ? ` · ${x.subjects.map((s) => `${s.name} ${s.net}`).join(', ')}` : ''}</small>
             </span>
-            <b>{x.tyt}{x.ayt ? ` / ${x.ayt}` : ''}</b>
+            <b>{formatRecordedScore(x)}</b>
           </div>
         )) : <div className="empty">Henüz sonuç yok. Sınava tıklayıp “Sonuç ekle” ile gir.</div>}
       </div>

@@ -85,9 +85,9 @@ Eksik uzak staging: `YKS_STAGING_PROJECT_REF` (canlı değil), `SUPABASE_ACCESS_
 
 Askı: `admin_set_account_status(..., 'active')`. Pack: önceki sha256. Edge: önceki sürüm.
 
-## 050 ticari hazırlık (uygulanmadı)
+## 055 ticari hazırlık (uygulanmadı)
 
-`supabase/migrations/050_commercial_readiness.sql` tek dosya, additive, idempotent; satır silmez.
+`supabase/migrations/055_commercial_readiness.sql` tek dosya, additive, idempotent; satır silmez.
 Canlı şemanın hangi durumda olduğundan bağımsız aynı sonucu verir (yalnız 041–049 ya da 011–049 tam zincir).
 
 - Profil: istemci yalnızca kendi `name / target_department / target_rank / updated_at` alanını yazar; INSERT/DELETE ve e-posta/rol/plan yazımı kapalı (e-posta ile yönetici olma açığı).
@@ -97,6 +97,6 @@ Canlı şemanın hangi durumda olduğundan bağımsız aynı sonucu verir (yaln�
 - Deneme: e-postası doğrulanmamış hesap başlatamaz.
 
 Önce prova (Docker açık): `npm run test:pg:commercial` → `PG_COMMERCIAL_OK`.
-Canlıya uygulamadan önce canlıdaki `supabase_migrations.schema_migrations` listesi ve `pg_dump --schema-only` alınır; 050 önce staging'de çalıştırılır.
+Canlıya uygulamadan önce canlıdaki `supabase_migrations.schema_migrations` listesi ve `pg_dump --schema-only` alınır; 055 önce staging'de çalıştırılır.
 
 Shopier imza formatı (başlık/HMAC kodlaması) gerçek küçük bir ödeme + iade ile **henüz doğrulanmadı** (bkz. `supabase/functions/_shared/shopierWebhook.ts` TODO).

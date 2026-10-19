@@ -664,6 +664,7 @@ export function MeetingPage() {
           <p className={`meeting-clock${remaining === null && !ended ? ' meeting-clock--idle' : ''}`} aria-live="polite">{clockLabel}</p>
           <span className={`meeting-pill ${statusKind}`}>{statusLabel}</span>
           <span className="meeting-chip">Kayıt kapalı · LiveKit Egress yok</span>
+          <span className="meeting-chip" title="Ses denetimi henüz kapalı. Açıldığında yalnızca sunucu STT kullanılır; tarayıcı metni ceza üretmez.">Dil denetimi: kapalı (STT yok)</span>
         </div>
 
         <div className={`meeting-tile meeting-tile--remote${peerVideo || peerScreen || sharing ? '' : ' is-idle'}${peerScreen || sharing ? ' is-screen' : ''}`}>

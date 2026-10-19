@@ -229,6 +229,19 @@ h1{font-size:28px;margin:3px 0 0}h2{margin:0 0 7px}h3{margin:0}
 .field textarea{min-height:84px;resize:vertical}
 .home-lead{display:grid;grid-template-columns:1fr;gap:16px;align-items:stretch}
 .home-lead:has(.share-card){grid-template-columns:1.45fr minmax(240px,.7fr)}
+.why-here{padding:28px 26px;border:1px solid var(--line);background:linear-gradient(180deg,var(--card),color-mix(in srgb,var(--soft) 55%,var(--card)))}
+.why-here .section-title h3{font-size:clamp(22px,3.2vw,30px);letter-spacing:-.02em;line-height:1.2}
+.why-here-lead{font-size:clamp(15px,1.7vw,17px);line-height:1.65;margin:4px 0 18px;color:var(--text);max-width:62ch}
+.why-here-block{margin:0 0 18px;padding:0 0 16px;border-bottom:1px solid var(--line)}
+.why-here-block:last-of-type{border-bottom:0;padding-bottom:0}
+.why-here-block h4{margin:0 0 8px;font-size:clamp(16px,1.8vw,18px);letter-spacing:-.01em}
+.why-here-block p{margin:0;line-height:1.65;color:var(--text);max-width:62ch}
+.why-here-cta{margin-top:22px;padding:18px 16px;border-radius:16px;background:var(--bg);border:1px solid var(--line)}
+.why-here-cta-text{margin:0 0 14px;font-size:clamp(16px,2vw,19px);font-weight:800;line-height:1.45;letter-spacing:-.01em;max-width:42ch}
+@media(max-width:768px){
+  .why-here{padding:20px 16px}
+  .why-here-cta{padding:14px 12px}
+}
 .share-card{margin:0;display:flex;flex-direction:column}
 .share-url{font-size:13px;font-weight:800;word-break:break-all;padding:12px 14px;border-radius:12px;background:var(--bg);border:1px solid var(--line)}
 .auth-shell{display:grid;grid-template-columns:1.05fr .95fr;gap:20px;align-items:stretch}

@@ -664,7 +664,7 @@ export async function adminPatchCoach(id: string, patch: { name?: string; track?
 export async function adminSetAccountStatus(
   id: string,
   status: AccountStatus,
-): Promise<{ ok: boolean; error: string }> {
+): Promise<{ ok: boolean; error: string; db?: boolean; auth?: boolean }> {
   if (!supabase || !isUuid(id)) return { ok: false, error: 'Geçersiz hesap.' };
   if (status !== 'active' && status !== 'pasif') return { ok: false, error: 'Geçersiz durum.' };
   try {
@@ -677,10 +677,22 @@ export async function adminSetAccountStatus(
       if (/not found|404|failed to send/i.test(msg)) {
         return { ok: false, error: 'Askıya alma servisi henüz yayınlanmadı. 029 ve admin-account-status uygulanmalı.' };
       }
-      return { ok: false, error: publicCloudError(error) };
+      return {
+        ok: false,
+        error: publicCloudError(error),
+        db: body.db === true,
+        auth: body.auth === true,
+      };
     }
-    if (body.ok === true) return { ok: true, error: '' };
-    return { ok: false, error: String(body.error || 'Hesap güncellenemedi.') };
+    if (body.ok === true) {
+      return { ok: true, error: '', db: body.db !== false, auth: body.auth !== false };
+    }
+    return {
+      ok: false,
+      error: String(body.error || 'Hesap güncellenemedi.'),
+      db: body.db === true,
+      auth: body.auth === true,
+    };
   } catch (e) {
     return { ok: false, error: publicCloudError(e) };
   }

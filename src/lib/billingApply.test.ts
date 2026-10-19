@@ -160,7 +160,20 @@ describe('applyVerifiedPayment idempotency', () => {
       paymentId: 'pay_1',
       amountTry: 100,
     });
-    expect(atomic).toEqual({ ok: true, duplicatePayment: true });
+    expect(atomic).toEqual({ ok: true, duplicatePayment: true, latePayment: false });
+
+    const lateAdmin = {
+      rpc: async () => ({ data: { ok: true, duplicate_payment: false, late_payment: true }, error: null }),
+      from() { throw new Error('rpc varken from kullanılmamalı'); },
+    } as unknown as SupabaseClient;
+    const late = await applyVerifiedPayment(lateAdmin, {
+      userId: paid.userId,
+      planId: paid.planId,
+      provider: paid.provider,
+      paymentId: 'pay_old',
+      amountTry: 100,
+    });
+    expect(late).toEqual({ ok: true, duplicatePayment: false, latePayment: true });
 
     const calls: string[] = [];
     const fallback = mockAdmin({ calls });

@@ -10,8 +10,18 @@ import { getCoachDisplayName, getPersonDisplayName, joinCoachName, splitPersonNa
 import { emailLooksValid, normalizeEmailInput, passwordPolicyError, publicAuthError } from '../lib/authUi';
 import { authEmailRedirectTo } from '../lib/authRedirect';
 import { fullPersonName, validatePersonName } from '../lib/personName';
+import { scanDisplayName, shouldAutoSuspend } from '../lib/contentModeration';
+import { moderateDisplayNameRemote } from '../lib/moderationCloud';
 import { accessMessage } from '../lib/accessGate';
-import { beginGoogleSignIn } from '../lib/googleOAuth';
+import {
+  applyGoogleSignupPendingToData,
+  beginGoogleSignIn,
+  beginGoogleSignUp,
+  claimGoogleSignupPrefs,
+  clearGoogleSignupPending,
+  stashGoogleSignupPending,
+  takeGoogleSignupPending,
+} from '../lib/googleOAuth';
 import { SITE_ORIGIN } from '../lib/site';
 import { displayMembershipName } from '../lib/subscription';
 import { GRADES } from '../lib/stage';
@@ -72,6 +82,28 @@ export function AccountPage() {
 
   useEffect(() => {
     if (!user) return;
+    const pending = takeGoogleSignupPending();
+    if (pending) {
+      setData((prev) => applyGoogleSignupPendingToData(prev, pending));
+      if (supabase) {
+        void claimGoogleSignupPrefs(supabase, pending);
+      }
+      if (pending.intent === 'coach' && (pending.firstName || pending.lastName)) {
+        try {
+          const existing = localStorage.getItem('yks_pending_coach_app');
+          if (!existing) {
+            localStorage.setItem('yks_pending_coach_app', JSON.stringify({
+              name: fullPersonName(pending.firstName, pending.lastName) || joinCoachName(firstName, lastName),
+              email: user.email || email.trim(),
+              track: coachTrack,
+              focus: focus.trim() || 'Süreç koçluğu',
+              photo,
+              studentCount: Number(studentCount) || 0,
+            }));
+          }
+        } catch { /* ignore */ }
+      }
+    }
     let raw = '';
     try { raw = localStorage.getItem('yks_pending_coach_app') || ''; } catch { return; }
     if (!raw) return;
@@ -144,7 +176,15 @@ export function AccountPage() {
     const policy = passwordPolicyError(password, 'signup');
     if (policy) return setAuthMsg(policy);
     const nameErr = validatePersonName(firstName, lastName);
-    if (nameErr) return setAuthMsg(nameErr);
+    if (nameErr) {
+      const scan = scanDisplayName(firstName, lastName);
+      if (user && shouldAutoSuspend(scan)) {
+        void moderateDisplayNameRemote(firstName, lastName).then((r) => {
+          if (r.suspended) setAuthMsg('Ağır ad ihlali nedeniyle hesap askıya alındı.');
+        });
+      }
+      return setAuthMsg(nameErr);
+    }
     if (role === 'koc' && !photo) return setAuthMsg('Koç fotoğrafı gerekli.');
     setBusy(true);
     try {
@@ -209,12 +249,53 @@ export function AccountPage() {
 
   async function signInGoogle() {
     if (!supabase) return setAuthMsg(SUPABASE_UNAVAILABLE);
+    clearGoogleSignupPending();
     if (location.hash.includes('oauth=google')) location.hash = '/account';
     setGoogleBusy(true);
     setAuthMsg('Google’a yönlendiriliyorsun…');
     try {
       await withTimeout(beginGoogleSignIn(supabase, import.meta.env.PROD ? SITE_ORIGIN : window.location.origin), 8000);
     } catch (e) {
+      setAuthMsg(publicAuthError(e));
+    } finally {
+      setGoogleBusy(false);
+    }
+  }
+
+  async function signUpGoogle() {
+    if (!supabase) return setAuthMsg(SUPABASE_UNAVAILABLE);
+    if (role === 'koc') {
+      const nameErr = validatePersonName(firstName, lastName);
+      if (nameErr) return setAuthMsg(nameErr);
+      if (!photo.startsWith('data:image/')) return setAuthMsg('Koç fotoğrafı gerekli.');
+    }
+    stashGoogleSignupPending({
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      intent: role === 'koc' ? 'coach' : 'student',
+      grade: role === 'koc' ? '' : signupGrade,
+      track: role === 'koc' ? '' : signupTrack,
+      exam: role === 'koc' ? '' : signupExam,
+    });
+    if (role === 'koc') {
+      try {
+        localStorage.setItem('yks_pending_coach_app', JSON.stringify({
+          name: joinCoachName(firstName, lastName),
+          email: email.trim(),
+          track: coachTrack,
+          focus: focus.trim() || 'Süreç koçluğu',
+          photo,
+          studentCount: Number(studentCount) || 0,
+        }));
+      } catch { /* ignore */ }
+    }
+    if (location.hash.includes('oauth=google')) location.hash = '/account';
+    setGoogleBusy(true);
+    setAuthMsg('Google’a yönlendiriliyorsun…');
+    try {
+      await withTimeout(beginGoogleSignUp(supabase, import.meta.env.PROD ? SITE_ORIGIN : window.location.origin), 8000);
+    } catch (e) {
+      clearGoogleSignupPending();
       setAuthMsg(publicAuthError(e));
     } finally {
       setGoogleBusy(false);
@@ -250,6 +331,7 @@ export function AccountPage() {
 
   async function signOut() {
     clearCoachSession();
+    clearGoogleSignupPending();
     if (supabase) await supabase.auth.signOut({ scope: 'global' });
     setAuthMsg('Çıkış yapıldı.');
     toast('Çıkış yapıldı');
@@ -306,12 +388,22 @@ export function AccountPage() {
             <button className={mode === 'sifre' ? 'on' : ''} type="button" onClick={() => { setMode('sifre'); setAuthMsg(''); }}>Şifre sıfırla</button>
           </div>
           {!supabase ? <div className="notice" role="alert">{SUPABASE_UNAVAILABLE}</div> : null}
-          {mode !== 'sifre' ? (
+          {mode === 'giris' ? (
             <div className="actions" style={{ marginBottom: 12 }}>
               <button className="btn secondary" type="button" disabled={googleBusy || !supabase} onClick={() => void signInGoogle()}>
                 {googleBusy ? 'Google’a gidiliyor…' : 'Google ile devam et'}
               </button>
               <p className="muted" style={{ margin: 0 }}>Mevcut e-posta hesabı Google ile otomatik birleştirilmez.</p>
+            </div>
+          ) : null}
+          {mode === 'kayit' ? (
+            <div className="actions" style={{ marginBottom: 12 }}>
+              <button className="btn secondary" type="button" disabled={googleBusy || !supabase} onClick={() => void signUpGoogle()}>
+                {googleBusy ? 'Google’a gidiliyor…' : 'Google ile Kayıt Ol'}
+              </button>
+              <p className="muted" style={{ margin: 0 }}>
+                Yeni Google hesabı hesap açar; daha önce kayıtlıysa mevcut oturuma girer. Aynı hesaptan ikinci kullanıcı oluşmaz.
+              </p>
             </div>
           ) : null}
           {mode === 'kayit' ? (

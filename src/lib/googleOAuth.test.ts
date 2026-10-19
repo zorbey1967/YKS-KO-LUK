@@ -1,8 +1,22 @@
 import { describe, expect, it } from 'vitest';
 import { SITE_ORIGIN } from './site';
 import { publicAuthError } from './authUi';
-import { authOAuthRedirectTo, beginGoogleSignIn, googleAuthorizeFailureMessage, googleOAuthOptions, googleSignInBlockedReason, shouldAutoLinkIdentities } from './googleOAuth';
+import {
+  applyGoogleSignupPendingToData,
+  authOAuthRedirectTo,
+  beginGoogleSignIn,
+  beginGoogleSignUp,
+  clearGoogleSignupPending,
+  googleAuthorizeFailureMessage,
+  googleOAuthOptions,
+  googleSignInBlockedReason,
+  shouldAutoLinkIdentities,
+  stashGoogleSignupPending,
+  takeGoogleSignupPending,
+} from './googleOAuth';
 import { AUTH_RECOVERY_HASH } from './authRedirect';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 describe('Google OAuth', () => {
   it('PKCE dönüşü origin köküne gider; hash token çakışması yok; otomatik birleştirme kapalı', () => {
@@ -41,5 +55,81 @@ describe('Google OAuth', () => {
     });
     const assigned = called as { options: { redirectTo: string } };
     expect(assigned.options.redirectTo).toBe('https://e-kocluk.vercel.app/');
+  });
+
+  it('claimGoogleSignupPrefs RPC imzası koç intent taşır', async () => {
+    const { claimGoogleSignupPrefs } = await import('./googleOAuth');
+    const calls: unknown[] = [];
+    const client = {
+      rpc: async (fn: string, args: Record<string, unknown>) => {
+        calls.push({ fn, args });
+        return { data: { ok: true, signup_intent: 'coach' }, error: null };
+      },
+    };
+    const res = await claimGoogleSignupPrefs(client, {
+      firstName: 'Ali',
+      lastName: 'Veli',
+      intent: 'coach',
+      grade: '',
+      track: '',
+      exam: '',
+      at: Date.now(),
+    });
+    expect(res.ok).toBe(true);
+    expect(calls[0]).toMatchObject({
+      fn: 'claim_signup_prefs',
+      args: { p_intent: 'coach', p_first_name: 'Ali', p_last_name: 'Veli' },
+    });
+  });
+
+  it('Google ile Kayıt Ol aynı PKCE yolunu kullanır; pending seed boş alan ezmez', async () => {
+    let calls = 0;
+    const href = 'https://naiakscryafhvcghjmzx.supabase.co/auth/v1/authorize?provider=google&redirect_to=https%3A%2F%2Fe-kocluk.vercel.app%2F&code_challenge=abc&code_challenge_method=s256&skip_http_redirect=true';
+    const client = {
+      auth: {
+        signInWithOAuth: async () => {
+          calls += 1;
+          return { data: { url: href }, error: null };
+        },
+      },
+    };
+    await beginGoogleSignUp(client, 'https://e-kocluk.vercel.app');
+    expect(calls).toBe(1);
+
+    const mem = new Map<string, string>();
+    const store = {
+      getItem: (k: string) => mem.get(k) ?? null,
+      setItem: (k: string, v: string) => { mem.set(k, v); },
+      removeItem: (k: string) => { mem.delete(k); },
+    };
+    stashGoogleSignupPending({
+      firstName: 'Ali',
+      lastName: 'Veli',
+      intent: 'student',
+      grade: '12. Sınıf',
+      track: 'Sayısal',
+      exam: 'YKS',
+    }, store);
+    const pending = takeGoogleSignupPending(store);
+    expect(pending?.grade).toBe('12. Sınıf');
+    expect(takeGoogleSignupPending(store)).toBeNull();
+    expect(applyGoogleSignupPendingToData({ grade: '', track: 'EA', examDate: '' }, pending)).toEqual({
+      grade: '12. Sınıf',
+      track: 'EA',
+      examDate: 'YKS',
+    });
+    expect(applyGoogleSignupPendingToData({ grade: '11. Sınıf', track: 'EA', examDate: 'LGS' }, pending)).toEqual({
+      grade: '11. Sınıf',
+      track: 'EA',
+      examDate: 'LGS',
+    });
+    clearGoogleSignupPending(store);
+
+    const page = readFileSync(join(process.cwd(), 'src/pages/AccountPage.tsx'), 'utf8');
+    expect(page).toContain('Google ile Kayıt Ol');
+    expect(page).toContain('Google ile devam et');
+    expect(page).toContain('beginGoogleSignUp');
+    expect(page).toContain('beginGoogleSignIn');
+    expect(page).not.toContain('service_role');
   });
 });

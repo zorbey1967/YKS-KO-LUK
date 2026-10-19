@@ -1,6 +1,6 @@
--- Throwaway prova testi (050). ROLLBACK; veri kalıcı değil. Üretim/staging URL kullanmayın.
+-- Throwaway prova testi (055). ROLLBACK; veri kalıcı değil. Üretim/staging URL kullanmayın.
 -- Önkoşul (scripts/run-pg-commercial.mjs): supabase_like_bootstrap → 001–010 → live010_seed
---   → (senaryoya göre 011–040 zinciri) → 041–049 → 050 (iki kez: idempotent).
+--   → (senaryoya göre 011–040 zinciri) → 041–049 → 050–054 → 055 (iki kez: idempotent).
 -- Senaryo A (canlıya yakın) ve B (tam zincir) için aynı dosya çalışır.
 begin;
 
@@ -286,5 +286,5 @@ begin
 end
 $$;
 
-select 'OK 050_commercial_pg' as result;
+select 'OK 055_commercial_pg' as result;
 rollback;

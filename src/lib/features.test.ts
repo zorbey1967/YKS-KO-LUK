@@ -43,6 +43,8 @@ describe('analiz AI tetikleyici', () => {
     // Durum yorumu Ana Sayfa ile aynı tek bileşen (ikinci bir AI değerlendirme kartı yok).
     expect(page).toContain('<AiCoachCard variant="full" />');
     expect(page).not.toContain('AI Değerlendirmesi');
+    expect(page).not.toMatch(/AI değerlendirmesi/i);
+    expect(page).not.toContain('requestAiCoachAnalysis');
     expect(page).toContain('Deneme Analizi');
     expect(page).toContain('Genel Durum');
     expect(page).not.toContain('Ders Analizi');
@@ -56,7 +58,6 @@ describe('analiz AI tetikleyici', () => {
     expect(page).not.toMatch(/\['konu',\s*'KONU'\]/);
     expect(page).not.toContain('KONU PERFORMANSI');
     expect(page).not.toContain('Zayıf konular');
-    expect(page).not.toMatch(/useEffect\([\s\S]{0,400}requestAiCoachAnalysis/);
     expect(page).not.toMatch(/useEffect\([\s\S]{0,400}analyzeExamDocumentFiles/);
     expect(page).not.toContain('askCoach(');
     const scan = readFileSync(join(process.cwd(), 'supabase/functions/exam-scan/index.ts'), 'utf8');
@@ -107,6 +108,12 @@ describe('Akıllı Plan AI tetikleyici', () => {
     expect(page).toContain('Şimdilik Değiştirme');
     expect(page).toContain('Akıllı Plan; deneme sonuçlarına');
     expect(page).toContain('Planı Sil');
+    expect(page).toContain('Sunucu ile plan');
+    expect(page).toContain('Görevlere aktar');
+    expect(page).not.toContain('Yerel üret');
+    expect(page).not.toContain('saveLocal');
+    expect(page).toContain("res.source !== 'ai'");
+    expect(page).toContain('Yerel plan otomatik kaydedilmez');
     expect(page).toContain('clearStudentSmartPlan');
     expect(page).toContain('<h3>Koçun Programı</h3>');
     expect(page).not.toContain('Eksiklerim');
@@ -151,6 +158,7 @@ describe('production kaynak dosyaları', () => {
     expect(schedule).not.toContain("saveStudentWeekPlan({ studentId: user.id");
     expect(schedule).toContain('studentOwnedSchedule');
     expect(readFileSync(join(root, 'src/context/AppContext.tsx'), 'utf8')).toContain('flushLibraryForUser');
+    expect(readFileSync(join(root, 'src/context/AppContext.tsx'), 'utf8')).toContain('clearGoogleSignupPending');
     expect(readFileSync(join(root, 'src/context/AppContext.tsx'), 'utf8')).toContain('resetAiCoachCache');
     expect(readFileSync(join(root, 'src/context/AppContext.tsx'), 'utf8')).toContain('resetExamDocumentAnalysisCache');
     expect(readFileSync(join(root, 'src/lib/aiCoachAnalysis.ts'), 'utf8')).toContain('export function resetAiCoachCache');

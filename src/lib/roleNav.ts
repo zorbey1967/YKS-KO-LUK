@@ -48,6 +48,8 @@ export function coerceAppPage(
   if (page === 'topics') next = 'home';
   // Soru merkezi gizli; eski bağlantılar ana sayfaya düşer.
   if (page === 'questions') next = 'home';
+  // Öğrenci Ayarlar deep-link → Hesabım (nav’da yok; gizli LLM ayar yüzeyi açılmasın).
+  if (page === 'settings' && role !== 'coach' && !isAdmin) next = 'account';
   return coercePageForAccess(coercePageForRole(next, role, isAdmin), gate);
 }
 

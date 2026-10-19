@@ -18,6 +18,7 @@ import { resetExamDocumentAnalysisCache } from '../lib/examDocumentAnalysis';
 import { emptyLibraryPrefs } from '../lib/libraryPresence';
 import { clearLive } from '../lib/studyTimer';
 import { clearCoachSession } from '../lib/coaches';
+import { clearGoogleSignupPending } from '../lib/googleOAuth';
 
 type Ctx = {
   page: PageId;
@@ -276,6 +277,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (leaving?.id) clearLive(localStorage, leaving.id);
         clearLive(localStorage, null);
         clearCoachSession();
+        clearGoogleSignupPending();
         hydratedUserId.current = null;
         userRef.current = null;
         setUser(null);
@@ -294,6 +296,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         flushLibraryForUser(prevUser);
         clearLive(localStorage, prevUser.id);
         clearCoachSession();
+        clearGoogleSignupPending();
         hydratedUserId.current = null;
         cloudReady.current = false;
         // Hesap değişince eski kullanıcının verisi ekranda kalmasın (pull bitene kadar flash yok).

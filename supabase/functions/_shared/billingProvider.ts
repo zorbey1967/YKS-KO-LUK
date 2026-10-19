@@ -46,10 +46,5 @@ export function merchantReady(): boolean {
 }
 
 export function missingSecretsMessage() {
-  const s = shopierSecrets();
-  if (!s.pat) return "Shopier PAT (SHOPIER_PAT) sunucuda yok. Sahte ödeme başlatılmadı; üyelik açılmadı.";
-  if (!s.productImageUrl.startsWith("https://")) {
-    return "SHOPIER_PRODUCT_IMAGE_URL (https ürün görseli) sunucuda yok. Sahte ödeme başlatılmadı.";
-  }
-  return "Shopier ödeme sistemi hazır değil. Üyelik açılmadı.";
+  return "Ödeme sistemi şu an hazır değil. Sahte ödeme başlatılmadı; üyelik açılmadı.";
 }
