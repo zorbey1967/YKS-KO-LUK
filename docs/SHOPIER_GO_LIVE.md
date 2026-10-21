@@ -8,10 +8,27 @@ OpenAPI: webhook oluşturma yanıtındaki `token` payload imzalamak içindir. `d
 
 Kod adayı (kesin resmi destek diye kullanılmaz): ham gövde üzerinde HMAC-SHA256, `Shopier-Signature` başlığı, hex veya standart Base64. Uyuşmazsa retrieve ve üyelik yok.
 
-**Canlı test (gerçek küçük tutarlı sipariş, bu repoda çalıştırılmaz):**
+## Webhook adresi
 
-1. Edge’e `SHOPIER_PAT`, `SHOPIER_WEBHOOK_TOKEN`, `SHOPIER_PRODUCT_IMAGE_URL` yazın.
-2. `POST /webhooks` ile `order.created` → `.../functions/v1/billing-webhook`.
+Shopier aboneliğine verilen adres: `https://e-kocluk.vercel.app/api/shopier/webhook`
+
+- `api/shopier/webhook.ts` (Vercel Edge, `dub1`) → `api/_lib/shopierWebhook.ts`. Mantık Supabase `billing-webhook` Shopier dalıyla aynı; yalnız `supabase/functions/_shared` yardımcılarını kullanır.
+- Supabase `billing-webhook` aynı token ile çalışmaya devam eder; Shopier’e yalnız biri verilir.
+- `vercel.json` SPA yönlendirmesi `api/` hariç tutar. Aksi halde Shopier `index.html` için 200 alır ve olay kaybolur.
+- Yanıt süresi 4,5 sn ile sınırlı; aşılırsa 503 (200 değil) ve Shopier tekrar dener. Olay kimliği ve RPC tekrar güvenlidir.
+
+## Secrets
+
+Vercel (yalnız Production, Sensitive, `VITE_` öneki yok): `SHOPIER_WEBHOOK_TOKEN`, `SHOPIER_PAT`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_URL` (yoksa `VITE_SUPABASE_URL` okunur). İsteğe bağlı `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`. Preview ortamına service role eklemeyin.
+
+Supabase Edge: `SHOPIER_PAT`, `SHOPIER_WEBHOOK_TOKEN` (create yanıtı, bir kez), `SHOPIER_PRODUCT_IMAGE_URL` (checkout). Brüt tahsilat 200,00 TRY teyit edilmeden satışa geçilmez.
+
+## Canlı test
+
+Gerçek küçük tutarlı sipariş; bu repoda çalıştırılmaz.
+
+1. Secret’ları yukarıdaki gibi yazın.
+2. PAT ile `POST /webhooks`: olay `order.created`, adres yukarıdaki Vercel adresi. Yanıttaki `token` Vercel ve Supabase’de `SHOPIER_WEBHOOK_TOKEN`.
 3. İlk gerçek bildirimi izleyin:
    - 401: aday format canlı teslimatla uyuşmuyor; üyelik açılmamış olmalı. Shopier destek/dokümandan imza baytlarını teyit edin.
    - 502: sipariş GET başarısız.
@@ -44,12 +61,10 @@ Webhook eşlenmemiş `productId` için üyelik açmaz (`urun_oturum_yok`). Yanl�
 
 Uzlaştırma: panelde ürünü kapatın; ödeme olduysa iade veya (onaylı) `productId` → doğru oturum yazımı sonra webhook/RPC. Oturum yazmadan üyelik açmayın.
 
-## Tam iade — ürün kararı (kod kesmez)
+## İade
 
-Şu an: `billing_payments.status = refunded`. `profiles` / dönem bitişi değişmez. Öğrenci dönem sonuna kadar erişir.
+055 `apply_payment_refund`: karar `GET /orders/{id}` siparişindeki `succeeded` iadelerin toplamından verilir (`Shopier-Event` yalnız etiket). Tam iadede o ödemenin kapsadığı süre düşülür; kalan süre yoksa erişim kapanır. Kısmi iadede erişim değişmez.
 
-Karar gerektirir (uygulanmadı): hemen kes, dönem sonunda kes, veya kesme. Chargeback/destek süreci netleşmeden otomatik kesme eklenmedi.
+`refund.updated` ayrı abonelik ister ve kendi `token`’ını döndürebilir; kod tek `SHOPIER_WEBHOOK_TOKEN` okur. Token farklıysa iade bildirimi 401 alır. Doğrulanmadı.
 
-## Secrets
-
-`SHOPIER_PAT`, `SHOPIER_WEBHOOK_TOKEN` (create yanıtı, bir kez), `SHOPIER_PRODUCT_IMAGE_URL`. `VITE_*` yok. Brüt tahsilat 200,00 TRY teyit edilmeden satışa geçilmez.
+İade gövdesinde sipariş kimliği alanı gerçek bildirimle doğrulanmadı. Vercel endpoint’i (`shopierWebhookOrderId`) açık sipariş alanlarını sırayla dener: `data.orderId`, `data.order.id`, `data.order_id`, `orderId`, `order.id`, `order_id`. İade olaylarında kök `id` / `data.id` iade kimliği olabileceği için kullanılmaz; açık alan yoksa 400 döner ve sipariş sorgulanmaz. Supabase `billing-webhook` eski sırayı (`data.id` önce) korur; Shopier’e yalnız Vercel adresi verilir.
