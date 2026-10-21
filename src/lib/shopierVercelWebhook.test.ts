@@ -373,6 +373,15 @@ describe('Vercel yapılandırması', () => {
     expect(spa?.source).toContain('(?!api/');
   });
 
+  it('Vercel derlemesi .ts importlarını .js’e çevirir (aksi halde Edge deploy “unsupported modules” ile düşer)', () => {
+    const ts = JSON.parse(readFileSync(join(root, 'tsconfig.json'), 'utf8')) as {
+      compilerOptions: Record<string, unknown>;
+      include: string[];
+    };
+    expect(ts.compilerOptions.rewriteRelativeImportExtensions).toBe(true);
+    expect(ts.include).toContain('api');
+  });
+
   it('endpoint Edge runtime, secret’lar VITE_ önekiyle okunmaz', () => {
     const entry = readFileSync(join(root, 'api', 'shopier', 'webhook.ts'), 'utf8');
     const core = readFileSync(join(root, 'api', '_lib', 'shopierWebhook.ts'), 'utf8');
