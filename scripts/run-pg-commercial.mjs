@@ -42,6 +42,7 @@ const M058 = mig('058');
 const M059 = mig('059');
 const M060 = mig('060');
 const M061 = mig('061');
+const M062 = mig('062');
 
 function load(rel) {
   return readFileSync(join(root, rel), 'utf8');
@@ -122,7 +123,10 @@ function scenario(label, db, list) {
   apply(db, [M060, M060, M061, M061]);
   const out61 = psql(db, load('supabase/tests/060_061_trial_google_pg.sql'));
   if (!out61.includes('OK 060_061_pg')) throw new Error(`${label}: 060/061 test sonucu yok`);
-  console.log(`  OK${out58.includes('(zorro_rls)') ? ' (058 ZORRO yazma kapısı dahil)' : ''} + 060/061`);
+  apply(db, [M062, M062]);
+  const out62 = psql(db, load('supabase/tests/062_dual_role_pg.sql'));
+  if (!out62.includes('OK 062_dual_role_pg')) throw new Error(`${label}: 062 test sonucu yok`);
+  console.log(`  OK${out58.includes('(zorro_rls)') ? ' (058 ZORRO yazma kapısı dahil)' : ''} + 060/061 + 062`);
 }
 
 try {
@@ -184,6 +188,14 @@ try {
   let f61 = false;
   try { psql('c061n', load('supabase/tests/060_061_trial_google_pg.sql')); } catch { f61 = true; }
   if (!f61) throw new Error('061 olmadan 060/061 testi geçti; test açığı yakalamıyor');
+  console.log('  OK (beklenen hata)');
+
+  process.stdout.write('• Negatif kontrol: 011 sürümüyle (onay rolü koç yapar) 062 testi başarısız olmalı\n');
+  fresh('c062n');
+  apply('c062n', [...FULL_CHAIN, ...FEATURE, M055, M058, M059, M060, M061]);
+  let f62 = false;
+  try { psql('c062n', load('supabase/tests/062_dual_role_pg.sql')); } catch { f62 = true; }
+  if (!f62) throw new Error('062 olmadan 062 testi geçti; test açığı yakalamıyor');
   console.log('  OK (beklenen hata)');
 
   console.log('PG_COMMERCIAL_OK');

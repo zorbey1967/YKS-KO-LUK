@@ -314,6 +314,9 @@ export type Profile = {
   signup_track?: string;
   signup_exam?: string;
   coach_status?: 'pending' | 'active' | 'rejected' | 'pasif';
+  /** Veritabanındaki rol / kayıt niyeti; `role` ve `signup_intent` giriş moduna göre türetilir. */
+  base_role?: ProfileRole;
+  base_signup_intent?: SignupIntent;
   target_department?: string;
   target_rank?: number;
   score?: number;

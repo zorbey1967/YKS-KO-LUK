@@ -18,7 +18,8 @@ export function Layout({ children }: { children: ReactNode }) {
   const displayName = isCoach
     ? getCoachDisplayName(profile?.name)
     : getPersonDisplayName(profile?.name, user ? 'Öğrenci' : 'Misafir');
-  const nav = sidebarNav(profile?.role, isAdmin, pagesAllowedForGate(accessGate));
+  // Oturum kontrolü bitmeden menü boş: misafire bir an bile korunan sayfa bağlantıları görünmez.
+  const nav = accessGate === 'boot' ? [] : sidebarNav(profile?.role, isAdmin, pagesAllowedForGate(accessGate));
   const item = nav.find((n) => n.id === page)
     || NAV.find((n) => n.id === page)
     || (page === 'admin' ? ADMIN_NAV : page === 'meeting' ? MEETING_NAV : NAV[0]);

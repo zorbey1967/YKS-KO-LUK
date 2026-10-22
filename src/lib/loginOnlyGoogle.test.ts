@@ -43,10 +43,16 @@ describe('giriş yapmamış kullanıcı yalnız giriş ekranını görür', () =
     expect(read('src/pages/AccountPage.tsx')).not.toContain('Koçları incele');
   });
 
+  it('oturum kontrolü bitmeden (boot) ne sayfa içeriği ne menü çizilir', () => {
+    const app = read('src/App.tsx');
+    expect(app).toMatch(/accessGate === 'boot' \? \(\n[^\n]*\n\s*<div className="card" role="status" aria-live="polite">Yükleniyor…<\/div>/);
+    expect(read('src/components/Layout.tsx')).toMatch(/const nav = accessGate === 'boot' \? \[\] : sidebarNav\(/);
+  });
+
   it('Google / e-posta bağlantısı dönüşünde bir kez giriş sonrası sayfaya yönlendirilir', () => {
     const ctx = read('src/context/AppContext.tsx');
     expect(ctx).toMatch(/postLoginRedirect\.current = true;\n\s*await applySession\(oauth\.session\.user, true\);/);
-    expect(ctx).toMatch(/postLoginRedirect\.current = false;\n\s*go\(isAdmin \? 'home' : postLoginPageForRole\(profile\?\.role\)\);/);
+    expect(ctx).toMatch(/postLoginRedirect\.current = false;[\s\S]{0,300}?go\(isAdmin \? 'home' : postLoginPageForRole\(profile\?\.role\)\);/);
     expect(read('src/pages/AccountPage.tsx')).toMatch(/go\(postLoginPageForRole\(roleName\)\)/);
   });
 });

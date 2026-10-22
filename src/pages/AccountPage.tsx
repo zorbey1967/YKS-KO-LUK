@@ -5,8 +5,19 @@ import { SUPABASE_UNAVAILABLE, supabase, withTimeout } from '../lib/supabase';
 import { normalizeData, saveData } from '../lib/storage';
 import { coachAdvice } from '../lib/coach';
 import { COACH_TRACKS, clearCoachSession, compressCoachPhoto, type CoachTrack } from '../lib/coaches';
-import { submitCoachApplication } from '../lib/cloudPlatform';
+import { fetchMyCoach, submitCoachApplication } from '../lib/cloudPlatform';
 import { postLoginPageForRole } from '../lib/roleNav';
+import {
+  applyLoginMode,
+  coachModeAvailable,
+  hasCoachRecord,
+  loginModeNotice,
+  readLoginMode,
+  resolveLoginMode,
+  studentModeAvailable,
+  type LoginMode,
+} from '../lib/roleMode';
+import type { Profile } from '../lib/types';
 import { getCoachDisplayName, getPersonDisplayName, joinCoachName, splitPersonName } from '../lib/displayName';
 import { emailLooksValid, normalizeEmailInput, passwordPolicyError, publicAuthError } from '../lib/authUi';
 import { authEmailRedirectTo } from '../lib/authRedirect';
@@ -31,7 +42,9 @@ const SIGNUP_EXAMS = ['YKS', 'LGS', 'KPSS', 'Okul'] as const;
 type AccountRole = 'ogrenci' | 'koc';
 
 export function AccountPage() {
-  const { user, profile, data, setData, authMsg, setAuthMsg, toast, cloudStatus, go, isAdmin, refreshAuth, accessGate } = useApp();
+  const { user, profile, data, setData, authMsg, setAuthMsg, toast, cloudStatus, go, isAdmin, refreshAuth, accessGate, loginMode, setLoginMode } = useApp();
+  const [loginAs, setLoginAs] = useState<LoginMode>(() => readLoginMode() ?? 'student');
+  const [coachFormOpen, setCoachFormOpen] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [firstName, setFirstName] = useState(() => splitPersonName(profile?.name || '').firstName);
@@ -112,6 +125,7 @@ export function AccountPage() {
         const cloud = await submitCoachApplication({ userId: user.id, ...p });
         if (cloud.ok) {
           try { localStorage.removeItem('yks_pending_coach_app'); } catch { /* ignore */ }
+          void refreshAuth();
         }
       } catch { /* ignore */ }
     })();
@@ -200,12 +214,31 @@ export function AccountPage() {
       if (role === 'koc') {
         if (supabase && !user) {
           setAuthMsg('Kayıt yapılıyor…');
-          const { error } = await withTimeout(supabase.auth.signUp({
+          const { data: res, error } = await withTimeout(supabase.auth.signUp({
             email: mail,
             password,
             options: { data: meta, emailRedirectTo: authEmailRedirectTo(window.location.origin) },
           }));
           if (error) throw error;
+          if (res.user && Array.isArray(res.user.identities) && res.user.identities.length === 0) {
+            setAuthMsg('Bu e-posta zaten kayıtlı. Giriş yap; koç başvurusunu Hesabım sayfasından yapabilirsin.');
+            return;
+          }
+          setLoginMode('coach');
+          if (!res.session) {
+            try {
+              localStorage.setItem('yks_pending_coach_app', JSON.stringify({
+                name: joinCoachName(firstName, lastName),
+                email: mail,
+                track: coachTrack,
+                focus: focus.trim() || 'Süreç koçluğu',
+                photo,
+                studentCount: Number(studentCount) || 0,
+              }));
+            } catch { /* ignore */ }
+            setAuthMsg('Kayıt tamam. E-postanı doğrula ve "Koç olarak gir" ile giriş yap; koç başvurun girişte gönderilir.');
+            return;
+          }
         }
         await applyCoach();
         return;
@@ -249,6 +282,7 @@ export function AccountPage() {
   async function signInGoogle() {
     if (!supabase) return setAuthMsg(SUPABASE_UNAVAILABLE);
     clearGoogleSignupPending();
+    setLoginMode(loginAs);
     if (location.hash.includes('oauth=google')) location.hash = '/account';
     setGoogleBusy(true);
     setAuthMsg('Google’a yönlendiriliyorsun…');
@@ -269,6 +303,7 @@ export function AccountPage() {
     setBusy(true);
     setAuthMsg('Giriş yapılıyor…');
     try {
+      setLoginMode(loginAs);
       const { error } = await withTimeout(supabase.auth.signInWithPassword({ email: mail, password }));
       if (error) throw error;
       setAuthMsg('Giriş başarılı.');
@@ -277,8 +312,23 @@ export function AccountPage() {
       const uid = (await supabase.auth.getUser()).data.user?.id;
       let roleName: string | undefined;
       if (uid) {
-        const { data: row } = await withTimeout(supabase.from('profiles').select('role').eq('id', uid).maybeSingle());
-        roleName = row && typeof row === 'object' ? String((row as { role?: string }).role || '') : '';
+        const { data: row } = await withTimeout(supabase.from('profiles').select('role, signup_intent').eq('id', uid).maybeSingle());
+        const r = (row && typeof row === 'object' ? row : {}) as { role?: string; signup_intent?: string };
+        const dbRole = r.role === 'admin' || r.role === 'coach' ? r.role : 'student';
+        const coachRow = await fetchMyCoach(uid);
+        const base: Profile = {
+          name: '', email: '', plan: '',
+          role: dbRole, base_role: dbRole,
+          base_signup_intent: r.signup_intent === 'coach' ? 'coach' : 'student',
+          coach_status: coachRow?.status,
+        };
+        const note = loginModeNotice(base, loginAs);
+        if (note) {
+          setLoginMode(resolveLoginMode(base, loginAs));
+          setAuthMsg(note);
+          toast(note);
+        }
+        roleName = applyLoginMode(base, loginAs)?.role;
       }
       go(postLoginPageForRole(roleName));
     } catch (e) {
@@ -322,6 +372,31 @@ export function AccountPage() {
     <div className={authOk ? 'success' : 'notice'} style={{ marginTop: 14 }} role="status">{authMsg}</div>
   ) : null;
 
+  const coachFields = (
+    <>
+      <div className="field">
+        <label>Branş</label>
+        <select value={coachTrack} onChange={(e) => setCoachTrack(e.target.value as CoachTrack)}>
+          {COACH_TRACKS.map((t) => <option key={t}>{t}</option>)}
+        </select>
+      </div>
+      <div className="field"><label>Kaç öğrencin var?</label><input type="number" min={0} max={500} value={studentCount} onChange={(e) => setStudentCount(e.target.value)} /></div>
+      <div className="field" style={{ gridColumn: '1 / -1' }}><label>Uzmanlık</label><input value={focus} onChange={(e) => setFocus(e.target.value)} placeholder="TYT tempo, deneme analizi…" /></div>
+      <div className="field" style={{ gridColumn: '1 / -1' }}>
+        <label>Fotoğraf</label>
+        <input type="file" accept="image/*" onChange={(e) => void onPhoto(e.target.files?.[0])} />
+        {photo ? (
+          <div className="subject" style={{ marginTop: 8 }}>
+            <div className="subject-icon" style={{ overflow: 'hidden', padding: 0 }}>
+              <img src={photo} alt="" width={42} height={42} style={{ width: 42, height: 42, objectFit: 'cover' }} />
+            </div>
+            <span>Önizleme</span>
+          </div>
+        ) : <p className="muted" style={{ margin: '8px 0 0' }}>Koçlar listesinde görünecek.</p>}
+      </div>
+    </>
+  );
+
   if (!user) {
     return (
       <div className="auth-shell">
@@ -344,6 +419,16 @@ export function AccountPage() {
             <button className={mode === 'sifre' ? 'on' : ''} type="button" onClick={() => { setMode('sifre'); setAuthMsg(''); }}>Şifre sıfırla</button>
           </div>
           {!supabase ? <div className="notice" role="alert">{SUPABASE_UNAVAILABLE}</div> : null}
+          {mode === 'giris' ? (
+            <div className="field" style={{ marginBottom: 12 }}>
+              <label>Nasıl gireceksin?</label>
+              <div className="chip-row" role="radiogroup" aria-label="Giriş türü">
+                <button className={`chip ${loginAs === 'student' ? 'on' : ''}`} type="button" role="radio" aria-checked={loginAs === 'student'} onClick={() => setLoginAs('student')}>Öğrenci olarak gir</button>
+                <button className={`chip ${loginAs === 'coach' ? 'on' : ''}`} type="button" role="radio" aria-checked={loginAs === 'coach'} onClick={() => setLoginAs('coach')}>Koç olarak gir</button>
+              </div>
+              <p className="muted" style={{ margin: '6px 0 0' }}>Aynı hesapla iki tarafı da kullanabilirsin. Koç paneli yönetici onaylı koç başvurusuyla açılır.</p>
+            </div>
+          ) : null}
           {mode === 'giris' ? (
             <div className="actions" style={{ marginBottom: 12 }}>
               <button className="btn secondary" type="button" disabled={googleBusy || !supabase} onClick={() => void signInGoogle()}>
@@ -408,30 +493,7 @@ export function AccountPage() {
             {mode !== 'sifre' ? (
             <div className="field"><label>Şifre</label><input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete={mode === 'giris' ? 'current-password' : 'new-password'} maxLength={72} />{mode === 'kayit' ? <p className="muted" style={{ margin: '6px 0 0' }}>En az 8 karakter; harf ve rakam birlikte.</p> : null}</div>
             ) : null}
-            {mode === 'kayit' && role === 'koc' ? (
-              <>
-                <div className="field">
-                  <label>Branş</label>
-                  <select value={coachTrack} onChange={(e) => setCoachTrack(e.target.value as CoachTrack)}>
-                    {COACH_TRACKS.map((t) => <option key={t}>{t}</option>)}
-                  </select>
-                </div>
-                <div className="field"><label>Kaç öğrencin var?</label><input type="number" min={0} max={500} value={studentCount} onChange={(e) => setStudentCount(e.target.value)} /></div>
-                <div className="field" style={{ gridColumn: '1 / -1' }}><label>Uzmanlık</label><input value={focus} onChange={(e) => setFocus(e.target.value)} placeholder="TYT tempo, deneme analizi…" /></div>
-                <div className="field" style={{ gridColumn: '1 / -1' }}>
-                  <label>Fotoğraf</label>
-                  <input type="file" accept="image/*" onChange={(e) => void onPhoto(e.target.files?.[0])} />
-                  {photo ? (
-                    <div className="subject" style={{ marginTop: 8 }}>
-                      <div className="subject-icon" style={{ overflow: 'hidden', padding: 0 }}>
-                        <img src={photo} alt="" width={42} height={42} style={{ width: 42, height: 42, objectFit: 'cover' }} />
-                      </div>
-                      <span>Önizleme</span>
-                    </div>
-                  ) : <p className="muted" style={{ margin: '8px 0 0' }}>Koçlar listesinde görünecek.</p>}
-                </div>
-              </>
-            ) : null}
+            {mode === 'kayit' && role === 'koc' ? coachFields : null}
           </div>
           <div className="actions">
             {mode === 'giris' ? (
@@ -454,6 +516,38 @@ export function AccountPage() {
     ? getCoachDisplayName({ name: profile?.name, firstName, lastName })
     : getPersonDisplayName(profile?.name, 'Öğrenci');
   const gateNote = accessMessage(accessGate);
+  const showModeCard = !isAdmin && studentModeAvailable(profile) && !isGuestAccountEmail(user.email);
+  const canCoachMode = coachModeAvailable(profile);
+  const coachRecord = hasCoachRecord(profile);
+  const coachStatusNote = profile?.coach_status === 'pending'
+    ? 'Koç başvurun yönetici onayı bekliyor. Onaylanınca buradan veya girişte "Koç olarak gir" ile koç paneline geçebilirsin.'
+    : profile?.coach_status === 'rejected'
+      ? 'Koç başvurun kabul edilmedi. Öğrenci tarafını kullanmaya devam edebilirsin.'
+      : profile?.coach_status === 'pasif'
+        ? 'Koç kaydın pasif. Yönetici yeniden açana kadar koç paneli kapalı.'
+        : '';
+
+  function switchMode(next: LoginMode) {
+    setLoginMode(next);
+    const view = applyLoginMode(profile, next);
+    const dest = view?.signup_intent === 'coach' && view.role !== 'coach' ? 'account' : postLoginPageForRole(view?.role);
+    toast(next === 'coach' ? 'Koç moduna geçildi' : 'Öğrenci moduna geçildi');
+    // Yeni rol bir sonraki çizimde bağlama yansır; yönlendirme ondan sonra.
+    window.setTimeout(() => go(dest), 0);
+  }
+
+  async function applyCoachFromAccount() {
+    if (busy) return;
+    setBusy(true);
+    try {
+      if (await applyCoach()) {
+        setCoachFormOpen(false);
+        await refreshAuth();
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <>
@@ -492,6 +586,56 @@ export function AccountPage() {
         </div>
         {authAlert}
       </div>
+      {showModeCard ? (
+        <div className="card" style={{ marginTop: 16 }}>
+          <div className="section-title">
+            <h3>Öğrenci / Koç</h3>
+            <span>Şu an: {loginMode === 'coach' ? 'Koç modu' : 'Öğrenci modu'}</span>
+          </div>
+          {canCoachMode ? (
+            <>
+              <p className="muted" style={{ marginTop: 0 }}>
+                Aynı hesapla iki tarafı da kullanabilirsin. Öğrenci tarafında deneme ve paket kuralları her öğrenciyle aynıdır.
+              </p>
+              <div className="actions">
+                {loginMode === 'coach' ? (
+                  <button className="btn primary" type="button" onClick={() => switchMode('student')}>Öğrenci moduna geç</button>
+                ) : (
+                  <button className="btn primary" type="button" onClick={() => switchMode('coach')}>Koç paneline geç</button>
+                )}
+              </div>
+            </>
+          ) : coachRecord ? (
+            <>
+              <p className="muted" style={{ marginTop: 0 }}>{coachStatusNote}</p>
+              {loginMode === 'coach' ? (
+                <div className="actions">
+                  <button className="btn primary" type="button" onClick={() => switchMode('student')}>Öğrenci moduna dön</button>
+                </div>
+              ) : null}
+            </>
+          ) : (
+            <>
+              <p className="muted" style={{ marginTop: 0 }}>
+                Koç olarak da çalışmak istersen başvur. Yönetici onaylayınca aynı hesapla "Koç olarak gir" seçebilirsin; öğrenci tarafın aynen kalır.
+              </p>
+              {coachFormOpen ? (
+                <form onSubmit={(e) => { e.preventDefault(); void applyCoachFromAccount(); }}>
+                  <div className="form-grid">{coachFields}</div>
+                  <div className="actions">
+                    <button className="btn primary" type="submit" disabled={busy}>{busy ? 'Gönderiliyor…' : 'Başvuruyu gönder'}</button>
+                    <button className="btn" type="button" disabled={busy} onClick={() => setCoachFormOpen(false)}>Vazgeç</button>
+                  </div>
+                </form>
+              ) : (
+                <div className="actions">
+                  <button className="btn secondary" type="button" onClick={() => setCoachFormOpen(true)}>Koç başvurusu yap</button>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      ) : null}
       <div className="card" style={{ marginTop: 16 }}>
         <div className="section-title"><h3>Güvenlik</h3><span>Oturum bu cihazda</span></div>
         <p className="muted">

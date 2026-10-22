@@ -19,6 +19,7 @@ import { emptyLibraryPrefs } from '../lib/libraryPresence';
 import { clearLive } from '../lib/studyTimer';
 import { clearCoachSession } from '../lib/coaches';
 import { clearGoogleSignupPending } from '../lib/googleOAuth';
+import { applyLoginMode, loginModeNotice, readLoginMode, resolveLoginMode, writeLoginMode, type LoginMode } from '../lib/roleMode';
 
 type Ctx = {
   page: PageId;
@@ -42,6 +43,8 @@ type Ctx = {
   isAdmin: boolean;
   isPlatformOwner: boolean;
   accessGate: AccessGate;
+  loginMode: LoginMode;
+  setLoginMode: (mode: LoginMode) => void;
 };
 
 const AppCtx = createContext<Ctx | null>(null);
@@ -75,10 +78,17 @@ function syncHashFromPath() {
 export function AppProvider({ children }: { children: ReactNode }) {
   const [page, setPage] = useState<PageId>(pageFromHash);
   const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(() => {
+  const [baseProfile, setProfile] = useState<Profile | null>(() => {
     const name = readLocal('yks_guest_name');
     return { name, email: '', plan: '' };
   });
+  const [storedLoginMode, setStoredLoginMode] = useState<LoginMode | null>(readLoginMode);
+  const profile = useMemo(() => applyLoginMode(baseProfile, storedLoginMode), [baseProfile, storedLoginMode]);
+  const loginMode = resolveLoginMode(baseProfile, storedLoginMode);
+  const setLoginMode = useCallback((mode: LoginMode) => {
+    writeLoginMode(mode);
+    setStoredLoginMode(mode);
+  }, []);
   const [data, setDataState] = useState<AppData>(() => loadData(null));
   const [theme, setTheme] = useState(() => readLocal('yks_theme', 'light') || 'light');
   const [toastMsg, setToastMsg] = useState('');
@@ -191,8 +201,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
             email: row.email || u.email || '',
             plan: row.plan || '',
             role: row.role === 'admin' || row.role === 'coach' ? row.role : 'student',
+            base_role: row.role === 'admin' || row.role === 'coach' ? row.role : 'student',
             account_status: parseAccountStatus(row.account_status),
-            signup_intent: row.signup_intent === 'coach' || Boolean(coach) ? 'coach' : 'student',
+            signup_intent: row.signup_intent === 'coach' ? 'coach' : 'student',
+            base_signup_intent: row.signup_intent === 'coach' ? 'coach' : 'student',
             signup_grade: String(row.signup_grade || ''),
             signup_track: String(row.signup_track || ''),
             signup_exam: String(row.signup_exam || ''),
@@ -206,7 +218,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
             subscription_started_at: 'subscription_started_at' in row ? (row.subscription_started_at || null) : undefined,
             subscription_ends_at: 'subscription_ends_at' in row ? (row.subscription_ends_at || null) : undefined,
           }
-        : { id: u.id, name: '', email: u.email || '', plan: '', coach_status: coach?.status, signup_intent: coach ? 'coach' : 'student' };
+        : {
+            id: u.id, name: '', email: u.email || '', plan: '', coach_status: coach?.status,
+            role: 'student', base_role: 'student',
+            signup_intent: coach ? 'coach' : 'student', base_signup_intent: coach ? 'coach' : 'student',
+          };
       if (p.account_status === 'pasif') {
         setAuthMsg('Bu hesap pasif. Yönetici açana kadar giriş kapalı.');
         await supabase.auth.signOut();
@@ -432,8 +448,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!postLoginRedirect.current || !user || accessGate === 'boot' || accessGate === 'guest') return;
     postLoginRedirect.current = false;
+    const note = loginModeNotice(baseProfile, storedLoginMode);
+    if (note) {
+      toast(note);
+      setLoginMode(resolveLoginMode(baseProfile, storedLoginMode));
+    }
     go(isAdmin ? 'home' : postLoginPageForRole(profile?.role));
-  }, [user, accessGate, profile?.role, isAdmin, go]);
+  }, [user, accessGate, profile?.role, isAdmin, go, baseProfile, storedLoginMode, toast, setLoginMode]);
 
   const value = useMemo<Ctx>(
     () => ({
@@ -458,8 +479,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       isAdmin,
       isPlatformOwner,
       accessGate,
+      loginMode,
+      setLoginMode,
     }),
-    [page, go, data, setData, user, profile, theme, toast, toastMsg, menuOpen, authMsg, cloudStatus, refreshAuth, saveGoals, isAdmin, isPlatformOwner, accessGate],
+    [page, go, data, setData, user, profile, theme, toast, toastMsg, menuOpen, authMsg, cloudStatus, refreshAuth, saveGoals, isAdmin, isPlatformOwner, accessGate, loginMode, setLoginMode],
   );
 
   return <AppCtx.Provider value={value}>{children}</AppCtx.Provider>;

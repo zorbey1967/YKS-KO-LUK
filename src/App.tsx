@@ -87,6 +87,10 @@ function Shell() {
 
   return (
     <Layout>
+      {accessGate === 'boot' ? (
+        // Oturum kontrolü bitmeden sayfa çizilmez: misafir bir an bile korunan sayfayı görmez.
+        <div className="card" role="status" aria-live="polite">Yükleniyor…</div>
+      ) : (
       <ErrorBoundary key={page}>
       {billingLock ? <FeatureLock title="Deneme veya üyelik gerekli" /> : null}
       {!billingLock && page === 'home' && <HomePage onNewTask={() => setTaskOpen(true)} />}
@@ -111,6 +115,7 @@ function Shell() {
       {page === 'admin' && (isAdmin ? <AdminPage /> : <AdminGate />)}
       {page === 'meeting' && <MeetingPage />}
       </ErrorBoundary>
+      )}
       {taskOpen && <TaskModal onClose={() => setTaskOpen(false)} />}
       <CommandPalette open={cmd} onClose={() => setCmd(false)} />
       {page === 'meeting' || !user ? null : <CoachChat />}

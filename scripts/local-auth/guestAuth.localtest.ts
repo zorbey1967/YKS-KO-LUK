@@ -170,6 +170,55 @@ describe.skipIf(!schemaMode)('Uçtan uca: misafir ödeme → hesap → paket →
   });
 });
 
+describe.skipIf(!schemaMode)('Uçtan uca: tek hesap öğrenci + koç (062)', () => {
+  it('6) öğrenci koç başvurur; kendisi onaylayamaz; yönetici onayı rolü öğrenci bırakır', async () => {
+    const pw = `Rk${uuid().slice(0, 8)}9a`;
+    const email = `cift-${uuid().slice(0, 8)}@example.com`;
+    const made = await admin.auth.admin.createUser({ email, password: pw, email_confirm: true, user_metadata: { intent: 'student', name: 'Çift Rol' } });
+    report.dualCreate = made.error ? `HATA: ${made.error.message}` : 'kabul';
+    expect(made.error, made.error?.message).toBeNull();
+    const uid = made.data.user!.id;
+
+    const s = browser();
+    const login = await s.auth.signInWithPassword({ email, password: pw });
+    expect(login.error, login.error?.message).toBeNull();
+    const app = await s.from('coaches').upsert(
+      { user_id: uid, name: 'Çift Rol', email, track: 'YKS Sayısal', focus: 'Deneme', photo: 'data:image/png;base64,AA', student_count: 0, status: 'active' },
+      { onConflict: 'user_id' },
+    ).select('id, status').single();
+    report.dualApply = app.error ? `HATA: ${app.error.message}` : app.data?.status;
+    expect(app.error, app.error?.message).toBeNull();
+    expect(app.data?.status).toBe('pending');
+    const coachId = app.data!.id as string;
+
+    const self = await s.rpc('admin_set_coach_status', { p_id: coachId, p_status: 'active' });
+    report.dualSelfApprove = self.error ? 'reddedildi' : 'KABUL (beklenmedik)';
+    expect(self.error).not.toBeNull();
+
+    const adminPw = `Rk${uuid().slice(0, 8)}9a`;
+    const adminEmail = `yonetici-${uuid().slice(0, 8)}@example.com`;
+    const madeAdmin = await admin.auth.admin.createUser({ email: adminEmail, password: adminPw, email_confirm: true });
+    expect(madeAdmin.error, madeAdmin.error?.message).toBeNull();
+    const promote = await admin.from('profiles').update({ role: 'admin' }).eq('id', madeAdmin.data.user!.id);
+    expect(promote.error, promote.error?.message).toBeNull();
+    const a = browser();
+    expect((await a.auth.signInWithPassword({ email: adminEmail, password: adminPw })).error).toBeNull();
+    const approve = await a.rpc('admin_set_coach_status', { p_id: coachId, p_status: 'active' });
+    report.dualAdminApprove = approve.error ? `HATA: ${approve.error.message}` : 'kabul';
+    expect(approve.error, approve.error?.message).toBeNull();
+
+    const prof = await admin.from('profiles').select('role, account_status').eq('id', uid).single();
+    const coach = await admin.from('coaches').select('status').eq('id', coachId).single();
+    report.dualAfter = { role: prof.data?.role, coach: coach.data?.status };
+    expect(prof.data).toMatchObject({ role: 'student', account_status: 'active' });
+    expect(coach.data?.status).toBe('active');
+
+    const tier = await s.rpc('caller_access_tier');
+    report.dualStudentTier = tier.error ? `HATA: ${tier.error.message}` : tier.data;
+    expect(tier.data).toBe('none');
+  });
+});
+
 describe('rapor', () => {
   it('sonuç özeti', () => {
     console.log(`RK_LOCAL_REPORT ${JSON.stringify({ schemaMode, ...report })}`);
