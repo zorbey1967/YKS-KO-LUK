@@ -2,6 +2,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { studentFeatureOk } from "../_shared/billingEntitled.ts";
+import { accessTierFromBilling, premiumAiDecision, tierCan } from "../_shared/planAccess.ts";
 import { type RateStore } from "../_shared/edgeRateLimit.ts";
 import { allowDistributed, readUpstashEnv } from "../_shared/upstashRateLimit.ts";
 import { aiQuotaFor, aiQuotaKeys } from "../_shared/aiUsageQuota.ts";
@@ -135,6 +136,8 @@ async function requireUser(req: Request) {
     return {
       user: data.user,
       error: null as string | null,
+      privileged: true,
+      client: supabase,
       billing: { skip: false as const, role: "admin", plan: "", status: "active", trialEnds: "", subEnds: "" },
     };
   }
@@ -154,7 +157,7 @@ async function requireUser(req: Request) {
       trialEnds: String(billRow?.trial_ends_at || ""),
       subEnds: String(billRow?.subscription_ends_at || ""),
     };
-  return { user: data.user, error: null as string | null, billing };
+  return { user: data.user, error: null as string | null, privileged: false, client: supabase, billing };
 }
 
 function parseImage(rawB64: unknown, rawMime: unknown): { mime: string; data: string } | null {
@@ -233,21 +236,33 @@ async function geminiGenerate(
 
   let last = "";
   for (const model of models.map((m) => m.trim()).filter(Boolean)) {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-goog-api-key": apiKey,
+    // Model başına zaman aşımı; ağ hatasında sıradaki model denenir, hepsi düşerse çağıran 502 döner.
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 25_000);
+    let res: Response;
+    try {
+      res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+        {
+          signal: ctrl.signal,
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-goog-api-key": apiKey,
+          },
+          body: JSON.stringify({
+            systemInstruction: { parts: [{ text: system.slice(0, 12000) }] },
+            contents,
+            generationConfig: { temperature: 0.35, maxOutputTokens: 4096 },
+          }),
         },
-        body: JSON.stringify({
-          systemInstruction: { parts: [{ text: system.slice(0, 12000) }] },
-          contents,
-          generationConfig: { temperature: 0.35, maxOutputTokens: 4096 },
-        }),
-      },
-    );
+      );
+    } catch {
+      last = "ağ/zaman aşımı";
+      continue;
+    } finally {
+      clearTimeout(timer);
+    }
     const payload = await res.json().catch(() => ({}));
     const text = String(payload?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text).join("") || "").trim();
     if (res.ok && text) return { text, model: "ZORRO" };
@@ -292,8 +307,16 @@ Deno.serve(async (req) => {
     return json(req, { error: "Bu özellik öğrenci hesabına özel." }, 403);
   }
   const bill = studentFeatureOk(auth.billing);
-  if (!bill.entitled) {
+  if (!bill.entitled && !auth.privileged) {
     return json(req, { error: "Deneme veya ücretli üyelik gerekli." }, 402);
+  }
+  // Yapay Zekâ yalnız aktif Premium (ve yönetici). Edge hesabı VE veritabanı (058 caller_premium_ai)
+  // birlikte evet demeli; RPC hatasında istek reddedilir. Gövdedeki plan/katman alanı okunmaz.
+  const tier = accessTierFromBilling(auth.billing, auth.privileged);
+  const premiumRpc = tierCan(tier, "ai") ? await auth.client.rpc("caller_premium_ai") : { data: null, error: null };
+  const ai = premiumAiDecision({ tier, rpcOk: !premiumRpc.error, rpcValue: premiumRpc.data });
+  if (!ai.allow) {
+    return json(req, { error: ai.error, code: "premium_required" }, ai.status);
   }
 
   // Günlük / aylık ZORRO kullanım sınırı (paket bazlı, ortam değişkeniyle ayarlanır; 0 = sınırsız).
@@ -318,9 +341,6 @@ Deno.serve(async (req) => {
   }
 
   const action = body.action === "schedule" || body.action === "plan" ? body.action : "chat";
-  if ((action === "plan" || action === "schedule") && bill.tier === "pro") {
-    return json(req, { error: "Gelişmiş Zorro planı Premium veya deneme süresinde açılır." }, 402);
-  }
   const intent = String(body.intent || "chat");
   const ctxRaw = typeof body.context === "string" ? body.context : JSON.stringify(body.context || {});
   const ctx = ctxRaw.slice(0, 6000);

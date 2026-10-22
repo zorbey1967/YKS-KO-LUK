@@ -1,6 +1,7 @@
 import type { AccessGate } from './accessGate';
 import type { Profile } from './types';
-import { PLANS, TRIAL_DAYS, normalizePlanId, type FeatureId, type PlanId } from './plans';
+import { FEATURE_CAPABILITY, TRIAL_DAYS, normalizePlanId, type FeatureId, type PlanId } from './plans';
+import { tierCan, type AccessTier } from './planAccess';
 
 export type SubscriptionStatus =
   | 'none'
@@ -98,7 +99,7 @@ export function entitledPlan(snap: BillingSnapshot): PlanId | 'trial' | null {
 export function displayMembershipName(profile: Profile | null | undefined, now = Date.now(), isAdmin = false) {
   const snap = billingFromProfile(profile, now);
   const tier = entitledPlan(snap);
-  if (tier === 'trial') return '14 Günlük Ücretsiz Premium Deneme';
+  if (tier === 'trial') return '14 Günlük Ücretsiz Deneme';
   if (isAdmin) return 'Premium';
   if (profile?.role === 'coach') return '—';
   if (!snap.schemaReady || snap.status === 'legacy') return 'Üyelik kaydı sunucuda yok';
@@ -121,6 +122,19 @@ export function labelStoredPlan(raw: unknown) {
   return s;
 }
 
+/**
+ * Öğrencinin erişim katmanı (planAccess tablosu). Yönetici → staff.
+ * Koç bu katmana girmez: öğrenci paketi değildir (aşağıda canUseFeature koç araçlarını ayrı tutar).
+ */
+export function accessTier(profile: Profile | null | undefined, now = Date.now(), isAdmin = false): AccessTier {
+  if (isAdmin) return 'staff';
+  const tier = entitledPlan(billingFromProfile(profile, now));
+  if (tier === 'premium') return 'premium';
+  if (tier === 'pro') return 'pro';
+  if (tier === 'trial') return 'trial';
+  return 'none';
+}
+
 export function canUseFeature(
   profile: Profile | null | undefined,
   feature: FeatureId,
@@ -128,16 +142,19 @@ export function canUseFeature(
   isAdmin = false,
 ) {
   if (isAdmin) return true;
+  /** Koç paneli kendi araçlarını kullanır; öğrenci ZORRO'su sunucuda koça 403 döner. */
   if (profile?.role === 'coach') return true;
-  const snap = billingFromProfile(profile, now);
-  const tier = entitledPlan(snap);
-  if (tier === 'trial') return true;
-  if (tier === 'premium') return PLANS.premium.features.includes(feature);
-  if (tier === 'pro') return PLANS.pro.features.includes(feature);
-  return false;
+  return tierCan(accessTier(profile, now, false), FEATURE_CAPABILITY[feature]);
 }
 
-/** Analiz kullanımı: Premium / deneme / sunucu isAdmin. Pro görür, çalıştırmaz. */
+/** ZORRO ve diğer yapay zekâ işlemleri: yalnız aktif Premium (ve yönetici). Koç: öğrenci ZORRO'su yok. */
+export function canUseAi(profile: Profile | null | undefined, isAdmin: boolean, now = Date.now()) {
+  if (isAdmin) return true;
+  if (profile?.role === 'coach' || profile?.role === 'admin') return false;
+  return tierCan(accessTier(profile, now, false), 'ai');
+}
+
+/** Gelişmiş analiz: yalnız aktif Premium ve yönetici. Pro ve deneme sayfayı görür, kilitli. */
 export function canUseAnalytics(
   profile: Profile | null | undefined,
   isAdmin: boolean,

@@ -1,4 +1,4 @@
-import { amountsMatch, BILLING_CURRENCY, type PlanId } from "./billingCatalog.ts";
+import { BILLING_CURRENCY, isCatalogPriceTry, type PlanId } from "./billingCatalog.ts";
 import { checkoutCurrencyOk, safeEq } from "./billingWebhookGuard.ts";
 import type { ShopierOrder } from "./shopierApi.ts";
 
@@ -80,7 +80,8 @@ export function shopierActivateOk(input: {
   if (!checkoutCurrencyOk(input.sessionCurrency) || input.order.currency !== BILLING_CURRENCY) return false;
   const expected = Number(input.sessionAmountTry);
   if (!Number.isFinite(expected) || expected <= 0) return false;
-  if (!amountsMatch(input.planId, expected)) return false;
+  // Oturum tutarı planın katalog fiyatı olmalı; sipariş toplamı oturum tutarına eşit olmalı (aşağıda).
+  if (!isCatalogPriceTry(input.planId, expected)) return false;
   if (Math.abs(input.order.total - expected) > 0.009) return false;
   const matched = input.order.lineItems.filter((line) => line.productId === input.productId);
   if (matched.length !== 1) return false;

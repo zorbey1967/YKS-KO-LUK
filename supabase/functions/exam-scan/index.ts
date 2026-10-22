@@ -1,7 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
-import { examAnalyticsAllowed, studentFeatureOk } from "../_shared/billingEntitled.ts";
+import { accessTierFromBilling, premiumAiDecision, tierCan } from "../_shared/planAccess.ts";
 import { type RateStore } from "../_shared/edgeRateLimit.ts";
 import { allowDistributed, readUpstashEnv } from "../_shared/upstashRateLimit.ts";
 
@@ -83,20 +83,23 @@ Deno.serve(async (req) => {
   if (!privileged && String(billRow?.role || "") === "coach") {
     return json(req, { ok: false, error: "Bu özellik öğrenci hesabına özel." }, 403);
   }
-  const bill = privileged
-    ? { entitled: true, tier: "premium" as const }
-    : studentFeatureOk(billErr
-      ? { skip: true, role: "", status: "", trialEnds: "", subEnds: "", plan: "" }
-      : {
-        skip: false,
-        role: String(billRow?.role || ""),
-        plan: String(billRow?.plan || ""),
-        status: String(billRow?.subscription_status || ""),
-        trialEnds: String(billRow?.trial_ends_at || ""),
-        subEnds: String(billRow?.subscription_ends_at || ""),
-      });
-  if (!examAnalyticsAllowed(privileged, bill)) {
-    return json(req, { ok: false, error: "Analiz Premium veya 14 günlük denemede açılır." }, 402);
+  // Sınav görseli yapay zekâ ile okunur: yalnız aktif Premium (ve yönetici). Edge hesabı VE
+  // veritabanı (058 caller_premium_ai) birlikte evet demeli; RPC hatasında istek reddedilir.
+  const gate = billErr
+    ? { skip: true, role: "", status: "", trialEnds: "", subEnds: "", plan: "" }
+    : {
+      skip: false,
+      role: String(billRow?.role || ""),
+      plan: String(billRow?.plan || ""),
+      status: String(billRow?.subscription_status || ""),
+      trialEnds: String(billRow?.trial_ends_at || ""),
+      subEnds: String(billRow?.subscription_ends_at || ""),
+    };
+  const tier = accessTierFromBilling(gate, privileged);
+  const premiumRpc = tierCan(tier, "ai") ? await supabase.rpc("caller_premium_ai") : { data: null, error: null };
+  const ai = premiumAiDecision({ tier, rpcOk: !premiumRpc.error, rpcValue: premiumRpc.data });
+  if (!ai.allow) {
+    return json(req, { ok: false, error: ai.error, code: "premium_required" }, ai.status);
   }
 
   const { data: slot, error: slotErr } = await supabase.rpc("take_exam_scan_slot");
@@ -182,17 +185,28 @@ ${studentCtx ? `Öğrenci bağlamı (karşılaştırma; uydurma yok):\n${student
 
   const prompt = mode === "document_analysis" ? docPrompt : marksPrompt;
   const model = (Deno.env.get("GEMINI_MODEL") || "gemini-2.0-flash").split(",")[0].trim();
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-    body: JSON.stringify({
-      contents: [{ role: "user", parts: [{ text: prompt }, { inline_data: { mime_type: sniffed, data: b64 } }] }],
-      generationConfig: {
-        temperature: 0.1,
-        maxOutputTokens: mode === "document_analysis" ? 4096 : 1024,
-      },
-    }),
-  });
+  // Model ağ hatası / zaman aşımı: güvenli 502 (anahtar ve iç hata dışarı yazılmaz).
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 45_000);
+  let res: Response;
+  try {
+    res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+      body: JSON.stringify({
+        contents: [{ role: "user", parts: [{ text: prompt }, { inline_data: { mime_type: sniffed, data: b64 } }] }],
+        generationConfig: {
+          temperature: 0.1,
+          maxOutputTokens: mode === "document_analysis" ? 4096 : 1024,
+        },
+      }),
+      signal: ctrl.signal,
+    });
+  } catch {
+    return json(req, { ok: false, error: "Görsel model yanıt vermedi. İşaret uydurulmadı." }, 502);
+  } finally {
+    clearTimeout(timer);
+  }
   const payload = await res.json().catch(() => ({}));
   if (!res.ok) {
     return json(req, { ok: false, error: "Görsel model yanıt vermedi. İşaret uydurulmadı." }, 502);

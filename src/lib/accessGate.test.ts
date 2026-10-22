@@ -4,7 +4,7 @@ import { landingPageForGate, pagesAllowedForGate, resolveAccessGate } from './ac
 
 describe('giriş kapısı', () => {
   it('oturum yokken ilk açılış hesabadır; koçlar kamu', () => {
-    expect(pagesAllowedForGate('guest')).toEqual(['account', 'coaches', 'library']);
+    expect(pagesAllowedForGate('guest')).toEqual(['account', 'coaches', 'library', 'membership']);
     expect(landingPageForGate('guest')).toBe('account');
     expect(coerceAppPage('home', undefined, 'guest')).toBe('account');
     expect(coerceAppPage('meetings', undefined, 'guest')).toBe('account');

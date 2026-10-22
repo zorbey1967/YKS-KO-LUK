@@ -24,6 +24,7 @@ import {
   shopierWebhookAuth,
 } from "../_shared/shopierWebhook.ts";
 import { type RateStore } from "../_shared/edgeRateLimit.ts";
+import { applyGuestPayment, GUEST_COLUMNS, type GuestRow } from "../_shared/guestCheckout.ts";
 import { allowDistributed, readUpstashEnv } from "../_shared/upstashRateLimit.ts";
 import {
   iyzicoActivateOk,
@@ -174,6 +175,51 @@ Deno.serve(async (req) => {
       return json({ ok: true, applied: false, refunded: false, reason: "iade_tamamlanmadi" });
     }
 
+    {
+      // Hesapsız ödeme (giriş yapmadan "Ödeme Yap"): ürün billing_guest_checkouts'a eşliyse
+      // aynı doğrulamadan sonra hesap açılır ve paket tanımlanır (059). Oturum satırı ilk teslimatta
+      // açılmış olsa bile (yarıda kalan deneme) misafir yolu tekrar çalışır; her adım tekrar güvenli.
+      let guest: GuestRow | null = null;
+      let guestProductId = "";
+      for (const line of order.lineItems) {
+        if (!line.productId) continue;
+        const found = await admin.from("billing_guest_checkouts")
+          .select(GUEST_COLUMNS)
+          .eq("provider", "shopier")
+          .eq("provider_session_id", line.productId)
+          .maybeSingle();
+        if (found.data) {
+          guest = found.data as GuestRow;
+          guestProductId = line.productId;
+          break;
+        }
+      }
+      if (guest) {
+        const guestPlan = normalizePlanId(guest.plan_id);
+        if (!guestPlan || !shopierActivateOk({
+          planId: guestPlan,
+          sessionAmountTry: Number(guest.amount_try),
+          sessionCurrency: guest.currency,
+          productId: guestProductId,
+          order,
+        })) {
+          return json({ ok: true, applied: false, reason: "siparis_dogrulanamadi" });
+        }
+        const done = await applyGuestPayment(admin, { guest, planId: guestPlan, orderId: order.id });
+        if (!done.ok) return json({ error: done.error }, 500);
+        if (!done.duplicatePayment) {
+          await shopierDeleteProduct(secrets.pat, guestProductId);
+        }
+        return json({
+          ok: true,
+          applied: !done.duplicatePayment && !done.latePayment,
+          duplicatePayment: done.duplicatePayment,
+          latePayment: done.latePayment,
+          guest: true,
+          createdUser: done.createdUser,
+        });
+      }
+    }
     if (!session || !productId) {
       return json({ ok: true, applied: false, reason: "urun_oturum_yok" });
     }

@@ -67,9 +67,11 @@ describe('üyelik fail-closed kilitler', () => {
     const profile = student({ subscription_status: 'trialing', trial_ends_at: future });
     expect(entitledPlan(billingFromProfile(profile, now))).toBe('trial');
     expect(paidAccessLocked(profile, now)).toBe(false);
-    expect(canUseFeature(profile, 'analytics', now)).toBe(true);
+    // Deneme = temel e-koçluk; gelişmiş analiz ve yapay zekâ yalnız Premium (planAccess).
+    expect(canUseFeature(profile, 'core_study', now)).toBe(true);
+    expect(canUseFeature(profile, 'analytics', now)).toBe(false);
     expect(canSeeAnalyticsPage(profile, false, now)).toBe(true);
-    expect(canUseAnalytics(profile, false, now)).toBe(true);
+    expect(canUseAnalytics(profile, false, now)).toBe(false);
     expect(studyPagesLocked({ isAdmin: false, accessGate: 'ok', profile, now })).toBe(false);
   });
 
@@ -137,7 +139,7 @@ describe('üyelik fail-closed kilitler', () => {
       trial_started_at: '2026-10-10T00:00:00.000Z',
       trial_ends_at: future,
     };
-    expect(displayMembershipName(adminTrial, now, true)).toBe('14 Günlük Ücretsiz Premium Deneme');
+    expect(displayMembershipName(adminTrial, now, true)).toBe('14 Günlük Ücretsiz Deneme');
     const adminExpired: Profile = { ...adminTrial, trial_ends_at: past };
     expect(displayMembershipName(adminExpired, now, true)).toBe('Premium');
     expect(canUseFeature(admin, 'analytics', now, true)).toBe(true);

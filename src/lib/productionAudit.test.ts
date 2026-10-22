@@ -47,7 +47,7 @@ describe('production audit contracts', () => {
     const page = src('src/pages/MembershipPage.tsx');
     expect(page).toContain('14 Günlük Ücretsiz Denemeyi Başlat');
     expect(page).toContain('startTopPlanTrial');
-    expect(page).toContain('Premium erişim aktif');
+    expect(page).toContain('Deneme başladı: temel e-koçluk özellikleri açık');
     expect(page).not.toMatch(/deneme yalnızca e-posta doğrulama ve yönetici onayından sonra/);
     expect(page).not.toMatch(/henüz sunucuya işlenmedi/);
     expect(page).not.toMatch(/if \(!user\) return;\s*void refreshAuth\(\)/);

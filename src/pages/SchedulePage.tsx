@@ -295,7 +295,7 @@ export function SchedulePage() {
     <ScheduleEditor />
     <div className="card">
       <div className="section-title"><h3>Program PDF</h3><span>okul / dershane programı</span></div>
-      <p className="muted" style={{ marginTop: 0 }}>PDF’yi yükle; “PDF’yi Analiz Et” ZORRO ile programını çıkarır ve yukarıdaki Programım’a yazar.</p>
+      <p className="muted" style={{ marginTop: 0 }}>PDF’yi yükle; “PDF’yi Analiz Et” programını çıkarır ve yukarıdaki Programım’a yazar. Premium’da ZORRO okur; Pro’da PDF metni yerel olarak okunur.</p>
       <label
         className="dropzone"
         onDragOver={(e) => e.preventDefault()}

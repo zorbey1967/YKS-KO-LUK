@@ -10,6 +10,7 @@ import { isSupabaseConfigured } from '../lib/supabase';
 import { getCoachDisplayName, getPersonDisplayName } from '../lib/displayName';
 import type { ReactNode } from 'react';
 import { openZorro } from '../lib/zorroBus';
+import { canUseAi, canUseAnalytics } from '../lib/subscription';
 
 export function Layout({ children }: { children: ReactNode }) {
   const { page, go, menuOpen, setMenuOpen, profile, user, toggleTheme, theme, toastMsg, data, isAdmin, cloudStatus, accessGate } = useApp();
@@ -70,12 +71,15 @@ export function Layout({ children }: { children: ReactNode }) {
           {nav.map((n) => (
             <button key={n.id} className={page === n.id ? 'active' : ''} type="button" aria-current={page === n.id ? 'page' : undefined} onClick={() => go(n.id)}>
               {n.icon} <span>{n.id === 'account' && !user ? 'Giriş' : n.label}</span>
+              {n.id === 'analytics' && user && !canUseAnalytics(profile, isAdmin) ? <small className="nav-premium" title="Gelişmiş analiz Premium üyelikte açılır">Premium</small> : null}
+              {n.id === 'plan' && user && !canUseAi(profile, isAdmin) ? <small className="nav-premium" title="Akıllı Plan yapay zekâ ile üretilir; Premium üyelikte açılır">Premium</small> : null}
             </button>
           ))}
           {!isCoach && user && accessGate === 'ok' ? (
             <>
               <button type="button" onClick={() => openZorro()}>
                 🦁 <span>ZORRO</span>
+                {canUseAi(profile, isAdmin) ? null : <small className="nav-premium" title="ZORRO Premium üyelikte açılır">Premium</small>}
               </button>
               <button type="button" onClick={() => window.dispatchEvent(new Event('yks-open-support'))}>
                 ❓ <span>Destek</span>

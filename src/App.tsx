@@ -27,6 +27,7 @@ import { MeetingPage } from './pages/MeetingPage';
 import { MeetingsPage } from './pages/MeetingsPage';
 import { LibraryPage } from './pages/LibraryPage';
 import { ExamNotifyWatcher } from './components/ExamNotifyWatcher';
+import { GuestCheckoutWatcher } from './components/GuestCheckoutWatcher';
 import { FeatureLock } from './components/FeatureLock';
 import { QUESTION_BANK_ENABLED } from './lib/features';
 import { today, uid } from './lib/util';
@@ -51,7 +52,7 @@ export default function App() {
 }
 
 function Shell() {
-  const { page, setMenuOpen, menuOpen, isAdmin, profile, accessGate } = useApp();
+  const { page, setMenuOpen, menuOpen, isAdmin, profile, accessGate, user } = useApp();
   const [taskOpen, setTaskOpen] = useState(false);
   const [cmd, setCmd] = useState(false);
   const studyPage = BILLING_LOCKED_PAGES.includes(page);
@@ -115,6 +116,7 @@ function Shell() {
       {page === 'meeting' ? null : <CoachChat />}
       {page === 'meeting' ? null : <SupportPanel />}
       {profile?.role === 'coach' || accessGate !== 'ok' ? null : <ExamNotifyWatcher />}
+      {accessGate === 'boot' ? null : <GuestCheckoutWatcher signedIn={Boolean(user)} />}
     </Layout>
   );
 }

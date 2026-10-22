@@ -43,7 +43,14 @@ export async function buildScheduleFromPdf(opts: {
       };
     }
   }
-  return { schedule: fallback, summary: 'Model alınamadı; PDF metninden yerel program üretildi.', usedAi: false };
+  const premiumOnly = !cloud.ok && cloud.debug === '402';
+  return {
+    schedule: fallback,
+    summary: premiumOnly
+      ? 'Yapay zekâ ile program çıkarma Premium üyelikte açılır; PDF metninden yerel program üretildi.'
+      : 'Model alınamadı; PDF metninden yerel program üretildi.',
+    usedAi: false,
+  };
 }
 
 export async function buildScheduleWithAi(opts: {
@@ -70,6 +77,9 @@ export async function buildScheduleWithAi(opts: {
         usedAi: true,
       };
     }
+  }
+  if (!cloud.ok && cloud.debug === '402') {
+    return { schedule: local, summary: 'Yapay zekâ programı Premium üyelikte açılır; yerel program kullanıldı.', usedAi: false };
   }
   return { schedule: local, summary: 'Model alınamadı; yerel program kullanıldı. Giriş yaptığından ve student-ai fonksiyonunun yayında olduğundan emin ol.', usedAi: false };
 }

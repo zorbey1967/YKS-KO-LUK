@@ -55,8 +55,8 @@ export function AnalyticsPage() {
   }
   if (!use) {
     return (
-      <FeatureLock title="Analiz özelliği Premium veya 14 günlük denemede açılır">
-        <p className="muted">Sayfa görünür; grafikler ve ücretli analiz Pro veya ücretsiz planda çalışmaz.</p>
+      <FeatureLock title="Gelişmiş analiz Premium üyelikte açılır" premium>
+        <p className="muted">Ayrıntılı analiz, deneme karşılaştırma, sınav kâğıdı okuma ve ZORRO raporu Premium’dadır. Deneme netlerini Denemeler sayfasında görmeye devam edersin.</p>
       </FeatureLock>
     );
   }

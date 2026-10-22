@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useApp } from '../context/AppContext';
+import { isGuestAccountEmail } from '../lib/guestCheckout';
 import { SUPABASE_UNAVAILABLE, supabase, withTimeout } from '../lib/supabase';
 import { normalizeData, saveData } from '../lib/storage';
 import { coachAdvice } from '../lib/coach';
@@ -519,10 +520,15 @@ export function AccountPage() {
         <p style={{ marginTop: 0 }}><b>{shownName}</b></p>
         <div className="status-grid">
           <div className="status"><b>Oturum</b><span>Açık</span></div>
-          <div className="status"><b>E-posta</b><span>{user.email}</span></div>
+          <div className="status"><b>{isGuestAccountEmail(user.email) ? 'Giriş kimliği' : 'E-posta'}</b><span>{user.email}</span></div>
           <div className="status"><b>Plan</b><span>{displayMembershipName(profile, Date.now(), isAdmin)}</span></div>
           <div className="status"><b>Veri</b><span>{cloudStatus}</span></div>
         </div>
+        {isGuestAccountEmail(user.email) ? (
+          <div className="notice" style={{ marginBottom: 12 }}>
+            Hesabın ödemeyle otomatik açıldı. Başka bir cihazdan girmek için yukarıdaki giriş kimliğini ve aşağıdan belirleyeceğin şifreyi kullan.
+          </div>
+        ) : null}
         {isAdmin ? (
           <div className="success" style={{ marginBottom: 12 }}>
             Yönetici yetkin açık.

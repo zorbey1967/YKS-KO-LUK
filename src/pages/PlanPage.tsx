@@ -24,7 +24,7 @@ export function PlanPage() {
 
   async function saveCloud() {
     if (!aiPlan) {
-      toast('Akıllı Plan için üyelik veya deneme gerekir.');
+      toast('Akıllı Plan yapay zekâ ile üretilir; Premium üyelikte açılır.');
       return;
     }
     setBusy(true);
@@ -93,8 +93,12 @@ export function PlanPage() {
           )) : (
             <div className="empty">Henüz plan yok. “Plan oluştur” ile kayıtlarına göre bugünün planını hazırla. Sayfa açılışında AI çağrılmaz; uydurma plan yok.</div>
           )}
+          {aiPlan ? null : (
+            <p className="muted" style={{ marginTop: 12 }}>Akıllı Plan yapay zekâ ile üretilir ve Premium üyelikte açılır. Görevlerin, ders programın ve takvimin Pro’da açık kalır.</p>
+          )}
           <div className="actions" style={{ marginTop: 12 }}>
             {/* Tek "plan oluştur": plan yalnız sunucuda üretilir (yerel yedek plan yok). */}
+            {aiPlan ? null : <button className="btn secondary" type="button" onClick={() => go('membership')}>Premium’a geç</button>}
             <button className="btn primary" type="button" disabled={busy || !aiPlan} onClick={() => void saveCloud()}>{busy ? 'Hazırlanıyor…' : data.plan.length ? 'Planı yenile' : 'Plan oluştur'}</button>
             <button className="btn" type="button" onClick={() => {
               if (!data.plan.length) return toast('Önce plan oluştur.');

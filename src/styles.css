@@ -26,6 +26,7 @@ button{cursor:pointer;touch-action:manipulation}
 .brand small{display:block;color:var(--muted);font-size:11px;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .nav{display:grid;gap:5px;overflow:auto;flex:1;min-height:0}
 .nav button{border:0;background:transparent;color:var(--muted);text-align:left;padding:11px 12px;border-radius:12px;display:flex;gap:10px;align-items:center;font-weight:700}
+.nav-premium{margin-left:auto;font-size:11px;font-weight:800;color:var(--warn);background:var(--warnbg);border-radius:999px;padding:2px 8px}
 .nav button:hover,.nav button.active,.nav button[aria-current="page"]{background:var(--soft);color:var(--primary)}
 .sidebar-bottom{margin-top:auto;padding-top:8px}
 .mini-user{border:1px solid var(--line);border-radius:16px;padding:12px;background:var(--bg)}
@@ -627,3 +628,4 @@ button.library-card{cursor:pointer;width:100%;appearance:none;-webkit-appearance
 }
 
 .zorro-chips .chip{flex:0 0 auto;white-space:nowrap}
+.guest-pay-wait{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));width:min(560px,calc(100vw - 24px));z-index:90;display:flex;flex-wrap:wrap;align-items:center;gap:8px;box-shadow:var(--shadow)}

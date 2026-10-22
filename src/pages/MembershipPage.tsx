@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { listMyPayments, paymentStatusLabel, requestCancel, requestCheckout, type PaymentRow } from '../lib/billing';
+import { startGuestCheckout } from '../lib/guestCheckout';
 import {
   CAMPAIGN,
   PLAN_LIST,
@@ -32,6 +33,12 @@ export function MembershipPage() {
   const [pays, setPays] = useState<{ rows: PaymentRow[]; available: boolean }>({ rows: [], available: false });
   const [cancelBusy, setCancelBusy] = useState(false);
   const [trialBusy, setTrialBusy] = useState(false);
+  /** Aktif Premium'dan Pro'ya geçiş ödemesi ZORRO ve gelişmiş analizi hemen kapatır: ikinci tıkla onay. */
+  const [confirmDowngrade, setConfirmDowngrade] = useState(false);
+  const activePaid = snap.status === 'active' && Boolean(snap.planId);
+  const renewEndsAt = activePaid && snap.subscriptionEndsAt
+    ? new Date(Math.max(new Date(snap.subscriptionEndsAt).getTime(), Date.now()) + 30 * 86400000).toISOString()
+    : null;
   const planName = displayMembershipName(profile, Date.now(), isAdmin);
   const trialActive = Boolean(user) && tier === 'trial';
   const student = Boolean(user) && profile?.role !== 'coach' && profile?.role !== 'admin';
@@ -48,9 +55,38 @@ export function MembershipPage() {
   }, [student]);
 
   async function pay(planId: PlanId) {
+    // Aktif Premium'dan Pro'ya geçişte mevcut onay adımı korunur (yanlışlıkla düşürmeye karşı).
+    if (activePaid && snap.planId === 'premium' && planId === 'pro' && !confirmDowngrade) {
+      setConfirmDowngrade(true);
+      return;
+    }
+    setConfirmDowngrade(false);
     if (!user) {
-      toast('Ödeme için giriş gerekli.');
-      go('account');
+      // Giriş yapmadan, ara ekran yok: tıklama doğrudan Shopier ödeme sayfasını açar.
+      // Plan ve tutar sunucuda katalogdan belirlenir (Pro 100 TL, Premium 200 TL); hesap ve paket
+      // yalnız Shopier ödemesi webhook'ta doğrulanınca açılır, bu sayfa da otomatik giriş yapar.
+      setBusy(planId);
+      setPayNote('');
+      // Sekme tıklama anında açılır (açılır pencere engeline takılmaz); adres gelince Shopier'e yönlenir.
+      const tab = window.open('', '_blank');
+      if (tab) tab.opener = null;
+      try {
+        const res = await startGuestCheckout(planId);
+        if (!res.ok) {
+          tab?.close();
+          setPayNote(res.error);
+          toast('Ödeme sayfası açılamadı. Hesap ve üyelik açılmadı.');
+          return;
+        }
+        if (tab && !tab.closed) {
+          tab.location.href = res.url;
+          toast('Ödeme sayfası yeni sekmede açıldı. Ödeme onaylanınca bu sayfa hesabını açar.');
+        } else {
+          window.location.assign(res.url);
+        }
+      } finally {
+        setBusy(null);
+      }
       return;
     }
     setBusy(planId);
@@ -85,7 +121,7 @@ export function MembershipPage() {
       }
       if (res.status === 'trialing') {
         if (profile) setProfile(applyTrialRpcToProfile(profile, res));
-        toast('Premium erişim aktif');
+        toast('Deneme başladı: temel e-koçluk özellikleri açık');
         void refreshAuth();
         return;
       }
@@ -110,7 +146,7 @@ export function MembershipPage() {
         <div className="eyebrow" style={{ color: '#cfe1ff' }}>Üyelik</div>
         <h2>Pro ve Premium</h2>
         <p>
-          E-postası doğrulanmış öğrenci hesabında {TRIAL_DAYS} günlük Premium deneme bu sayfadan bir kez başlatılır; ücret alınmaz.
+          E-postası doğrulanmış öğrenci hesabında {TRIAL_DAYS} günlük ücretsiz deneme bu sayfadan bir kez başlatılır; ücret alınmaz.
           Ücretli dönem Shopier’de doğrulanmış tek seferlik ödemeyle 30 gün açılır. Otomatik yenileme ve kendiliğinden çekim yok.
           Süren bitmeden yeniden alırsan yeni 30 gün mevcut bitişin üstüne eklenir.
         </p>
@@ -122,7 +158,7 @@ export function MembershipPage() {
             <div className="label">PLANIN</div>
             <div className="value" style={{ fontSize: 22 }}>{planName}</div>
             <div className="sub">
-              {trialActive ? 'Premium erişim aktif' : snap.status === 'active' ? 'Ücretli üyelik' : ''}
+              {trialActive ? 'Deneme: temel e-koçluk açık' : snap.status === 'active' ? 'Ücretli üyelik' : ''}
             </div>
           </div>
           {trialActive ? (
@@ -170,18 +206,36 @@ export function MembershipPage() {
               <ul className="muted" style={{ margin: '8px 0 0', paddingLeft: 18 }}>
                 {p.bullets.filter((b) => QUESTION_BANK_ENABLED || !/soru bankası/i.test(b)).map((b) => <li key={b}>{b}</li>)}
               </ul>
+              {activePaid && snap.planId === p.id && renewEndsAt ? (
+                <p className="muted" style={{ margin: '8px 0 0' }}>
+                  Mevcut bitiş: {fmtDate(snap.subscriptionEndsAt)}. Uzatırsan yeni bitiş {fmtDate(renewEndsAt)} olur; kalan günlerin korunur.
+                </p>
+              ) : null}
+              {activePaid && snap.planId === 'pro' && p.id === 'premium' ? (
+                <p className="muted" style={{ margin: '8px 0 0' }}>
+                  Ödeme doğrulanınca Premium hemen açılır; kalan Pro günlerin Premium olarak devam eder.
+                </p>
+              ) : null}
+              {confirmDowngrade && p.id === 'pro' ? (
+                <p className="notice" style={{ margin: '8px 0 0' }}>
+                  Premium üyeliğin aktif. Pro ödemesi doğrulanınca paketin hemen Pro’ya döner: ZORRO, yapay zekâ ve gelişmiş analiz kapanır. Kalan günlerin Pro olarak devam eder.
+                </p>
+              ) : null}
               <div className="actions" style={{ marginTop: 12 }}>
-                <button className="btn primary" type="button" disabled={busy !== null || !user} onClick={() => void pay(p.id)}>
+                <button className="btn primary" type="button" disabled={busy !== null} onClick={() => void pay(p.id)}>
                   {busy === p.id
                     ? 'Shopier’e gidiliyor…'
                     : !user
-                      ? 'Giriş gerekli'
+                      ? `${formatTry(chargeAmountTry(p.id))} Ödeme Yap`
                       : snap.status === 'active' && snap.planId === p.id
                         ? `${p.name}: 30 gün uzat`
                         : snap.status === 'active'
-                          ? (p.id === 'pro' ? 'Pro’ya geç' : 'Premium’a geç')
+                          ? (p.id === 'pro' ? (confirmDowngrade ? 'Onayla: Pro’ya geç' : 'Pro’ya geç') : 'Premium’a geç')
                           : `Shopier ile ${p.name} satın al`}
                 </button>
+                {confirmDowngrade && p.id === 'pro' ? (
+                  <button className="btn secondary" type="button" onClick={() => setConfirmDowngrade(false)}>Vazgeç</button>
+                ) : null}
               </div>
             </div>
           );
@@ -192,18 +246,18 @@ export function MembershipPage() {
         <div className="card" style={{ marginTop: 16 }}>
           <p className="muted" style={{ margin: 0 }}>
             {trialActive
-              ? 'Yönetici rolü duruyor. Bu hesapta 14 günlük Premium deneme kaydı açık; ücret alınmadı.'
+              ? 'Yönetici rolü duruyor. Bu hesapta 14 günlük deneme kaydı açık; ücret alınmadı.'
               : 'Yönetici hesabında plan satın alman gerekmez; özellikler sunucu yetkisiyle açıktır.'}
           </p>
         </div>
       ) : null}
 
       <div className="card" style={{ marginTop: 16 }}>
-        <div className="section-title"><h3>14 Günlük Ücretsiz Premium Deneme</h3><span>{TRIAL_DAYS} gün</span></div>
+        <div className="section-title"><h3>14 Günlük Ücretsiz Deneme</h3><span>{TRIAL_DAYS} gün</span></div>
         <p className="muted">
           {trialActive
-            ? `Premium erişim aktif. Kalan: ${days} gün. Ücret alınmadı.`
-            : 'En üst plan (Premium) özellikleri 14 gün açılır. Başlangıç ve bitiş sunucuda yazılır. Ücret alınmaz. Aynı hesap ikinci kez deneme alamaz.'}
+            ? `Deneme aktif: temel e-koçluk özellikleri açık. Kalan: ${days} gün. Ücret alınmadı. ZORRO ve gelişmiş analiz için Premium gerekir.`
+            : 'Pro’daki temel e-koçluk özellikleri 14 gün açılır; ZORRO ve gelişmiş analiz Premium’dadır. Başlangıç ve bitiş sunucuda yazılır. Ücret alınmaz. Aynı hesap ikinci kez deneme alamaz.'}
         </p>
         {(snap.status === 'expired' && profile?.trial_started_at) || (snap.status !== 'trialing' && snap.status !== 'active' && profile?.trial_started_at && snap.trialEndsAt) ? (
           <p className="notice">Bu hesap denemeyi kullandı. Devam için Pro veya Premium satın al.</p>
@@ -219,7 +273,7 @@ export function MembershipPage() {
               {trialBusy ? 'Başlatılıyor…' : '14 Günlük Ücretsiz Denemeyi Başlat'}
             </button>
           ) : trialActive ? (
-            <span className="chip">Premium erişim aktif</span>
+            <span className="chip">Deneme aktif</span>
           ) : null}
         </div>
       </div>

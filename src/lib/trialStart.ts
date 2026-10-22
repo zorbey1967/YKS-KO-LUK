@@ -17,6 +17,8 @@ export type TrialResult = {
 
 export function publicTrialStartMessage(raw: string) {
   const msg = String(raw || '').replace(/\s+/g, ' ').trim();
+  /** 055 sunucu metni "Premium deneme" der; deneme artık temel e-koçluktur (planAccess). */
+  if (/premium deneme başladı/i.test(msg)) return '14 günlük ücretsiz deneme başladı. Ücret alınmadı.';
   if (/oturum gerekli/i.test(msg)) return 'Deneme için giriş yap.';
   if (/hesap askıda/i.test(msg)) return 'Hesabın askıda; deneme açılamadı.';
   if (/öğrenci hesabına özel/i.test(msg)) return 'Deneme yalnızca öğrenci hesabına özel.';
@@ -104,7 +106,7 @@ export function startTopPlanTrialStep(row: TrialProfile, now: number): { row: Tr
   };
   return {
     row: next,
-    result: { ok: true, status: 'trialing', message: '14 günlük Premium deneme başladı. Ücret alınmadı.', wrote: true },
+    result: { ok: true, status: 'trialing', message: '14 günlük ücretsiz deneme başladı. Ücret alınmadı.', wrote: true },
   };
 }
 
@@ -130,7 +132,7 @@ export function interpretStartTopPlanTrialRpc(
   return {
     ok,
     status,
-    message: publicTrialStartMessage(String(rec.message || (ok ? '14 günlük Premium deneme başladı. Ücret alınmadı.' : ''))),
+    message: publicTrialStartMessage(String(rec.message || (ok ? '14 günlük ücretsiz deneme başladı. Ücret alınmadı.' : ''))),
     trialStartedAt: started,
     trialEndsAt: ends,
   };

@@ -120,7 +120,7 @@ describe('student-ai billingOk fail-closed', () => {
     expect(src).toContain('Bu özellik öğrenci hesabına özel.');
     expect(src).toContain('is_admin');
     expect(src).toContain('is_platform_owner');
-    expect(scan).toContain('studentFeatureOk');
+    expect(scan).toContain('accessTierFromBilling');
     expect(scan).toContain('Bu özellik öğrenci hesabına özel.');
     const authAt = src.indexOf('const auth = await requireUser(req)');
     const billAt = src.indexOf('const bill = studentFeatureOk(auth.billing)');
@@ -152,8 +152,10 @@ describe('student-ai billingOk fail-closed', () => {
     expect(examAnalyticsAllowed(false, trial)).toBe(true);
     expect(examAnalyticsAllowed(false, coach)).toBe(false);
     expect(examAnalyticsAllowed(true, pro)).toBe(true);
+    // 058'den beri exam-scan bu yardımcıyı değil planAccess'i kullanır: deneme de kapalı (yalnız Premium).
     const scan = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '../../supabase/functions/exam-scan/index.ts'), 'utf8');
-    expect(scan).toContain('examAnalyticsAllowed');
+    expect(scan).not.toContain('examAnalyticsAllowed');
+    expect(scan).toContain('premiumAiDecision');
   });
 
   it('active ama plansız kaydı reddeder', () => {

@@ -132,3 +132,27 @@ describe('Shopier katalog ve sipariş eşlemesi', () => {
     expect(checkout).toContain('provider_session_id: created.product.id');
   });
 });
+
+describe('Shopier oturum tutarı katalog fiyatı (kampanya değişse de ödenmiş sipariş)', () => {
+  const order = (total: number) => parseShopierOrder({
+    ...paidOrder,
+    totals: { total: total.toFixed(2) },
+    lineItems: [{ productId: 'prod_1', quantity: 1, price: total.toFixed(2), total: total.toFixed(2) }],
+  });
+  const ok = (planId: 'pro' | 'premium', session: number, paid: number) => shopierActivateOk({
+    planId, sessionAmountTry: session, sessionCurrency: 'TRY', productId: 'prod_1', order: order(paid),
+  });
+  it('kampanya ve liste fiyatı ile açılmış oturum ödenince kabul edilir', () => {
+    expect(ok('premium', 200, 200)).toBe(true);
+    expect(ok('premium', 400, 400)).toBe(true);
+    expect(ok('pro', 100, 100)).toBe(true);
+    expect(ok('pro', 200, 200)).toBe(true);
+  });
+  it('başka planın / katalog dışı fiyat ve oturumla uyuşmayan toplam reddedilir', () => {
+    expect(ok('premium', 100, 100)).toBe(false);
+    expect(ok('pro', 400, 400)).toBe(false);
+    expect(ok('premium', 150, 150)).toBe(false);
+    expect(ok('premium', 400, 200)).toBe(false);
+    expect(ok('pro', 100, 200)).toBe(false);
+  });
+});

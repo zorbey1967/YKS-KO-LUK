@@ -6,7 +6,8 @@
  * İki senaryo, aynı test dosyası (supabase/tests/055_commercial_pg.sql):
  *   A) Canlıya yakın: 001–010 + üyelik/ödeme parçaları (013, 014, 016, 017) + 041–049 + 050–054 + 055 (iki kez)
  *   B) Tam zincir:     001–010 + 011–040 (atlananlar hariç) + 041–049 + 050–054 + 055 (iki kez)
- * Ayrıca negatif kontrol: 055 olmadan test başarısız olmalı (A senaryosu).
+ * Her senaryoda 058 (paket yetkisi) de iki kez uygulanır; 058 testi Pro/Premium yetkisini ve Shopier ödemesini sınar.
+ * Ayrıca negatif kontroller: 055 olmadan 055 testi; 058 olmadan ve Pro'ya yapay zekâ açan 058 ile 058 testi başarısız olmalı.
  */
 import { execFileSync, spawnSync } from 'node:child_process';
 import { readFileSync, readdirSync } from 'node:fs';
@@ -37,6 +38,8 @@ const FULL_CHAIN = ['027', '011', '012', '014', '015', '020', '021', '016', '022
   '028', '029', '030', '031', '032', '033', '034', '035', '036', '037', '038', '039', '040'].map(mig);
 const LIVE_LIKE = ['013', '014', '016', '017'].map(mig);
 const M055 = mig('055');
+const M058 = mig('058');
+const M059 = mig('059');
 
 function load(rel) {
   return readFileSync(join(root, rel), 'utf8');
@@ -106,10 +109,14 @@ function runTest(db) {
 function scenario(label, db, list) {
   process.stdout.write(`• ${label}\n`);
   fresh(db);
-  apply(db, [...list, ...FEATURE, M055, M055]);
+  apply(db, [...list, ...FEATURE, M055, M055, M058, M058, M059, M059]);
   const out = runTest(db);
   if (!out.includes('OK 055_commercial_pg')) throw new Error(`${label}: test sonucu yok`);
-  console.log('  OK');
+  const out58 = psql(db, load('supabase/tests/058_plan_access_pg.sql'));
+  if (!out58.includes('OK 058_plan_access_pg')) throw new Error(`${label}: 058 test sonucu yok`);
+  const out59 = psql(db, load('supabase/tests/059_guest_checkout_pg.sql'));
+  if (!out59.includes('OK 059_guest_checkout_pg')) throw new Error(`${label}: 059 test sonucu yok`);
+  console.log(`  OK${out58.includes('(zorro_rls)') ? ' (058 ZORRO yazma kapısı dahil)' : ''}`);
 }
 
 try {
@@ -149,6 +156,20 @@ try {
   let failed = false;
   try { runTest('c055n'); } catch { failed = true; }
   if (!failed) throw new Error('055 olmadan test geçti; test açığı yakalamıyor');
+  console.log('  OK (beklenen hata)');
+
+  process.stdout.write('• Negatif kontrol: 058 olmadan ve Pro\'ya yapay zekâ açan 058 ile test başarısız olmalı\n');
+  fresh('c058n');
+  apply('c058n', [...LIVE_LIKE, ...FEATURE, M055]);
+  let f58 = false;
+  try { psql('c058n', load('supabase/tests/058_plan_access_pg.sql')); } catch { f58 = true; }
+  if (!f58) throw new Error('058 olmadan 058 testi geçti');
+  const leaky = load(M058).replace("in ('premium', 'staff')", "in ('premium', 'staff', 'pro')");
+  if (leaky === load(M058)) throw new Error('mutasyon uygulanamadı');
+  psql('c058n', leaky, ['--single-transaction']);
+  f58 = false;
+  try { psql('c058n', load('supabase/tests/058_plan_access_pg.sql')); } catch { f58 = true; }
+  if (!f58) throw new Error('Pro\'ya yapay zekâ açan 058 ile test geçti; test açığı yakalamıyor');
   console.log('  OK (beklenen hata)');
 
   console.log('PG_COMMERCIAL_OK');

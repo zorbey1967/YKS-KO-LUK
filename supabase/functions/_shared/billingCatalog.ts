@@ -35,3 +35,16 @@ export function amountsMatch(plan: PlanId, amountRaw: unknown): boolean {
   if (!Number.isFinite(n)) return false;
   return Math.abs(n - chargeAmountTry(plan)) < 0.009;
 }
+
+/**
+ * Oturum tutarı bu planın katalog fiyatlarından biri mi (kampanya veya liste)?
+ * Ödeme oturumunu yalnız sunucu yazar ve tutarı o anki katalogdan alır (billing-checkout). Kampanya
+ * ödeme linki açıkken kapanırsa / açılırsa ödenmiş sipariş reddedilmesin diye iki katalog fiyatı da geçerli.
+ * Başka planın fiyatı veya katalog dışı tutar kabul edilmez (ör. Premium için 100 TL).
+ */
+export function isCatalogPriceTry(plan: PlanId, amountRaw: unknown): boolean {
+  const n = Number(amountRaw);
+  if (!Number.isFinite(n) || n <= 0) return false;
+  const p = PLANS[plan];
+  return Math.abs(n - p.campaignPriceTry) < 0.009 || Math.abs(n - p.listPriceTry) < 0.009;
+}

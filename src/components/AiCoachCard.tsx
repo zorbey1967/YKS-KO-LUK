@@ -8,6 +8,7 @@ import {
   type AiCoachReport,
 } from '../lib/aiCoachAnalysis';
 import { openZorro } from '../lib/zorroBus';
+import { canUseAi } from '../lib/subscription';
 
 /**
  * ZORRO'nun "durum yorumu" yeteneği — sitede tek bileşen.
@@ -16,7 +17,8 @@ import { openZorro } from '../lib/zorroBus';
  * Takip sorusu ayrı bir AI ekranında değil, ZORRO sohbetinde sorulur.
  */
 export function AiCoachCard({ variant = 'compact' }: { variant?: 'compact' | 'full' }) {
-  const { data, setData, toast, go } = useApp();
+  const { data, setData, toast, go, profile, isAdmin } = useApp();
+  const aiOk = canUseAi(profile, isAdmin);
   const local = useMemo(() => localAiCoachReport(data), [data]);
   const [report, setReport] = useState<AiCoachReport | null>(() => cachedAiCoachReport(data));
   const [busy, setBusy] = useState(false);
@@ -43,6 +45,22 @@ export function AiCoachCard({ variant = 'compact' }: { variant?: 'compact' | 'fu
   }
 
   const base = shown || (local.empty ? null : local);
+  if (!aiOk) {
+    return (
+      <section className="card ai-coach ai-coach-locked">
+        <div className="section-title">
+          <h3>ZORRO önerisi</h3>
+          <span>Premium</span>
+        </div>
+        <p className="muted" style={{ marginTop: 0 }}>
+          ZORRO kayıtlarını yorumlar, bugün neye odaklanacağını söyler ve gelişmiş analiz hazırlar. Bu özellikler Premium üyelikte açılır.
+        </p>
+        <div className="actions">
+          <button className="btn primary" type="button" onClick={() => go('membership')}>Premium’a geç</button>
+        </div>
+      </section>
+    );
+  }
   return (
     <section className="card ai-coach">
       <div className="section-title">

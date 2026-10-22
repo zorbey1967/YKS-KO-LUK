@@ -1,5 +1,7 @@
 /** Tek kaynak: paket, liste/kampanya fiyatı, deneme. İstemci tutarı güvenilir değildir. */
 
+import { PREMIUM_FEATURE_LIST, PRO_FEATURE_LIST, type Capability } from './planAccess';
+
 export const TRIAL_DAYS = 14;
 export const BILLING_CURRENCY = 'TRY';
 export const BILLING_PERIOD = 'month' as const;
@@ -36,8 +38,18 @@ export const CAMPAIGN = {
   afterEnds: 'list' as const,
 };
 
-const PRO_FEATURES: FeatureId[] = ['core_study', 'zorro_basic', 'appointments'];
-const PREMIUM_FEATURES: FeatureId[] = [...PRO_FEATURES, 'zorro_advanced', 'ai_plan', 'analytics'];
+/** Her özellik bir yetkiye bağlıdır; paket listesi planAccess tablosundan türetilir. */
+export const FEATURE_CAPABILITY: Record<FeatureId, Capability> = {
+  core_study: 'core',
+  appointments: 'core',
+  zorro_basic: 'ai',
+  zorro_advanced: 'ai',
+  ai_plan: 'ai',
+  analytics: 'advanced_analytics',
+};
+
+const PRO_FEATURES: FeatureId[] = ['core_study', 'appointments'];
+const PREMIUM_FEATURES: FeatureId[] = [...PRO_FEATURES, 'zorro_basic', 'zorro_advanced', 'ai_plan', 'analytics'];
 
 export const PLANS: Record<PlanId, PlanDef> = {
   pro: {
@@ -50,12 +62,7 @@ export const PLANS: Record<PlanId, PlanDef> = {
     trialEligible: true,
     active: true,
     features: PRO_FEATURES,
-    bullets: [
-      'Ders programı ve görevler',
-      'Soru bankası',
-      'Zorro ile konu anlatımı ve soru çözümü',
-      'Koç randevusu (mevcut kurallar)',
-    ],
+    bullets: [...PRO_FEATURE_LIST],
   },
   premium: {
     id: 'premium',
@@ -67,11 +74,7 @@ export const PLANS: Record<PlanId, PlanDef> = {
     trialEligible: true,
     active: true,
     features: PREMIUM_FEATURES,
-    bullets: [
-      'Pro’daki her şey',
-      'Zorro ile günlük plan ve program üretimi',
-      'Analiz sayfası',
-    ],
+    bullets: [...PREMIUM_FEATURE_LIST],
   },
 };
 

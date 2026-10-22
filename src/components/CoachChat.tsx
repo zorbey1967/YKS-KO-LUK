@@ -6,14 +6,13 @@ import { compressQuestionImage } from '../lib/chatImage';
 import { today, uid } from '../lib/util';
 import { lastBankTopic, setBankJump, weakBankTopics } from '../lib/practice';
 import { QUESTION_BANK_ENABLED } from '../lib/features';
-import { paidAccessLocked } from '../lib/subscription';
 import { isAffirmative, parseExamAddIntent, publicSourceLabel } from '../lib/zoroText';
 import { emptyExamTarget, inferExamKind, saveExamTarget } from '../lib/examTargets';
 import { ZORRO_OPEN_EVENT } from '../lib/zorroBus';
 import { workingModeChips, type ZorroUiAction } from '../lib/zorroSuggest';
 import { topicMastery } from '../lib/zorroMastery';
 import { mergeLearningNote } from '../lib/zorroMemory';
-import { canUseFeature } from '../lib/subscription';
+import { canUseAi, canUseFeature } from '../lib/subscription';
 import { appendGeneratedTasks } from '../lib/coachPlan';
 import {
   conversationTitleFromText,
@@ -34,7 +33,8 @@ const FRIENDLY_FAIL = 'ZORRO şu anda yanıt veremiyor. Lütfen biraz sonra tekr
 
 export function CoachChat() {
   const { data, setData, toast, go, user, page, profile, isAdmin } = useApp();
-  const chatLocked = paidAccessLocked(profile, Date.now(), isAdmin);
+  /** ZORRO yalnız aktif Premium'da. Sunucu (student-ai + caller_premium_ai) ayrıca reddeder. */
+  const chatLocked = !canUseAi(profile, isAdmin);
   const weak = weakBankTopics(data, 1)[0];
   const lastQ = lastBankTopic(data);
   const chips = workingModeChips(data, Boolean(user), canUseFeature(profile, 'zorro_advanced', Date.now(), isAdmin));
@@ -165,7 +165,7 @@ export function CoachChat() {
   }
 
   async function send(text?: string, display?: string) {
-    if (chatLocked) return toast('Deneme veya üyelik gerekli.');
+    if (chatLocked) return toast('ZORRO Premium üyelikte açılır.');
     const q = (text ?? input).trim().slice(0, 2000);
     if ((!q && !photo) || busy) return;
     const question = q || (photo ? 'Bu soruyu çöz. Konuyu söyle, adım adım git. Okunmuyorsa söyle.' : '');
@@ -342,9 +342,9 @@ export function CoachChat() {
           ) : null}
           {chatLocked ? (
             <div className="chat-msgs">
-              <p className="muted" style={{ padding: 12 }}>Zorro, deneme veya ücretli üyelik ile açılır. Tarayıcı ayarı yetki vermez.</p>
+              <p className="muted" style={{ padding: 12 }}>ZORRO, yapay zekâ destekli öneriler ve gelişmiş analiz Premium üyelikte açılır. Pro ve deneme üyeliğinde ders programı, takvim, görevler ve koçluk araçları açık kalır.</p>
               <div className="actions" style={{ padding: 12 }}>
-                <button className="btn primary" type="button" onClick={() => { closePanel(); go('membership'); }}>Üyelik</button>
+                <button className="btn primary" type="button" onClick={() => { closePanel(); go('membership'); }}>Premium’a geç</button>
               </div>
             </div>
           ) : (
