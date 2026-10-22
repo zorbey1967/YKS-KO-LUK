@@ -5,6 +5,7 @@ import { chargeAmountTry, normalizePlanId, type PlanId } from "../_shared/billin
 import { merchantReady, missingSecretsMessage, shopierSecrets } from "../_shared/billingProvider.ts";
 import { recordBillingEvent } from "../_shared/billingApply.ts";
 import {
+  shopierConfirmCreatedProduct,
   shopierCreateProduct,
   shopierDeleteProduct,
   shopierGetProduct,
@@ -244,8 +245,8 @@ Deno.serve(async (req) => {
     }, 503);
   }
 
-  const live = await shopierGetProduct(secrets.pat, created.product.id);
-  if (!live.ok || !live.product || live.product.id !== created.product.id) {
+  const live = await shopierConfirmCreatedProduct(secrets.pat, created.product);
+  if (!live.ok) {
     const del = await failOrphan(admin, secrets.pat, session.id, created.product.id, auth.user.id);
     return json(req, {
       ready: false,
@@ -263,7 +264,7 @@ Deno.serve(async (req) => {
     amount_try: amountTry,
     currency: "TRY",
     provider: "shopier",
-    checkout_url: live.product.url,
+    checkout_url: live.url,
     checkout_session_id: session.id,
   });
 });

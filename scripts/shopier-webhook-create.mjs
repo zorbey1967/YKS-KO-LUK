@@ -133,12 +133,13 @@ const quoted = token.includes("'") ? `"${token.replace(/\\/g, '\\\\').replace(/"
 let stored = false;
 try {
   writeFileSync(envFile, `SHOPIER_WEBHOOK_TOKEN=${quoted}\n`, { mode: 0o600 });
-  const set = spawnSync('cmd.exe', ['/d', '/s', '/c', `npx.cmd --yes supabase secrets set --env-file "${envFile}" --project-ref ${PROJECT_REF}`], { encoding: 'utf8' });
+  // shell:true: Node, cmd.exe'ye argüman dizisi verirken iç tırnakları \" yapar ve --env-file yolu bozulur.
+  const set = spawnSync(`npx.cmd --yes supabase secrets set --env-file "${envFile}" --project-ref ${PROJECT_REF}`, { encoding: 'utf8', shell: true });
   stored = set.status === 0;
 } finally {
   rmSync(envFile, { force: true });
 }
-const list = spawnSync('cmd.exe', ['/d', '/s', '/c', `npx.cmd --yes supabase secrets list --project-ref ${PROJECT_REF} -o json`], { encoding: 'utf8' });
+const list = spawnSync(`npx.cmd --yes supabase secrets list --project-ref ${PROJECT_REF} -o json`, { encoding: 'utf8', shell: true });
 let digestOk = false;
 try {
   const rows = JSON.parse(String(list.stdout || '').slice(String(list.stdout || '').indexOf('[')));

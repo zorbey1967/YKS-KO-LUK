@@ -14,7 +14,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { chargeAmountTry, normalizePlanId, type PlanId } from "../_shared/billingCatalog.ts";
 import { merchantReady, missingSecretsMessage, shopierSecrets } from "../_shared/billingProvider.ts";
-import { shopierCreateProduct, shopierDeleteProduct, shopierGetProduct } from "../_shared/shopierApi.ts";
+import { shopierConfirmCreatedProduct, shopierCreateProduct, shopierDeleteProduct, shopierGetProduct } from "../_shared/shopierApi.ts";
 import { type RateStore } from "../_shared/edgeRateLimit.ts";
 import { allowDistributed, readUpstashEnv } from "../_shared/upstashRateLimit.ts";
 import {
@@ -142,10 +142,10 @@ Deno.serve(async (req) => {
     await fail(productId);
     return json(req, { ready: false, error: "Ödeme eşlemesi yazılamadı. Üyelik açılmadı." }, 503);
   }
-  const live = await shopierGetProduct(secrets.pat, productId);
-  if (!live.ok || !live.product || live.product.id !== productId) {
+  const live = await shopierConfirmCreatedProduct(secrets.pat, created.product);
+  if (!live.ok) {
     await fail(productId);
     return json(req, { ready: false, error: "Ödeme sayfası doğrulanamadı. Üyelik açılmadı." }, 503);
   }
-  return json(req, { ready: true, checkout_url: live.product.url, token, plan_id: planId, amount_try: amountTry });
+  return json(req, { ready: true, checkout_url: live.url, token, plan_id: planId, amount_try: amountTry });
 });

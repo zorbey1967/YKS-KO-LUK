@@ -197,12 +197,28 @@ export async function shopierGetOrder(pat: string, orderId: string) {
 }
 
 export async function shopierGetProduct(pat: string, productId: string) {
-  if (!productId) return { ok: false as const, error: "ürün yok", product: null };
+  if (!productId) return { ok: false as const, status: 0, error: "ürün yok", product: null };
   const got = await shopierRequest(pat, "GET", `/products/${encodeURIComponent(productId)}`);
-  if (!got.ok) return { ok: false as const, error: got.error, product: null };
+  if (!got.ok) return { ok: false as const, status: got.status, error: got.error, product: null };
   const product = parseShopierProduct(got.json);
-  if (!product) return { ok: false as const, error: "Shopier ürün gövdesi geçersiz", product: null };
-  return { ok: true as const, error: "", product };
+  if (!product) return { ok: false as const, status: got.status, error: "Shopier ürün gövdesi geçersiz", product: null };
+  return { ok: true as const, status: got.status, error: "", product };
+}
+
+/**
+ * Az önce POST /products ile açılan ürünün ödeme linki. Shopier PAT'e ürün okuma izni vermeyebiliyor
+ * (GET /products/{id} → 403); yalnız o durumda POST yanıtındaki (Shopier'in kendi döndürdüğü) link kullanılır.
+ * Ürün yoksa (404), ağ hatası veya id uyuşmazlığında link verilmez. Ödeme yine webhook'ta GET /orders ile doğrulanır.
+ */
+export async function shopierConfirmCreatedProduct(pat: string, created: ShopierProduct) {
+  const live = await shopierGetProduct(pat, created.id);
+  if (live.ok && live.product && live.product.id === created.id) {
+    return { ok: true as const, url: live.product.url, verifiedByGet: true };
+  }
+  if (!live.ok && live.status === 403 && created.id && created.url.startsWith("https://")) {
+    return { ok: true as const, url: created.url, verifiedByGet: false };
+  }
+  return { ok: false as const, url: "", verifiedByGet: false };
 }
 
 export async function shopierDeleteProduct(pat: string, productId: string) {
