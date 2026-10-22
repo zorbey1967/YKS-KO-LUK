@@ -58,6 +58,10 @@ export function publicAuthError(err: unknown) {
   if (/pkce|code verifier|flow state|unable to exchange|invalid request|bad_oauth/i.test(msg)) {
     return 'Google oturumu kurulamadı. Sayfayı yenileyip yeniden dene.';
   }
+  // 061: kayıtlı olmayan e-postayla ilk Google girişinde hesap açılmaz (Auth "Database error saving new user").
+  if (/database error saving new user|GOOGLE_KAYIT_YOK/i.test(msg)) {
+    return 'Bu e-posta ile kayıt yok. Önce Kayıt sekmesinden e-posta ile kayıt ol.';
+  }
   if (/identity.*already|already linked|manual linking|multiple.*identit/i.test(msg)) {
     return 'Bu Google hesabı mevcut e-posta kaydıyla otomatik birleşmez. E-posta ile giriş yap.';
   }

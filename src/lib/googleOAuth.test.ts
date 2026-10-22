@@ -125,10 +125,11 @@ describe('Google OAuth', () => {
     });
     clearGoogleSignupPending(store);
 
+    // Google ile kayıt şimdilik kapalı (061): sayfada yalnız "Google ile giriş yap" var.
     const page = readFileSync(join(process.cwd(), 'src/pages/AccountPage.tsx'), 'utf8');
-    expect(page).toContain('Google ile Kayıt Ol');
-    expect(page).toContain('Google ile devam et');
-    expect(page).toContain('beginGoogleSignUp');
+    expect(page).not.toContain('Google ile Kayıt Ol');
+    expect(page).not.toMatch(/beginGoogleSignUp|signUpGoogle\(\)/);
+    expect(page).toContain('Google ile giriş yap');
     expect(page).toContain('beginGoogleSignIn');
     expect(page).not.toContain('service_role');
   });

@@ -17,7 +17,7 @@ export function FeatureLock({
       <div className="section-title"><h3>{title}</h3></div>
       <p className="muted">
         {premium
-          ? 'Bu özellik yalnız Premium üyelikte açılır. Pro ve deneme üyeliğinde temel e-koçluk özellikleri açık kalır.'
+          ? 'Bu özellik Premium üyelikte ve 14 günlük ücretsiz denemede açılır. Pro üyelikte temel e-koçluk özellikleri açık kalır.'
           : 'Bu özellik 14 günlük deneme veya ücretli üyelik gerektirir. Yerel tarayıcı ayarı yetki vermez.'}
       </p>
       {children}

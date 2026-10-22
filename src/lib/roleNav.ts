@@ -27,6 +27,13 @@ export function landingPageForRole(role: Profile['role'] | string | null | undef
   return role === 'coach' ? 'coaches' : 'home';
 }
 
+/** Yalnız giriş anında (e-posta veya Google): öğrenci önce Üyelik sayfasına; koç ve yönetici kendi açılışına. */
+export function postLoginPageForRole(role: Profile['role'] | string | null | undefined): PageId {
+  if (role === 'coach') return 'coaches';
+  if (role === 'admin') return 'home';
+  return 'membership';
+}
+
 export function coercePageForRole(
   page: PageId,
   role: Profile['role'] | string | null | undefined,

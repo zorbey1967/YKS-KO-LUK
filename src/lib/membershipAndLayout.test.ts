@@ -34,7 +34,7 @@ function student(partial: Partial<Profile> = {}): Profile {
 }
 
 describe('üyelik trial + Net Hesapla menü', () => {
-  it('aktif deneme temel erişim verir; yapay zekâ ve gelişmiş analiz Premium', () => {
+  it('aktif deneme tüm özellikleri açar (yapay zekâ ve gelişmiş analiz dahil)', () => {
     const profile = student({
       subscription_status: 'trialing',
       trial_started_at: started,
@@ -43,8 +43,8 @@ describe('üyelik trial + Net Hesapla menü', () => {
     expect(entitledPlan(billingFromProfile(profile, now))).toBe('trial');
     expect(displayMembershipName(profile, now)).toBe('14 Günlük Ücretsiz Deneme');
     expect(canUseFeature(profile, 'core_study', now)).toBe(true);
-    expect(canUseFeature(profile, 'analytics', now)).toBe(false);
-    expect(canUseFeature(profile, 'ai_plan', now)).toBe(false);
+    expect(canUseFeature(profile, 'analytics', now)).toBe(true);
+    expect(canUseFeature(profile, 'ai_plan', now)).toBe(true);
     expect(paidAccessLocked(profile, now)).toBe(false);
     expect(canStartMembershipTrial(profile, false, now)).toBe(false);
   });

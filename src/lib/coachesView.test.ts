@@ -57,10 +57,10 @@ describe('analiz route ve menü', () => {
     expect(coerceAppPage('analytics', 'student', 'ok', true)).toBe('analytics');
   });
 
-  it('misafir analize ve yöneticiye hash ile giremez; koçlar açık', () => {
+  it('misafir analize, yöneticiye ve koçlara hash ile giremez (yalnız giriş)', () => {
     expect(coerceAppPage('analytics', undefined, 'guest', false)).toBe('account');
     expect(coerceAppPage('admin', undefined, 'guest', false)).toBe('account');
-    expect(coerceAppPage('coaches', undefined, 'guest', false)).toBe('coaches');
+    expect(coerceAppPage('coaches', undefined, 'guest', false)).toBe('account');
   });
 
   it('yönetici menüsünde Analiz ve Yönetici vardır; koç menüsünde Analiz yoktur', () => {

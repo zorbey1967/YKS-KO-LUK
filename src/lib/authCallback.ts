@@ -105,6 +105,7 @@ export function openAccountHashKeepQuery() {
 export function formatOAuthExchangeError(err: unknown) {
   const raw = err instanceof Error ? err.message : String((err as { message?: string })?.message || err || '');
   const mapped = publicAuthError(err instanceof Error ? err : new Error(raw));
+  if (mapped.startsWith('Bu e-posta ile kayıt yok')) return mapped;
   if (raw && mapped && mapped !== raw) return `${mapped} (${raw})`;
   return raw || mapped || 'Google oturumu kurulamadı.';
 }

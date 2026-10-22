@@ -40,6 +40,8 @@ const LIVE_LIKE = ['013', '014', '016', '017'].map(mig);
 const M055 = mig('055');
 const M058 = mig('058');
 const M059 = mig('059');
+const M060 = mig('060');
+const M061 = mig('061');
 
 function load(rel) {
   return readFileSync(join(root, rel), 'utf8');
@@ -116,7 +118,11 @@ function scenario(label, db, list) {
   if (!out58.includes('OK 058_plan_access_pg')) throw new Error(`${label}: 058 test sonucu yok`);
   const out59 = psql(db, load('supabase/tests/059_guest_checkout_pg.sql'));
   if (!out59.includes('OK 059_guest_checkout_pg')) throw new Error(`${label}: 059 test sonucu yok`);
-  console.log(`  OK${out58.includes('(zorro_rls)') ? ' (058 ZORRO yazma kapısı dahil)' : ''}`);
+  // 060 (deneme = tüm özellikler) ve 061 (yeni Google kaydı kapalı): 058/059 testlerinden SONRA, iki kez.
+  apply(db, [M060, M060, M061, M061]);
+  const out61 = psql(db, load('supabase/tests/060_061_trial_google_pg.sql'));
+  if (!out61.includes('OK 060_061_pg')) throw new Error(`${label}: 060/061 test sonucu yok`);
+  console.log(`  OK${out58.includes('(zorro_rls)') ? ' (058 ZORRO yazma kapısı dahil)' : ''} + 060/061`);
 }
 
 try {
@@ -170,6 +176,14 @@ try {
   f58 = false;
   try { psql('c058n', load('supabase/tests/058_plan_access_pg.sql')); } catch { f58 = true; }
   if (!f58) throw new Error('Pro\'ya yapay zekâ açan 058 ile test geçti; test açığı yakalamıyor');
+  console.log('  OK (beklenen hata)');
+
+  process.stdout.write('• Negatif kontrol: 061 olmadan 060/061 testi başarısız olmalı\n');
+  fresh('c061n');
+  apply('c061n', [...LIVE_LIKE, ...FEATURE, M055, M058, M059, M060]);
+  let f61 = false;
+  try { psql('c061n', load('supabase/tests/060_061_trial_google_pg.sql')); } catch { f61 = true; }
+  if (!f61) throw new Error('061 olmadan 060/061 testi geçti; test açığı yakalamıyor');
   console.log('  OK (beklenen hata)');
 
   console.log('PG_COMMERCIAL_OK');

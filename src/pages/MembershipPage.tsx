@@ -121,7 +121,7 @@ export function MembershipPage() {
       }
       if (res.status === 'trialing') {
         if (profile) setProfile(applyTrialRpcToProfile(profile, res));
-        toast('Deneme başladı: temel e-koçluk özellikleri açık');
+        toast('Deneme başladı: 14 gün boyunca tüm özellikler açık');
         void refreshAuth();
         return;
       }
@@ -158,7 +158,7 @@ export function MembershipPage() {
             <div className="label">PLANIN</div>
             <div className="value" style={{ fontSize: 22 }}>{planName}</div>
             <div className="sub">
-              {trialActive ? 'Deneme: temel e-koçluk açık' : snap.status === 'active' ? 'Ücretli üyelik' : ''}
+              {trialActive ? 'Deneme: tüm özellikler açık' : snap.status === 'active' ? 'Ücretli üyelik' : ''}
             </div>
           </div>
           {trialActive ? (
@@ -256,8 +256,8 @@ export function MembershipPage() {
         <div className="section-title"><h3>14 Günlük Ücretsiz Deneme</h3><span>{TRIAL_DAYS} gün</span></div>
         <p className="muted">
           {trialActive
-            ? `Deneme aktif: temel e-koçluk özellikleri açık. Kalan: ${days} gün. Ücret alınmadı. ZORRO ve gelişmiş analiz için Premium gerekir.`
-            : 'Pro’daki temel e-koçluk özellikleri 14 gün açılır; ZORRO ve gelişmiş analiz Premium’dadır. Başlangıç ve bitiş sunucuda yazılır. Ücret alınmaz. Aynı hesap ikinci kez deneme alamaz.'}
+            ? `Deneme aktif: ZORRO ve gelişmiş analiz dahil tüm özellikler açık. Kalan: ${days} gün. Ücret alınmadı.`
+            : 'ZORRO ve gelişmiş analiz dahil tüm özellikler 14 gün açılır. Başlangıç ve bitiş sunucuda yazılır. Ücret alınmaz. Aynı hesap ikinci kez deneme alamaz.'}
         </p>
         {(snap.status === 'expired' && profile?.trial_started_at) || (snap.status !== 'trialing' && snap.status !== 'active' && profile?.trial_started_at && snap.trialEndsAt) ? (
           <p className="notice">Bu hesap denemeyi kullandı. Devam için Pro veya Premium satın al.</p>

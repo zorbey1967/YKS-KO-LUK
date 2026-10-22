@@ -113,8 +113,8 @@ function Shell() {
       </ErrorBoundary>
       {taskOpen && <TaskModal onClose={() => setTaskOpen(false)} />}
       <CommandPalette open={cmd} onClose={() => setCmd(false)} />
-      {page === 'meeting' ? null : <CoachChat />}
-      {page === 'meeting' ? null : <SupportPanel />}
+      {page === 'meeting' || !user ? null : <CoachChat />}
+      {page === 'meeting' || !user ? null : <SupportPanel />}
       {profile?.role === 'coach' || accessGate !== 'ok' ? null : <ExamNotifyWatcher />}
       {accessGate === 'boot' ? null : <GuestCheckoutWatcher signedIn={Boolean(user)} />}
     </Layout>

@@ -67,11 +67,11 @@ describe('üyelik fail-closed kilitler', () => {
     const profile = student({ subscription_status: 'trialing', trial_ends_at: future });
     expect(entitledPlan(billingFromProfile(profile, now))).toBe('trial');
     expect(paidAccessLocked(profile, now)).toBe(false);
-    // Deneme = temel e-koçluk; gelişmiş analiz ve yapay zekâ yalnız Premium (planAccess).
+    // Deneme = tüm özellikler (060): gelişmiş analiz ve yapay zekâ dahil.
     expect(canUseFeature(profile, 'core_study', now)).toBe(true);
-    expect(canUseFeature(profile, 'analytics', now)).toBe(false);
+    expect(canUseFeature(profile, 'analytics', now)).toBe(true);
     expect(canSeeAnalyticsPage(profile, false, now)).toBe(true);
-    expect(canUseAnalytics(profile, false, now)).toBe(false);
+    expect(canUseAnalytics(profile, false, now)).toBe(true);
     expect(studyPagesLocked({ isAdmin: false, accessGate: 'ok', profile, now })).toBe(false);
   });
 

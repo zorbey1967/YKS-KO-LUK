@@ -2,14 +2,14 @@
  * Sunucu paket yetkisi. src/lib/planAccess.ts ile aynı tablo (planAccessContract testi eşitliği denetler).
  *
  *   none    → üyelik yok
- *   trial   → temel e-koçluk (Yapay Zekâ ve gelişmiş analiz yok)
+ *   trial   → 14 günlük deneme: tüm özellikler (Premium ile aynı; 060)
  *   pro     → temel e-koçluk
  *   premium → temel e-koçluk + Yapay Zekâ (ZORRO) + gelişmiş analiz
  *   staff   → yönetici / platform sahibi
  *
  * Plan yalnız profiles kolonlarından okunur. Bu kolonları istemci yazamaz (protect_plan tetikleyicisi);
  * ödeme ile yalnız apply_verified_payment (054) yazar. İstek gövdesindeki plan hiçbir zaman okunmaz.
- * Veritabanı eşi: public.caller_access_tier() / public.caller_premium_ai() (058).
+ * Veritabanı eşi: public.caller_access_tier() / public.caller_premium_ai() (058; deneme 060 ile dahil).
  */
 import { billingOk, type BillingGate } from "./billingEntitled.ts";
 
@@ -18,7 +18,7 @@ export type Capability = "core" | "ai" | "advanced_analytics";
 
 export const TIER_CAPABILITIES: Record<AccessTier, readonly Capability[]> = {
   none: [],
-  trial: ["core"],
+  trial: ["core", "ai", "advanced_analytics"],
   pro: ["core"],
   premium: ["core", "ai", "advanced_analytics"],
   staff: ["core", "ai", "advanced_analytics"],

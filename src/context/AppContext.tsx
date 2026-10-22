@@ -6,7 +6,7 @@ import { loadData, saveData, normalizeData, applyProfileSeed } from '../lib/stor
 import { SUPABASE_UNAVAILABLE, isSupabaseConfigured, supabase, withTimeout } from '../lib/supabase';
 import { canAccessAdminPanel, fetchServerAdmin, fetchServerPlatformOwner } from '../lib/admin';
 import { readLocal, writeLocal } from '../lib/util';
-import { coerceAppPage } from '../lib/roleNav';
+import { coerceAppPage, postLoginPageForRole } from '../lib/roleNav';
 import { getPersonDisplayName } from '../lib/displayName';
 import { parseAccountStatus, fetchMyCoach, pushStudentData } from '../lib/cloudPlatform';
 import { mergeAppData } from '../lib/syncMerge';
@@ -93,6 +93,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const cloudReady = useRef(false);
   const userRef = useRef<User | null>(null);
   const profileRef = useRef<Profile | null>(null);
+  /** Google / e-posta bağlantısı dönüşünde bir kez Üyelik (veya rol açılışı); sayfa yenilemede değil. */
+  const postLoginRedirect = useRef(false);
   const hydratedUserId = useRef<string | null>(null);
   const hydrateChain = useRef(Promise.resolve());
   const dataRef = useRef(data);
@@ -396,6 +398,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (oauth.handled) {
           setPage('account');
           if (oauth.session?.user) {
+            postLoginRedirect.current = true;
             await applySession(oauth.session.user, true);
             return;
           }
@@ -425,6 +428,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const dest = coerceAppPage(page, profile?.role, accessGate, isAdmin);
     if (dest !== page) go(dest);
   }, [page, profile?.role, accessGate, isAdmin, go]);
+
+  useEffect(() => {
+    if (!postLoginRedirect.current || !user || accessGate === 'boot' || accessGate === 'guest') return;
+    postLoginRedirect.current = false;
+    go(isAdmin ? 'home' : postLoginPageForRole(profile?.role));
+  }, [user, accessGate, profile?.role, isAdmin, go]);
 
   const value = useMemo<Ctx>(
     () => ({

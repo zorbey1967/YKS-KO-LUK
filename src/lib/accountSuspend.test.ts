@@ -74,12 +74,11 @@ describe('askıya alınan hesap kapıları', () => {
     expect(coerceAppPage('home', 'student', gate, false)).toBe('account');
   });
 
-  it('ziyaretçi korunan URL’yi yazsa da girişe düşer; koçlar açık kalır', () => {
-    expect(pagesAllowedForGate('guest')).toEqual(['account', 'coaches', 'library', 'membership']);
-    expect(coerceAppPage('admin', undefined, 'guest', false)).toBe('account');
-    expect(coerceAppPage('analytics', undefined, 'guest', false)).toBe('account');
-    expect(coerceAppPage('coaches', undefined, 'guest', false)).toBe('coaches');
-    expect(coerceAppPage('library', undefined, 'guest', false)).toBe('library');
-    expect(sidebarNav('student', false, pagesAllowedForGate('guest')).map((x) => x.id).sort()).toEqual(['account', 'coaches', 'library', 'membership']);
+  it('ziyaretçi yalnız giriş ekranını görür; her URL girişe düşer', () => {
+    expect(pagesAllowedForGate('guest')).toEqual(['account']);
+    for (const p of ['admin', 'analytics', 'coaches', 'library', 'membership', 'home'] as const) {
+      expect(coerceAppPage(p, undefined, 'guest', false)).toBe('account');
+    }
+    expect(sidebarNav('student', false, pagesAllowedForGate('guest')).map((x) => x.id)).toEqual(['account']);
   });
 });

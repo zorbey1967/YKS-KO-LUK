@@ -23,7 +23,7 @@ describe('sessiz kütüphane görünür ad ve katılım', () => {
     expect(libraryTextLeaksEmail('ali@mail.com')).toBe(true);
   });
 
-  it('heartbeat 30sn ve cleanup; guest kütüphane sayfasını açabilir', () => {
+  it('heartbeat 30sn ve cleanup; misafir kütüphaneye giremez (yalnız giriş)', () => {
     expect(LIBRARY_HEARTBEAT_MS).toBe(30_000);
     const page = readFileSync(join(process.cwd(), 'src/pages/LibraryPage.tsx'), 'utf8');
     expect(page).toContain('window.clearInterval(id)');
@@ -41,7 +41,7 @@ describe('sessiz kütüphane görünür ad ve katılım', () => {
     expect(page).toContain('document.hidden');
     expect(page).toContain('visibilitychange');
     expect(page).not.toMatch(/setInterval\(\(\) => void tick\(\), 15000\)/);
-    expect(pagesAllowedForGate('guest')).toContain('library');
+    expect(pagesAllowedForGate('guest')).not.toContain('library');
     expect(LIBRARY_ROOMS[0].name).toBe('Genel Çalışma Salonu');
     expect(formatStudyClock(2538000)).toBe('00:42:18');
     expect(sanitizeLibraryPeers([

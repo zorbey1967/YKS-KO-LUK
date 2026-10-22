@@ -6,7 +6,7 @@ import { normalizeData, saveData } from '../lib/storage';
 import { coachAdvice } from '../lib/coach';
 import { COACH_TRACKS, clearCoachSession, compressCoachPhoto, type CoachTrack } from '../lib/coaches';
 import { submitCoachApplication } from '../lib/cloudPlatform';
-import { landingPageForRole } from '../lib/roleNav';
+import { postLoginPageForRole } from '../lib/roleNav';
 import { getCoachDisplayName, getPersonDisplayName, joinCoachName, splitPersonName } from '../lib/displayName';
 import { emailLooksValid, normalizeEmailInput, passwordPolicyError, publicAuthError } from '../lib/authUi';
 import { authEmailRedirectTo } from '../lib/authRedirect';
@@ -17,10 +17,8 @@ import { accessMessage } from '../lib/accessGate';
 import {
   applyGoogleSignupPendingToData,
   beginGoogleSignIn,
-  beginGoogleSignUp,
   claimGoogleSignupPrefs,
   clearGoogleSignupPending,
-  stashGoogleSignupPending,
   takeGoogleSignupPending,
 } from '../lib/googleOAuth';
 import { SITE_ORIGIN } from '../lib/site';
@@ -263,46 +261,6 @@ export function AccountPage() {
     }
   }
 
-  async function signUpGoogle() {
-    if (!supabase) return setAuthMsg(SUPABASE_UNAVAILABLE);
-    if (role === 'koc') {
-      const nameErr = validatePersonName(firstName, lastName);
-      if (nameErr) return setAuthMsg(nameErr);
-      if (!photo.startsWith('data:image/')) return setAuthMsg('Koç fotoğrafı gerekli.');
-    }
-    stashGoogleSignupPending({
-      firstName: firstName.trim(),
-      lastName: lastName.trim(),
-      intent: role === 'koc' ? 'coach' : 'student',
-      grade: role === 'koc' ? '' : signupGrade,
-      track: role === 'koc' ? '' : signupTrack,
-      exam: role === 'koc' ? '' : signupExam,
-    });
-    if (role === 'koc') {
-      try {
-        localStorage.setItem('yks_pending_coach_app', JSON.stringify({
-          name: joinCoachName(firstName, lastName),
-          email: email.trim(),
-          track: coachTrack,
-          focus: focus.trim() || 'Süreç koçluğu',
-          photo,
-          studentCount: Number(studentCount) || 0,
-        }));
-      } catch { /* ignore */ }
-    }
-    if (location.hash.includes('oauth=google')) location.hash = '/account';
-    setGoogleBusy(true);
-    setAuthMsg('Google’a yönlendiriliyorsun…');
-    try {
-      await withTimeout(beginGoogleSignUp(supabase, import.meta.env.PROD ? SITE_ORIGIN : window.location.origin), 8000);
-    } catch (e) {
-      clearGoogleSignupPending();
-      setAuthMsg(publicAuthError(e));
-    } finally {
-      setGoogleBusy(false);
-    }
-  }
-
   async function signIn() {
     if (!supabase) return setAuthMsg(SUPABASE_UNAVAILABLE);
     const mail = normalizeEmailInput(email);
@@ -322,7 +280,7 @@ export function AccountPage() {
         const { data: row } = await withTimeout(supabase.from('profiles').select('role').eq('id', uid).maybeSingle());
         roleName = row && typeof row === 'object' ? String((row as { role?: string }).role || '') : '';
       }
-      go(landingPageForRole(roleName));
+      go(postLoginPageForRole(roleName));
     } catch (e) {
       setAuthMsg(publicAuthError(e));
     } finally {
@@ -371,15 +329,12 @@ export function AccountPage() {
           <div>
             <div className="eyebrow" style={{ color: '#cfe1ff' }}>E-Koçluk</div>
             <h2>Çalışmana giriş yaparak devam et.</h2>
-            <p>Hedef, program, deneme ve net hesabına bağlıdır. Koçları giriş olmadan da inceleyebilir, randevu için oturum açarsın.</p>
+            <p>Hedef, program, deneme ve net hesabına bağlıdır. Koçlar, paketler ve çalışma araçları girişten sonra açılır.</p>
             <ul>
               <li>Öğrenci ve koç aynı platformda</li>
               <li>Oturumun bu cihazda saklanır; her yenilemede tekrar şifre istenmez</li>
-              <li>ZORRO ve çalışma araçları girişten sonra açılır</li>
+              <li>14 günlük ücretsiz denemede tüm özellikler açık</li>
             </ul>
-            <p className="muted" style={{ color: '#cfe1ff', marginBottom: 0 }}>
-              <button className="btn secondary" type="button" onClick={() => go('coaches')}>Koçları incele</button>
-            </p>
           </div>
         </section>
         <div className="card auth-card">
@@ -392,21 +347,12 @@ export function AccountPage() {
           {mode === 'giris' ? (
             <div className="actions" style={{ marginBottom: 12 }}>
               <button className="btn secondary" type="button" disabled={googleBusy || !supabase} onClick={() => void signInGoogle()}>
-                {googleBusy ? 'Google’a gidiliyor…' : 'Google ile devam et'}
+                {googleBusy ? 'Google’a gidiliyor…' : 'Google ile giriş yap'}
               </button>
-              <p className="muted" style={{ margin: 0 }}>Mevcut e-posta hesabı Google ile otomatik birleştirilmez.</p>
+              <p className="muted" style={{ margin: 0 }}>Google ile yalnızca kayıtlı e-postanla giriş yapılır. Kayıtlı değilsen önce Kayıt sekmesinden e-posta ile kayıt ol.</p>
             </div>
           ) : null}
-          {mode === 'kayit' ? (
-            <div className="actions" style={{ marginBottom: 12 }}>
-              <button className="btn secondary" type="button" disabled={googleBusy || !supabase} onClick={() => void signUpGoogle()}>
-                {googleBusy ? 'Google’a gidiliyor…' : 'Google ile Kayıt Ol'}
-              </button>
-              <p className="muted" style={{ margin: 0 }}>
-                Yeni Google hesabı hesap açar; daha önce kayıtlıysa mevcut oturuma girer. Aynı hesaptan ikinci kullanıcı oluşmaz.
-              </p>
-            </div>
-          ) : null}
+          {/* Google ile kayıt şimdilik kapalı (061 yeni Google hesabını reddeder); kayıt yalnız e-posta ile. */}
           {mode === 'kayit' ? (
             <div className="field" style={{ marginBottom: 12 }}>
               <label>Hesap türü</label>

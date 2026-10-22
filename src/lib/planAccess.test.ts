@@ -36,9 +36,9 @@ describe('paket tablosu tek kaynak', () => {
   it('istemci ve edge aynı tabloyu kullanır', () => {
     expect(EDGE_TIERS).toEqual(TIER_CAPABILITIES);
   });
-  it('Pro ve deneme yalnız temel; Premium temel + yapay zekâ + gelişmiş analiz', () => {
+  it('Pro yalnız temel; deneme ve Premium temel + yapay zekâ + gelişmiş analiz (060)', () => {
     expect(TIER_CAPABILITIES.pro).toEqual(['core']);
-    expect(TIER_CAPABILITIES.trial).toEqual(['core']);
+    expect([...TIER_CAPABILITIES.trial].sort()).toEqual(['advanced_analytics', 'ai', 'core']);
     expect(TIER_CAPABILITIES.none).toEqual([]);
     expect([...TIER_CAPABILITIES.premium].sort()).toEqual(['advanced_analytics', 'ai', 'core']);
   });
@@ -55,6 +55,16 @@ describe('paket tablosu tek kaynak', () => {
     expect(sql).toMatch(/caller_access_tier\(\) in \('premium', 'staff'\)/);
     expect(sql.replace(/--.*$/gm, '')).not.toMatch(/function public\.apply_verified_payment/);
     expect(sql).toMatch(/as restrictive for insert/);
+  });
+  it('SQL (060) yapay zekâyı aktif denemeye de açar; katman tablosu (058) değişmez', () => {
+    const sql = read('supabase/migrations/060_trial_full_access.sql');
+    expect(sql).toMatch(/caller_access_tier\(\) in \('premium', 'staff', 'trial'\)/);
+    expect(sql).not.toMatch(/function public\.caller_access_tier/);
+    const live = read('supabase/live/apply_060_061_live.sql');
+    expect(live).toMatch(/caller_access_tier\(\) in \('premium', 'staff', 'trial'\)/);
+    expect(live).toMatch(/^begin;/m);
+    expect(live).toMatch(/^commit;/m);
+    expect(live).toContain('CANLI_060_061_OK');
   });
 });
 
@@ -77,10 +87,10 @@ describe('arayüz yetkisi (senaryolar 1–6)', () => {
     expect(canUseAi(premium, false, now)).toBe(true);
     expect(canUseAnalytics(premium, false, now)).toBe(true);
   });
-  it('deneme temel erişim; yapay zekâ ve gelişmiş analiz yok. Üyeliksiz kilitli', () => {
+  it('deneme tüm özellikler (yapay zekâ + gelişmiş analiz dahil). Üyeliksiz kilitli', () => {
     expect(canUseFeature(trial, 'core_study', now)).toBe(true);
-    expect(canUseAi(trial, false, now)).toBe(false);
-    expect(canUseAnalytics(trial, false, now)).toBe(false);
+    expect(canUseAi(trial, false, now)).toBe(true);
+    expect(canUseAnalytics(trial, false, now)).toBe(true);
     expect(canUseAi(free, false, now)).toBe(false);
     expect(paidAccessLocked(free, now)).toBe(true);
   });
@@ -104,9 +114,11 @@ describe('sunucu yetkisi (senaryolar 7–8)', () => {
     expect(accessTierFromBilling({ ...gate({ plan: 'premium', status: 'active' }), skip: true }, false, now)).toBe('none');
     expect(accessTierFromBilling(gate({ plan: '', status: '' }), true, now)).toBe('staff');
   });
-  it('8) Pro/deneme 402; RPC hatası 503; RPC false 402; yalnız ikisi evetse izin', () => {
+  it('8) Pro 402; deneme izinli (060); RPC hatası 503; RPC false 402; yalnız ikisi evetse izin', () => {
     expect(premiumAiDecision({ tier: 'pro', rpcOk: true, rpcValue: true })).toMatchObject({ allow: false, status: 402 });
-    expect(premiumAiDecision({ tier: 'trial', rpcOk: true, rpcValue: true })).toMatchObject({ allow: false, status: 402 });
+    expect(premiumAiDecision({ tier: 'trial', rpcOk: true, rpcValue: true })).toEqual({ allow: true });
+    expect(premiumAiDecision({ tier: 'trial', rpcOk: true, rpcValue: false })).toMatchObject({ allow: false, status: 402 });
+    expect(premiumAiDecision({ tier: 'trial', rpcOk: false, rpcValue: null })).toMatchObject({ allow: false, status: 503 });
     expect(premiumAiDecision({ tier: 'premium', rpcOk: false, rpcValue: null })).toMatchObject({ allow: false, status: 503 });
     expect(premiumAiDecision({ tier: 'premium', rpcOk: true, rpcValue: false })).toMatchObject({ allow: false, status: 402 });
     expect(premiumAiDecision({ tier: 'premium', rpcOk: true, rpcValue: 'true' })).toMatchObject({ allow: false });

@@ -1,15 +1,23 @@
 import { describe, expect, it } from 'vitest';
-import { coerceAppPage, landingPageForRole } from './roleNav';
+import { coerceAppPage, landingPageForRole, postLoginPageForRole } from './roleNav';
 import { landingPageForGate, pagesAllowedForGate, resolveAccessGate } from './accessGate';
 
 describe('giriş kapısı', () => {
-  it('oturum yokken ilk açılış hesabadır; koçlar kamu', () => {
-    expect(pagesAllowedForGate('guest')).toEqual(['account', 'coaches', 'library', 'membership']);
+  it('oturum yokken yalnız giriş ekranı açılır', () => {
+    expect(pagesAllowedForGate('guest')).toEqual(['account']);
     expect(landingPageForGate('guest')).toBe('account');
-    expect(coerceAppPage('home', undefined, 'guest')).toBe('account');
-    expect(coerceAppPage('meetings', undefined, 'guest')).toBe('account');
-    expect(coerceAppPage('library', undefined, 'guest')).toBe('library');
-    expect(coerceAppPage('coaches', undefined, 'guest')).toBe('coaches');
+    for (const p of ['home', 'meetings', 'library', 'coaches', 'membership'] as const) {
+      expect(coerceAppPage(p, undefined, 'guest')).toBe('account');
+    }
+  });
+
+  it('giriş anında öğrenci Üyelik sayfasına, koç koçluğa, yönetici ana sayfaya', () => {
+    expect(postLoginPageForRole('student')).toBe('membership');
+    expect(postLoginPageForRole(undefined)).toBe('membership');
+    expect(postLoginPageForRole('coach')).toBe('coaches');
+    expect(postLoginPageForRole('admin')).toBe('home');
+    // Görüşmeden dönüş gibi giriş dışı yönlendirmeler eskisi gibi ana sayfaya
+    expect(landingPageForRole('student')).toBe('home');
   });
 
   it('boot sırasında yönlendirme yapmaz (oturum yüklenirken giriş ekranı dayatılmaz)', () => {
