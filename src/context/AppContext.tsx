@@ -19,7 +19,7 @@ import { emptyLibraryPrefs } from '../lib/libraryPresence';
 import { clearLive } from '../lib/studyTimer';
 import { clearCoachSession } from '../lib/coaches';
 import { clearGoogleSignupPending } from '../lib/googleOAuth';
-import { applyLoginMode, clearLoginMode, loginModeNotice, readLoginMode, resolveLoginMode, writeLoginMode, type LoginMode } from '../lib/roleMode';
+import { applyLoginMode, clearLoginMode, loginModeNotice, needsCoachApplication, readLoginMode, resolveLoginMode, writeLoginMode, type LoginMode } from '../lib/roleMode';
 
 type Ctx = {
   page: PageId;
@@ -455,9 +455,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!postLoginRedirect.current || !user || accessGate === 'boot' || accessGate === 'guest') return;
     postLoginRedirect.current = false;
     const note = loginModeNotice(baseProfile, storedLoginMode);
+    const apply = !isAdmin && needsCoachApplication(baseProfile, storedLoginMode);
     if (note) {
       toast(note);
       setLoginMode(resolveLoginMode(baseProfile, storedLoginMode));
+    }
+    if (apply) {
+      go('coaches', 'basvuru=1');
+      return;
     }
     go(isAdmin ? 'home' : postLoginPageForRole(profile?.role));
   }, [user, accessGate, profile?.role, isAdmin, go, baseProfile, storedLoginMode, toast, setLoginMode]);

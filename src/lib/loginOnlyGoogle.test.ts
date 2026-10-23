@@ -52,7 +52,7 @@ describe('giriş yapmamış kullanıcı yalnız giriş ekranını görür', () =
   it('Google / e-posta bağlantısı dönüşünde bir kez giriş sonrası sayfaya yönlendirilir', () => {
     const ctx = read('src/context/AppContext.tsx');
     expect(ctx).toMatch(/postLoginRedirect\.current = true;\n\s*await applySession\(oauth\.session\.user, true\);/);
-    expect(ctx).toMatch(/postLoginRedirect\.current = false;[\s\S]{0,300}?go\(isAdmin \? 'home' : postLoginPageForRole\(profile\?\.role\)\);/);
+    expect(ctx).toMatch(/postLoginRedirect\.current = false;[\s\S]{0,600}?go\(isAdmin \? 'home' : postLoginPageForRole\(profile\?\.role\)\);/);
     expect(read('src/pages/AccountPage.tsx')).toMatch(/go\(postLoginPageForRole\(roleName\)\)/);
   });
 });

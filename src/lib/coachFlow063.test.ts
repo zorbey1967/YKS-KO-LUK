@@ -103,9 +103,10 @@ describe('koç akışı: arayüz ve veri ayrımı', () => {
     expect(coaches).toMatch(/list\.filter\(\(c\) => c\.id !== ownCoachId\)/);
   });
 
-  it('koç panelinden çıkış öğrenci moduna geçer; hesabı kapatmaz', () => {
-    expect(coaches).toMatch(/setLoginMode\('student'\)/);
-    expect(coaches).not.toMatch(/if \(mine && supabase\) await supabase\.auth\.signOut\(\)/);
+  it('mod yalnız girişte değişir: koç panelinde "Çıkış yap" girişe döndürür', () => {
+    expect(coaches).toMatch(/async function signOutToLogin\(\)[\s\S]{0,300}signOut\(\{ scope: 'global' \}\)[\s\S]{0,200}go\('account'\)/);
+    expect(coaches).not.toMatch(/Öğrenci moduna geç/);
+    expect(coaches).not.toMatch(/setLoginMode/);
   });
 
   it('Ana Sayfa / Takvim randevularına koçluk dersleri karışmaz', () => {

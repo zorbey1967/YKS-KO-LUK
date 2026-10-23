@@ -69,11 +69,20 @@ export function applyLoginMode(p: Profile | null, stored: LoginMode | null): Pro
   return { ...base, role: 'student', signup_intent: 'student' };
 }
 
+/**
+ * "Koç olarak gir" seçildi ama koç kaydı yok veya reddedildi: girişten sonra başvuru formu açılır.
+ * Mod değişikliği yalnız giriş ekranından (çıkış yapıp yeniden giriş); Hesabım'da mod / başvuru yok.
+ */
+export function needsCoachApplication(p: Profile | null | undefined, chosen: LoginMode | null) {
+  if (chosen !== 'coach' || baseRoleOf(p) !== 'student' || p?.coach_lookup_failed) return false;
+  return !hasCoachRecord(p) || p?.coach_status === 'rejected';
+}
+
 /** Giriş ekranında "Koç olarak gir" seçildi ama hesap koç paneline giremiyorsa açıklama. */
 export function loginModeNotice(p: Profile | null | undefined, chosen: LoginMode | null): string {
   if (baseRoleOf(p) === 'admin' || p?.coach_lookup_failed) return '';
   if (chosen === 'coach' && !hasCoachRecord(p)) {
-    return 'Bu hesapta koç kaydı yok; öğrenci olarak giriş yapıldı. Koç olmak için Hesabım\'dan başvurabilirsin.';
+    return 'Bu hesapta koç kaydı yok. Koç olmak için başvuru formunu doldur.';
   }
   if (chosen === 'student' && !studentModeAvailable(p) && baseRoleOf(p) === 'coach') {
     return 'Bu hesap yalnız koç hesabı; koç paneli açıldı.';

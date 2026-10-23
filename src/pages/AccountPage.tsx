@@ -9,12 +9,10 @@ import { fetchMyCoachChecked, setMyCoachPhoto, submitCoachApplication } from '..
 import { postLoginPageForRole } from '../lib/roleNav';
 import {
   applyLoginMode,
-  coachModeAvailable,
-  hasCoachRecord,
   loginModeNotice,
+  needsCoachApplication,
   readLoginMode,
   resolveLoginMode,
-  studentModeAvailable,
   type LoginMode,
 } from '../lib/roleMode';
 import type { Profile } from '../lib/types';
@@ -54,9 +52,8 @@ type PendingCoachApp = {
 type AccountRole = 'ogrenci' | 'koc';
 
 export function AccountPage() {
-  const { user, profile, data, setData, authMsg, setAuthMsg, toast, cloudStatus, go, isAdmin, refreshAuth, accessGate, loginMode, setLoginMode } = useApp();
+  const { user, profile, data, setData, authMsg, setAuthMsg, toast, cloudStatus, go, isAdmin, refreshAuth, accessGate, setLoginMode } = useApp();
   const [loginAs, setLoginAs] = useState<LoginMode>(() => readLoginMode() ?? 'student');
-  const [coachFormOpen, setCoachFormOpen] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [firstName, setFirstName] = useState(() => splitPersonName(profile?.name || '').firstName);
@@ -361,8 +358,11 @@ export function AccountPage() {
         const note = loginModeNotice(base, loginAs);
         if (note) {
           setLoginMode(resolveLoginMode(base, loginAs));
-          setAuthMsg(note);
           toast(note);
+        }
+        if (needsCoachApplication(base, loginAs)) {
+          go('coaches', 'basvuru=1');
+          return;
         }
         roleName = applyLoginMode(base, loginAs)?.role;
       }
@@ -552,39 +552,6 @@ export function AccountPage() {
     ? getCoachDisplayName({ name: profile?.name, firstName, lastName })
     : getPersonDisplayName(profile?.name, 'Öğrenci');
   const gateNote = accessMessage(accessGate);
-  const showModeCard = !isAdmin && studentModeAvailable(profile) && !isGuestAccountEmail(user.email);
-  const canCoachMode = coachModeAvailable(profile);
-  const coachRecord = hasCoachRecord(profile);
-  const coachStatusNote = profile?.coach_status === 'pending'
-    ? 'Koç başvurun yönetici onayı bekliyor. Onaylanınca buradan veya girişte "Koç olarak gir" ile koç paneline geçebilirsin.'
-    : profile?.coach_status === 'rejected'
-      ? 'Koç başvurun kabul edilmedi. Bilgilerini güncelleyip yeniden başvurabilir, öğrenci tarafını kullanmaya devam edebilirsin.'
-      : profile?.coach_status === 'pasif'
-        ? 'Koç kaydın pasif. Yönetici yeniden açana kadar koç paneli kapalı.'
-        : '';
-
-  function switchMode(next: LoginMode) {
-    setLoginMode(next);
-    const view = applyLoginMode(profile, next);
-    const dest = view?.signup_intent === 'coach' && view.role !== 'coach' ? 'account' : postLoginPageForRole(view?.role);
-    toast(next === 'coach' ? 'Koç moduna geçildi' : 'Öğrenci moduna geçildi');
-    // Yeni rol bir sonraki çizimde bağlama yansır; yönlendirme ondan sonra.
-    window.setTimeout(() => go(dest), 0);
-  }
-
-  async function applyCoachFromAccount() {
-    if (busy) return;
-    setBusy(true);
-    try {
-      if (await applyCoach()) {
-        setCoachFormOpen(false);
-        await refreshAuth();
-      }
-    } finally {
-      setBusy(false);
-    }
-  }
-
   return (
     <>
       {gateNote ? <div className="notice" style={{ marginBottom: 16 }} role="status">{gateNote}</div> : null}
@@ -622,69 +589,6 @@ export function AccountPage() {
         </div>
         {authAlert}
       </div>
-      {showModeCard ? (
-        <div className="card" style={{ marginTop: 16 }}>
-          <div className="section-title">
-            <h3>Öğrenci / Koç</h3>
-            <span>Şu an: {loginMode === 'coach' ? 'Koç modu' : 'Öğrenci modu'}</span>
-          </div>
-          {canCoachMode ? (
-            <>
-              <p className="muted" style={{ marginTop: 0 }}>
-                Aynı hesapla iki tarafı da kullanabilirsin. Öğrenci tarafında deneme ve paket kuralları her öğrenciyle aynıdır.
-              </p>
-              <div className="actions">
-                {loginMode === 'coach' ? (
-                  <button className="btn primary" type="button" onClick={() => switchMode('student')}>Öğrenci moduna geç</button>
-                ) : (
-                  <button className="btn primary" type="button" onClick={() => switchMode('coach')}>Koç paneline geç</button>
-                )}
-              </div>
-            </>
-          ) : coachRecord ? (
-            <>
-              <p className="muted" style={{ marginTop: 0 }}>{coachStatusNote}</p>
-              {profile?.coach_status === 'rejected' && coachFormOpen ? (
-                <form onSubmit={(e) => { e.preventDefault(); void applyCoachFromAccount(); }}>
-                  <div className="form-grid">{coachFields}</div>
-                  <div className="actions">
-                    <button className="btn primary" type="submit" disabled={busy}>{busy ? 'Gönderiliyor…' : 'Başvuruyu yeniden gönder'}</button>
-                    <button className="btn" type="button" disabled={busy} onClick={() => setCoachFormOpen(false)}>Vazgeç</button>
-                  </div>
-                </form>
-              ) : (
-                <div className="actions">
-                  {profile?.coach_status === 'rejected' ? (
-                    <button className="btn secondary" type="button" onClick={() => setCoachFormOpen(true)}>Yeniden başvur</button>
-                  ) : null}
-                  {loginMode === 'coach' ? (
-                    <button className="btn primary" type="button" onClick={() => switchMode('student')}>Öğrenci moduna dön</button>
-                  ) : null}
-                </div>
-              )}
-            </>
-          ) : (
-            <>
-              <p className="muted" style={{ marginTop: 0 }}>
-                Koç olarak da çalışmak istersen başvur. Yönetici onaylayınca aynı hesapla "Koç olarak gir" seçebilirsin; öğrenci tarafın aynen kalır.
-              </p>
-              {coachFormOpen ? (
-                <form onSubmit={(e) => { e.preventDefault(); void applyCoachFromAccount(); }}>
-                  <div className="form-grid">{coachFields}</div>
-                  <div className="actions">
-                    <button className="btn primary" type="submit" disabled={busy}>{busy ? 'Gönderiliyor…' : 'Başvuruyu gönder'}</button>
-                    <button className="btn" type="button" disabled={busy} onClick={() => setCoachFormOpen(false)}>Vazgeç</button>
-                  </div>
-                </form>
-              ) : (
-                <div className="actions">
-                  <button className="btn secondary" type="button" onClick={() => setCoachFormOpen(true)}>Koç başvurusu yap</button>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      ) : null}
       <div className="card" style={{ marginTop: 16 }}>
         <div className="section-title"><h3>Güvenlik</h3><span>Oturum bu cihazda</span></div>
         <p className="muted">

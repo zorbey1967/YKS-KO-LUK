@@ -13,7 +13,7 @@ import {
 } from '../lib/coaches';
 import { accessMessage } from '../lib/accessGate';
 import { canUseAi } from '../lib/subscription';
-import { studentModeAvailable } from '../lib/roleMode';
+import { CoachApplyCard } from '../components/CoachApplyCard';
 import { addCoachSlot, assignCoachHomework, closeCoachSlot, decideApprovedAppointmentCancel, fetchActiveCoaches, fetchCoachDesk, fetchCoachStudentBrief, fetchLinkedStudents, fetchMyCoach, listMySlots, listOpenSlots, requestAppointment, requestCancelApprovedAppointment, respondAppointment, runAppointmentJobs, setCoachHomeworkDone, type LinkedStudentRow } from '../lib/cloudPlatform';
 import { CoachStudyBriefView } from '../components/CoachStudyBrief';
 import type { CoachStudyBrief } from '../lib/coachBrief';
@@ -46,7 +46,7 @@ const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
 const MINS = Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, '0'));
 
 export function CoachesPage() {
-  const { toast, go, user, profile, isAdmin, accessGate, setLoginMode } = useApp();
+  const { toast, go, user, profile, isAdmin, accessGate } = useApp();
   const [session, setSession] = useState<CoachSession | null>(null);
   const [desk, setDesk] = useState<CoachDesk>(() => emptyDesk());
   const [tab, setTab] = useState<PanelTab>('ozet');
@@ -67,6 +67,7 @@ export function CoachesPage() {
   const [ownCoachId, setOwnCoachId] = useState<string | null>(null);
   const [showOldAppts, setShowOldAppts] = useState(false);
   const [bookBusy, setBookBusy] = useState(false);
+  const [wantApply, setWantApply] = useState(false);
   const briefReq = useRef('');
 
   const [list, setList] = useState<HumanCoach[]>([]);
@@ -93,10 +94,12 @@ export function CoachesPage() {
   useEffect(() => {
     const apply = () => {
       const q = location.hash.split('?')[1] || '';
-      if (new URLSearchParams(q).get('eski') === '1') {
+      const params = new URLSearchParams(q);
+      if (params.get('eski') === '1') {
         setTab('randevu');
         setShowOldAppts(true);
       }
+      setWantApply(params.get('basvuru') === '1');
     };
     apply();
     window.addEventListener('hashchange', apply);
@@ -285,18 +288,14 @@ export function CoachesPage() {
     [coachAppts],
   );
 
-  async function leaveCoachPanel() {
+  /** Mod değişikliği yalnız girişte: çıkış yapılır, girişte "Öğrenci olarak gir" / "Koç olarak gir" seçilir. */
+  async function signOutToLogin() {
     clearCoachSession();
     setSession(null);
     setDesk(emptyDesk());
-    if (studentModeAvailable(profile)) {
-      setLoginMode('student');
-      toast('Öğrenci moduna geçildi.');
-      window.setTimeout(() => go('membership'), 0);
-      return;
-    }
     if (supabase) await supabase.auth.signOut({ scope: 'global' });
-    toast('Çıkış yapıldı.');
+    toast('Çıkış yapıldı. Girişte öğrenci veya koç olarak seçebilirsin.');
+    go('account');
   }
 
   function addHomework() {
@@ -456,23 +455,25 @@ export function CoachesPage() {
         <p>
           {session
             ? 'Öğrencilerin, randevuların ve müsaitliklerin bu panelde.'
-            : 'Yayınlanan koçlardan randevu al. Koç olmak için Hesabım’dan başvur.'}
+            : 'Yayınlanan koçlardan randevu al. Koç olmak için çıkış yapıp girişte “Koç olarak gir” seç.'}
         </p>
       </div>
 
       {coachModeLocked && user ? (
-        <div className="card" style={{ marginTop: 16 }}>
-          <div className="section-title"><h3>Koç paneli kapalı</h3></div>
-          <p className="muted" style={{ marginTop: 0 }}>{accessMessage(accessGate) || 'Koç kaydın onaylı değil.'}</p>
-          <div className="actions">
-            <button className="btn primary" type="button" onClick={() => {
-              setLoginMode('student');
-              window.setTimeout(() => go('membership'), 0);
-            }}>Öğrenci moduna geç</button>
-            <button className="btn secondary" type="button" onClick={() => go('account')}>Hesabım</button>
+        <>
+          <div className="card" style={{ marginTop: 16 }}>
+            <div className="section-title"><h3>Koç paneli kapalı</h3></div>
+            <p className="muted" style={{ marginTop: 0 }}>{accessMessage(accessGate) || 'Koç kaydın onaylı değil.'}</p>
+            <p className="muted">Öğrenci tarafına geçmek için çıkış yapıp girişte “Öğrenci olarak gir” seç.</p>
+            <div className="actions">
+              <button className="btn primary" type="button" onClick={() => void signOutToLogin()}>Çıkış yap</button>
+            </div>
           </div>
-        </div>
+          {profile?.coach_status === 'rejected' ? <CoachApplyCard reapply /> : null}
+        </>
       ) : null}
+
+      {user && wantApply && !coachUx && !coachModeLocked && profile?.coach_status !== 'active' ? <CoachApplyCard /> : null}
 
       {view.showCoachLoginHint ? (
         <p className="muted" style={{ marginTop: 12 }}>
@@ -496,9 +497,7 @@ export function CoachesPage() {
           <div className="card" style={{ marginTop: 16 }}>
             <div className="section-title">
               <h3>Koç paneli</h3>
-              <button className="btn" type="button" onClick={() => void leaveCoachPanel()}>
-                {studentModeAvailable(profile) ? 'Öğrenci moduna geç' : 'Çıkış'}
-              </button>
+              <button className="btn" type="button" onClick={() => void signOutToLogin()}>Çıkış yap</button>
             </div>
             {studentSideAi ? (
               <CoachZorroAssist students={linked} homeworks={desk.homeworks} />

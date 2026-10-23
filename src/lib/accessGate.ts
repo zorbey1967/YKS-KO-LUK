@@ -59,7 +59,7 @@ export function accessMessage(gate: AccessGate) {
     return 'Koç başvurunuz alındı. Yönetici onayından sonra koç paneli açılır.';
   }
   if (gate === 'coach_rejected') {
-    return 'Koç başvurunuz kabul edilmedi. Hesabım’dan yeniden başvurabilir veya öğrenci moduna geçebilirsiniz.';
+    return 'Koç başvurunuz kabul edilmedi. Aşağıdan yeniden başvurabilir veya çıkış yapıp “Öğrenci olarak gir” ile öğrenci tarafına geçebilirsiniz.';
   }
   if (gate === 'coach_suspended') {
     return 'Koç kaydınız pasife alındı. Yönetici yeniden açana kadar koç paneli kapalı; öğrenci tarafı açık.';

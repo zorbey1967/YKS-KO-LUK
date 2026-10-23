@@ -6,6 +6,7 @@ import {
   applyLoginMode,
   coachModeAvailable,
   loginModeNotice,
+  needsCoachApplication,
   parseLoginMode,
   resolveLoginMode,
   studentModeAvailable,
@@ -95,11 +96,22 @@ describe('giriş modu: arayüz ve sunucu bağlantısı', () => {
     expect(account).toMatch(/clearGoogleSignupPending\(\);\s*setLoginMode\(loginAs\);/);
   });
 
-  it('Hesabım: mod değiştirme ve koç başvurusu', () => {
-    expect(account).toContain('Koç paneline geç');
-    expect(account).toContain('Öğrenci moduna geç');
-    expect(account).toContain('Koç başvurusu yap');
-    expect(account).toMatch(/applyCoachFromAccount/);
+  it('Hesabım\'da mod değiştirme / başvuru yok; başvuru girişten sonra Koçlar sayfasında', () => {
+    expect(account).not.toContain('Koç paneline geç');
+    expect(account).not.toContain('Öğrenci moduna geç');
+    expect(account).not.toContain('Öğrenci / Koç');
+    expect(account).toMatch(/needsCoachApplication\(base, loginAs\)[\s\S]{0,80}go\('coaches', 'basvuru=1'\)/);
+    expect(ctx).toMatch(/needsCoachApplication\(baseProfile, storedLoginMode\)[\s\S]{0,200}go\('coaches', 'basvuru=1'\)/);
+    expect(read('src/pages/CoachesPage.tsx')).toMatch(/<CoachApplyCard \/>/);
+  });
+
+  it('"Koç olarak gir": kayıt yoksa veya reddedildiyse başvuru formu', () => {
+    expect(needsCoachApplication(base(), 'coach')).toBe(true);
+    expect(needsCoachApplication(base({ coach_status: 'rejected' }), 'coach')).toBe(true);
+    expect(needsCoachApplication(base({ coach_status: 'pending' }), 'coach')).toBe(false);
+    expect(needsCoachApplication(base({ coach_status: 'active' }), 'coach')).toBe(false);
+    expect(needsCoachApplication(base(), 'student')).toBe(false);
+    expect(needsCoachApplication(base({ coach_lookup_failed: true }), 'coach')).toBe(false);
   });
 
   it('bağlam profili giriş moduna göre sunar', () => {
