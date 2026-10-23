@@ -5,8 +5,8 @@ import { resolveAccessGate } from './accessGate';
 import {
   applyLoginMode,
   coachModeAvailable,
+  coachGateSignOutMessage,
   loginModeNotice,
-  needsCoachApplication,
   parseLoginMode,
   resolveLoginMode,
   studentModeAvailable,
@@ -92,26 +92,33 @@ describe('giriş modu: arayüz ve sunucu bağlantısı', () => {
   it('giriş ekranında öğrenci / koç seçimi var ve girişten önce kaydedilir', () => {
     expect(account).toContain('Öğrenci olarak gir');
     expect(account).toContain('Koç olarak gir');
-    expect(account).toMatch(/setLoginMode\(loginAs\);\s*const \{ error \} = await withTimeout\(supabase\.auth\.signInWithPassword/);
+    expect(account).toMatch(/setLoginMode\('student'\);\s*const \{ error \} = await withTimeout\(supabase\.auth\.signInWithPassword/);
     expect(account).toMatch(/clearGoogleSignupPending\(\);\s*setLoginMode\(loginAs\);/);
   });
 
-  it('Hesabım\'da mod değiştirme / başvuru yok; başvuru girişten sonra Koçlar sayfasında', () => {
+  it('koç başvurusu ve "onay bekliyor" uygulamaya girmeden giriş ekranında', () => {
     expect(account).not.toContain('Koç paneline geç');
-    expect(account).not.toContain('Öğrenci moduna geç');
     expect(account).not.toContain('Öğrenci / Koç');
-    expect(account).toMatch(/needsCoachApplication\(base, loginAs\)[\s\S]{0,80}go\('coaches', 'basvuru=1'\)/);
-    expect(ctx).toMatch(/needsCoachApplication\(baseProfile, storedLoginMode\)[\s\S]{0,200}go\('coaches', 'basvuru=1'\)/);
-    expect(read('src/pages/CoachesPage.tsx')).toMatch(/<CoachApplyCard \/>/);
+    expect(account).toMatch(/if \(loginAs === 'coach'\) \{[\s\S]{0,200}checkCoachLogin\(mail, password\)/);
+    expect(account).toMatch(/gate\.kind === 'pending'\) return setAuthMsg\(COACH_GATE_PENDING_MSG\)/);
+    expect(account).toMatch(/supabase\.auth\.setSession\(/);
+    expect(account).toMatch(/<CoachApplyCard/);
+    const coachesPage = read('src/pages/CoachesPage.tsx');
+    expect(coachesPage).not.toMatch(/CoachApplyCard|basvuru=1/);
+    expect(ctx).toMatch(/coachGateSignOutMessage\(profile\)[\s\S]{0,200}signOut\(\{ scope: 'local' \}\)/);
+    const gate = read('src/lib/coachLoginGate.ts');
+    expect(gate).toMatch(/createIsolatedAuthClient\(\)/);
+    expect(read('src/lib/supabase.ts')).toMatch(/persistSession: false,\s*autoRefreshToken: false/);
   });
 
-  it('"Koç olarak gir": kayıt yoksa veya reddedildiyse başvuru formu', () => {
-    expect(needsCoachApplication(base(), 'coach')).toBe(true);
-    expect(needsCoachApplication(base({ coach_status: 'rejected' }), 'coach')).toBe(true);
-    expect(needsCoachApplication(base({ coach_status: 'pending' }), 'coach')).toBe(false);
-    expect(needsCoachApplication(base({ coach_status: 'active' }), 'coach')).toBe(false);
-    expect(needsCoachApplication(base(), 'student')).toBe(false);
-    expect(needsCoachApplication(base({ coach_lookup_failed: true }), 'coach')).toBe(false);
+  it('onaysız koç modunda uygulamada kalınmaz; öğrenci modunda hiçbir şey sorulmaz', () => {
+    expect(coachGateSignOutMessage(applyLoginMode(base({ coach_status: 'pending' }), 'coach'))).toMatch(/onayı bekliyor/);
+    expect(coachGateSignOutMessage(applyLoginMode(base({ coach_status: 'pasif' }), 'coach'))).toMatch(/pasife/);
+    expect(coachGateSignOutMessage(applyLoginMode(base({ coach_status: 'rejected' }), 'coach'))).toMatch(/onaylı koç kaydı gerekir/);
+    expect(coachGateSignOutMessage(applyLoginMode(base({ coach_status: 'active' }), 'coach'))).toBe('');
+    expect(coachGateSignOutMessage(applyLoginMode(base({ coach_status: 'pending' }), 'student'))).toBe('');
+    expect(coachGateSignOutMessage(applyLoginMode(base(), 'coach'))).toBe('');
+    expect(coachGateSignOutMessage(applyLoginMode(base({ coach_status: 'pending', coach_lookup_failed: true }), 'coach'))).toBe('');
   });
 
   it('bağlam profili giriş moduna göre sunar', () => {

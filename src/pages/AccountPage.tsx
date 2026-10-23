@@ -5,17 +5,18 @@ import { SUPABASE_UNAVAILABLE, supabase, withTimeout } from '../lib/supabase';
 import { normalizeData, saveData } from '../lib/storage';
 import { coachAdvice } from '../lib/coach';
 import { COACH_TRACKS, clearCoachSession, compressCoachPhoto, type CoachTrack } from '../lib/coaches';
-import { fetchMyCoachChecked, setMyCoachPhoto, submitCoachApplication } from '../lib/cloudPlatform';
+import { submitCoachApplication } from '../lib/cloudPlatform';
 import { postLoginPageForRole } from '../lib/roleNav';
+import { readLoginMode, type LoginMode } from '../lib/roleMode';
 import {
-  applyLoginMode,
-  loginModeNotice,
-  needsCoachApplication,
-  readLoginMode,
-  resolveLoginMode,
-  type LoginMode,
-} from '../lib/roleMode';
-import type { Profile } from '../lib/types';
+  COACH_GATE_PENDING_MSG,
+  COACH_GATE_SUSPENDED_MSG,
+  PENDING_COACH_KEY,
+  checkCoachLogin,
+  fillPendingCoachPhoto,
+  type CoachGate,
+} from '../lib/coachLoginGate';
+import { CoachApplyCard } from '../components/CoachApplyCard';
 import { getCoachDisplayName, getPersonDisplayName, joinCoachName, splitPersonName } from '../lib/displayName';
 import { emailLooksValid, normalizeEmailInput, passwordPolicyError, publicAuthError } from '../lib/authUi';
 import { authEmailRedirectTo } from '../lib/authRedirect';
@@ -37,8 +38,6 @@ import { TRACKS } from '../lib/goal';
 
 const SIGNUP_EXAMS = ['YKS', 'LGS', 'KPSS', 'Okul'] as const;
 
-const PENDING_COACH_KEY = 'yks_pending_coach_app';
-const PENDING_COACH_TTL_MS = 7 * 86_400_000;
 type PendingCoachApp = {
   name: string;
   email: string;
@@ -54,6 +53,7 @@ type AccountRole = 'ogrenci' | 'koc';
 export function AccountPage() {
   const { user, profile, data, setData, authMsg, setAuthMsg, toast, cloudStatus, go, isAdmin, refreshAuth, accessGate, setLoginMode } = useApp();
   const [loginAs, setLoginAs] = useState<LoginMode>(() => readLoginMode() ?? 'student');
+  const [coachApply, setCoachApply] = useState<Extract<CoachGate, { kind: 'apply' }> | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [firstName, setFirstName] = useState(() => splitPersonName(profile?.name || '').firstName);
@@ -126,32 +126,10 @@ export function AccountPage() {
         } catch { /* ignore */ }
       }
     }
-    let raw = '';
-    try { raw = localStorage.getItem(PENDING_COACH_KEY) || ''; } catch { return; }
-    if (!raw) return;
+    // Kayıtta açılan başvurunun fotoğrafı (yalnız aynı e-postalı hesap); yeni başvuru burada açılmaz.
     void (async () => {
       try {
-        const p = JSON.parse(raw) as PendingCoachApp;
-        const fresh = Number(p.savedAt) > Date.now() - PENDING_COACH_TTL_MS;
-        if (!fresh) {
-          localStorage.removeItem(PENDING_COACH_KEY);
-          return;
-        }
-        // Başvuru yalnız onu bu cihazda dolduran hesaba uygulanır.
-        if (!user.email || normalizeEmailInput(p.email || '') !== normalizeEmailInput(user.email)) return;
-        const existing = await fetchMyCoachChecked(user.id);
-        if (!existing.ok) return;
-        if (existing.coach) {
-          if (!existing.coach.photo && p.photo) await setMyCoachPhoto(user.id, p.photo);
-        } else {
-          const cloud = await submitCoachApplication({
-            userId: user.id, name: p.name, email: user.email, track: p.track,
-            focus: p.focus, photo: p.photo, studentCount: p.studentCount,
-          });
-          if (!cloud.ok) return;
-        }
-        localStorage.removeItem(PENDING_COACH_KEY);
-        void refreshAuth();
+        if (supabase && user.email) await fillPendingCoachPhoto(supabase, user.id, user.email);
       } catch { /* ignore */ }
     })();
   }, [user]);
@@ -335,36 +313,37 @@ export function AccountPage() {
     setBusy(true);
     setAuthMsg('Giriş yapılıyor…');
     try {
-      setLoginMode(loginAs);
-      const { error } = await withTimeout(supabase.auth.signInWithPassword({ email: mail, password }));
-      if (error) throw error;
+      if (loginAs === 'coach') {
+        // Koç kaydı uygulamaya girmeden denetlenir; yalnız onaylı koç içeri alınır.
+        const gate = await checkCoachLogin(mail, password);
+        if (gate.kind === 'error') throw gate.error;
+        if (gate.kind === 'pending') return setAuthMsg(COACH_GATE_PENDING_MSG);
+        if (gate.kind === 'suspended') return setAuthMsg(COACH_GATE_SUSPENDED_MSG);
+        if (gate.kind === 'apply') {
+          setAuthMsg('');
+          setCoachApply(gate);
+          return;
+        }
+        setLoginMode('coach');
+        const { error } = await withTimeout(supabase.auth.setSession({
+          access_token: gate.session.access_token,
+          refresh_token: gate.session.refresh_token,
+        }));
+        if (error) throw error;
+      } else {
+        setLoginMode('student');
+        const { error } = await withTimeout(supabase.auth.signInWithPassword({ email: mail, password }));
+        if (error) throw error;
+      }
       setAuthMsg('Giriş başarılı.');
       toast('Giriş başarılı');
       await refreshAuth();
       const uid = (await supabase.auth.getUser()).data.user?.id;
       let roleName: string | undefined;
       if (uid) {
-        const { data: row } = await withTimeout(supabase.from('profiles').select('role, signup_intent').eq('id', uid).maybeSingle());
-        const r = (row && typeof row === 'object' ? row : {}) as { role?: string; signup_intent?: string };
-        const dbRole = r.role === 'admin' || r.role === 'coach' ? r.role : 'student';
-        const coachRes = await fetchMyCoachChecked(uid);
-        const base: Profile = {
-          name: '', email: '', plan: '',
-          role: dbRole, base_role: dbRole,
-          base_signup_intent: r.signup_intent === 'coach' ? 'coach' : 'student',
-          coach_status: coachRes.ok ? coachRes.coach?.status : undefined,
-          coach_lookup_failed: !coachRes.ok,
-        };
-        const note = loginModeNotice(base, loginAs);
-        if (note) {
-          setLoginMode(resolveLoginMode(base, loginAs));
-          toast(note);
-        }
-        if (needsCoachApplication(base, loginAs)) {
-          go('coaches', 'basvuru=1');
-          return;
-        }
-        roleName = applyLoginMode(base, loginAs)?.role;
+        const { data: row } = await withTimeout(supabase.from('profiles').select('role').eq('id', uid).maybeSingle());
+        const dbRole = row && (row as { role?: string }).role === 'admin' ? 'admin' : loginAs === 'coach' ? 'coach' : 'student';
+        roleName = dbRole;
       }
       go(postLoginPageForRole(roleName));
     } catch (e) {
@@ -449,6 +428,24 @@ export function AccountPage() {
           </div>
         </section>
         <div className="card auth-card">
+          {coachApply ? (
+            <>
+              <CoachApplyCard
+                client={coachApply.client}
+                userId={coachApply.userId}
+                email={coachApply.email}
+                name={coachApply.name}
+                reapply={coachApply.reapply}
+                onClose={(message) => {
+                  setCoachApply(null);
+                  setPassword('');
+                  setAuthMsg(message);
+                }}
+              />
+              {authAlert}
+            </>
+          ) : (
+          <>
           <div className="auth-tabs" role="tablist">
             <button className={mode === 'giris' ? 'on' : ''} type="button" onClick={() => { setMode('giris'); setAuthMsg(''); }}>Giriş</button>
             <button className={mode === 'kayit' ? 'on' : ''} type="button" onClick={() => { setMode('kayit'); setAuthMsg(''); }}>Kayıt</button>
@@ -462,10 +459,17 @@ export function AccountPage() {
                 <button className={`chip ${loginAs === 'student' ? 'on' : ''}`} type="button" role="radio" aria-checked={loginAs === 'student'} onClick={() => setLoginAs('student')}>Öğrenci olarak gir</button>
                 <button className={`chip ${loginAs === 'coach' ? 'on' : ''}`} type="button" role="radio" aria-checked={loginAs === 'coach'} onClick={() => setLoginAs('coach')}>Koç olarak gir</button>
               </div>
-              <p className="muted" style={{ margin: '6px 0 0' }}>Aynı hesapla iki tarafı da kullanabilirsin. Koç paneli yönetici onaylı koç başvurusuyla açılır.</p>
+              <p className="muted" style={{ margin: '6px 0 0' }}>
+                {loginAs === 'coach'
+                  ? 'Koç olarak yalnız yönetici onaylı koç girer. Koç kaydın yoksa giriş bilgilerinle burada başvurursun.'
+                  : 'Aynı hesapla iki tarafı da kullanabilirsin. Koç paneli yönetici onaylı koç başvurusuyla açılır.'}
+              </p>
             </div>
           ) : null}
-          {mode === 'giris' ? (
+          {mode === 'giris' && loginAs === 'coach' ? (
+            <p className="muted" style={{ marginTop: 0 }}>Koç girişi e-posta ve şifreyle yapılır.</p>
+          ) : null}
+          {mode === 'giris' && loginAs === 'student' ? (
             <div className="actions" style={{ marginBottom: 12 }}>
               <button className="btn secondary" type="button" disabled={googleBusy || !supabase} onClick={() => void signInGoogle()}>
                 {googleBusy ? 'Google’a gidiliyor…' : 'Google ile giriş yap'}
@@ -542,6 +546,8 @@ export function AccountPage() {
           </div>
           </form>
           {authAlert}
+          </>
+          )}
         </div>
       </div>
     );

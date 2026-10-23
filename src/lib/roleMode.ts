@@ -70,12 +70,19 @@ export function applyLoginMode(p: Profile | null, stored: LoginMode | null): Pro
 }
 
 /**
- * "Koç olarak gir" seçildi ama koç kaydı yok veya reddedildi: girişten sonra başvuru formu açılır.
- * Mod değişikliği yalnız giriş ekranından (çıkış yapıp yeniden giriş); Hesabım'da mod / başvuru yok.
+ * Uygulama içindeki profil (applyLoginMode sonrası) koç modunda ama koç kaydı onaylı değilse
+ * oturum kapatılır; başvuru ve "onay bekliyor" yalnız giriş ekranında (uygulamaya girmeden).
  */
-export function needsCoachApplication(p: Profile | null | undefined, chosen: LoginMode | null) {
-  if (chosen !== 'coach' || baseRoleOf(p) !== 'student' || p?.coach_lookup_failed) return false;
-  return !hasCoachRecord(p) || p?.coach_status === 'rejected';
+export function coachGateSignOutMessage(p: Profile | null | undefined): string {
+  if (!p || p.coach_lookup_failed || baseRoleOf(p) !== 'student') return '';
+  if (p.signup_intent !== 'coach' || p.role === 'coach') return '';
+  if (p.coach_status === 'pending') {
+    return 'Koç başvurun yönetici onayı bekliyor. Onaylanınca "Koç olarak gir" ile girebilirsin. Öğrenci tarafı için "Öğrenci olarak gir" seç.';
+  }
+  if (p.coach_status === 'pasif') {
+    return 'Koç kaydın pasife alındı. Yönetici yeniden açana kadar koç olarak girilemez. Öğrenci tarafı için "Öğrenci olarak gir" seç.';
+  }
+  return 'Koç olarak girmek için onaylı koç kaydı gerekir. "Koç olarak gir" seçip e-posta ve şifrenle giriş yaparak başvurabilirsin.';
 }
 
 /** Giriş ekranında "Koç olarak gir" seçildi ama hesap koç paneline giremiyorsa açıklama. */

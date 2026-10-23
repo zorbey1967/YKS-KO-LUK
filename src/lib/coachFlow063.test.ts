@@ -120,7 +120,7 @@ describe('koç akışı: arayüz ve veri ayrımı', () => {
 
   it('bekleyen koç başvurusu yalnız aynı e-postalı hesaba uygulanır', () => {
     const account = read('src/pages/AccountPage.tsx');
-    expect(account).toMatch(/normalizeEmailInput\(p\.email \|\| ''\) !== normalizeEmailInput\(user\.email\)/);
+    expect(read('src/lib/coachLoginGate.ts')).toMatch(/String\(p\.email \|\| ''\)\.trim\(\)\.toLowerCase\(\) !== email\.trim\(\)\.toLowerCase\(\)/);
     expect(account).toMatch(/coach_track: coachTrack/);
   });
 });

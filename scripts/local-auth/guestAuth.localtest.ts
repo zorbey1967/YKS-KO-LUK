@@ -233,6 +233,30 @@ describe.skipIf(!schemaMode)('Uçtan uca: tek hesap öğrenci + koç (062)', () 
     expect(ownSlot.error?.message || '').toMatch(/kendi saatine/);
   });
 
+  it('8) "Koç olarak gir": geçici oturum ana istemciye aktarılır; geçici oturum kapatmak aktarılanı bozmaz', async () => {
+    const email = `gecis-${uuid().slice(0, 8)}@example.com`;
+    const pw = `Rk${uuid().slice(0, 8)}9a`;
+    expect((await admin.auth.admin.createUser({ email, password: pw, email_confirm: true })).error).toBeNull();
+    const gate = browser();
+    const signed = await gate.auth.signInWithPassword({ email, password: pw });
+    expect(signed.error, signed.error?.message).toBeNull();
+    const main = browser();
+    const moved = await main.auth.setSession({
+      access_token: signed.data.session!.access_token,
+      refresh_token: signed.data.session!.refresh_token,
+    });
+    report.sessionTransfer = moved.error ? `HATA: ${moved.error.message}` : 'aktarıldı';
+    expect(moved.error, moved.error?.message).toBeNull();
+    expect((await main.auth.getUser()).data.user?.email).toBe(email);
+    // Başvuru / bekleme yolunda geçici oturum yerel kapatılır; başka bir oturum etkilenmez
+    const other = browser();
+    expect((await other.auth.signInWithPassword({ email, password: pw })).error).toBeNull();
+    await other.auth.signOut({ scope: 'local' });
+    const still = await main.from('profiles').select('id').limit(1);
+    report.localSignOutKeepsOther = still.error ? `HATA: ${still.error.message}` : 'etkilenmedi';
+    expect(still.error).toBeNull();
+  });
+
   it('7) koç niyetiyle e-posta kaydı başvuruyu sunucuda beklemede açar; normal kayıt etkilenmez', async () => {
     const email = `koc-kayit-${uuid().slice(0, 8)}@example.com`;
     const r = await browser().auth.signUp({

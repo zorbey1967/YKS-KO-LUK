@@ -32,6 +32,22 @@ export const supabase: SupabaseClient | null =
     })
     : null;
 
+/**
+ * Oturumu uygulamaya kaydetmeyen geçici istemci: "Koç olarak gir" denetimi ve başvurusu
+ * uygulamaya girmeden yapılır. Onaylı koçta oturum ana istemciye setSession ile aktarılır.
+ */
+export function createIsolatedAuthClient(): SupabaseClient | null {
+  if (!supabaseUrl || !supabaseAnonKey) return null;
+  return createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+      storageKey: 'yks-coach-gate',
+    },
+  });
+}
+
 /** User-facing text when the Vite-bundled URL/anon key are missing. Never includes secrets. */
 export const SUPABASE_UNAVAILABLE =
   'Canlı ortamda Supabase ayarı yok. Giriş ve koç listesi şu an kapalı.';

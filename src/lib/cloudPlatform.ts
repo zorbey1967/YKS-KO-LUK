@@ -1,3 +1,4 @@
+import type { SupabaseClient } from '@supabase/supabase-js';
 import type { AppData } from './types';
 import { normalizeData } from './storage';
 import { parsePushResult } from './syncMerge';
@@ -238,13 +239,13 @@ export async function submitCoachApplication(input: {
   focus: string;
   photo: string;
   studentCount: number;
-}): Promise<{ ok: true; id: string } | { ok: false; error: string; missing?: boolean }> {
-  if (!supabase) return { ok: false, error: SUPABASE_UNAVAILABLE, missing: true };
+}, client: SupabaseClient | null = supabase): Promise<{ ok: true; id: string } | { ok: false; error: string; missing?: boolean }> {
+  if (!client) return { ok: false, error: SUPABASE_UNAVAILABLE, missing: true };
   if (input.photo.length > 180000) return { ok: false, error: 'Fotoğraf çok büyük. Daha küçük bir fotoğraf seç.' };
   const photo = input.photo;
   try {
     const { data, error } = await withTimeout(
-      supabase
+      client
         .from('coaches')
         .upsert(
           {
@@ -289,11 +290,11 @@ export async function fetchMyCoachChecked(userId: string): Promise<{ ok: true; c
 }
 
 /** Kayıtta başvuru sunucuda fotoğrafsız açılır; ilk girişte bu cihazdaki fotoğraf eklenir. */
-export async function setMyCoachPhoto(userId: string, photo: string): Promise<boolean> {
-  if (!supabase || !photo.startsWith('data:image/') || photo.length > 180000) return false;
+export async function setMyCoachPhoto(userId: string, photo: string, client: SupabaseClient | null = supabase): Promise<boolean> {
+  if (!client || !photo.startsWith('data:image/') || photo.length > 180000) return false;
   try {
     const { error } = await withTimeout(
-      supabase.from('coaches').update({ photo }).eq('user_id', userId).eq('photo', ''),
+      client.from('coaches').update({ photo }).eq('user_id', userId).eq('photo', ''),
     );
     return !error;
   } catch {

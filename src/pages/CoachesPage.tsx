@@ -13,7 +13,6 @@ import {
 } from '../lib/coaches';
 import { accessMessage } from '../lib/accessGate';
 import { canUseAi } from '../lib/subscription';
-import { CoachApplyCard } from '../components/CoachApplyCard';
 import { addCoachSlot, assignCoachHomework, closeCoachSlot, decideApprovedAppointmentCancel, fetchActiveCoaches, fetchCoachDesk, fetchCoachStudentBrief, fetchLinkedStudents, fetchMyCoach, listMySlots, listOpenSlots, requestAppointment, requestCancelApprovedAppointment, respondAppointment, runAppointmentJobs, setCoachHomeworkDone, type LinkedStudentRow } from '../lib/cloudPlatform';
 import { CoachStudyBriefView } from '../components/CoachStudyBrief';
 import type { CoachStudyBrief } from '../lib/coachBrief';
@@ -67,7 +66,6 @@ export function CoachesPage() {
   const [ownCoachId, setOwnCoachId] = useState<string | null>(null);
   const [showOldAppts, setShowOldAppts] = useState(false);
   const [bookBusy, setBookBusy] = useState(false);
-  const [wantApply, setWantApply] = useState(false);
   const briefReq = useRef('');
 
   const [list, setList] = useState<HumanCoach[]>([]);
@@ -99,7 +97,6 @@ export function CoachesPage() {
         setTab('randevu');
         setShowOldAppts(true);
       }
-      setWantApply(params.get('basvuru') === '1');
     };
     apply();
     window.addEventListener('hashchange', apply);
@@ -455,7 +452,7 @@ export function CoachesPage() {
         <p>
           {session
             ? 'Öğrencilerin, randevuların ve müsaitliklerin bu panelde.'
-            : 'Yayınlanan koçlardan randevu al. Koç olmak için çıkış yapıp girişte “Koç olarak gir” seç.'}
+            : 'Yayınlanan koçlardan randevu al.'}
         </p>
       </div>
 
@@ -469,11 +466,8 @@ export function CoachesPage() {
               <button className="btn primary" type="button" onClick={() => void signOutToLogin()}>Çıkış yap</button>
             </div>
           </div>
-          {profile?.coach_status === 'rejected' ? <CoachApplyCard reapply /> : null}
         </>
       ) : null}
-
-      {user && wantApply && !coachUx && !coachModeLocked && profile?.coach_status !== 'active' ? <CoachApplyCard /> : null}
 
       {view.showCoachLoginHint ? (
         <p className="muted" style={{ marginTop: 12 }}>
