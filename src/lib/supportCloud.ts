@@ -117,6 +117,8 @@ export async function createSupportTicket(input: {
   lastName: string;
   subject: string;
   body: string;
+  /** Koç modundan yazılıyorsa 'coach'; sunucu yalnız onaylı koçta kabul eder (063). */
+  senderRole?: SupportSenderRole;
 }): Promise<{ ok: true; row: SupportTicket } | { ok: false; error: string }> {
   if (!supabase) return { ok: false, error: SAFE_FAIL };
   const uid = await sessionUid();
@@ -129,6 +131,7 @@ export async function createSupportTicket(input: {
       subject: input.subject.trim(),
       body: input.body.trim(),
       status: 'new',
+      sender_role: input.senderRole === 'coach' ? 'coach' : 'student',
     }).select(TICKET_COLS).single(),
   );
   if (q.error || !q.data) return { ok: false, error: SAFE_FAIL };

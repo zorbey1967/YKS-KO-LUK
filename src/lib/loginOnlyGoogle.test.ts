@@ -38,7 +38,7 @@ describe('kayıtlı olmayan e-postayla Google girişi (061)', () => {
 describe('giriş yapmamış kullanıcı yalnız giriş ekranını görür', () => {
   it('misafirde ZORRO ve destek düğmeleri yok; giriş ekranında koçlara bağlantı yok', () => {
     const app = read('src/App.tsx');
-    expect(app).toMatch(/page === 'meeting' \|\| !user \? null : <CoachChat \/>/);
+    expect(app).toMatch(/page === 'meeting' \|\| !user \|\| accessGate !== 'ok' \|\| profile\?\.role === 'coach' \? null : <CoachChat \/>/);
     expect(app).toMatch(/page === 'meeting' \|\| !user \? null : <SupportPanel \/>/);
     expect(read('src/pages/AccountPage.tsx')).not.toContain('Koçları incele');
   });

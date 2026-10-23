@@ -99,14 +99,16 @@ function clockDay(a: AppointmentClock) {
   return wallDate(String(a.date || ''));
 }
 
-/** Şu anki 40 dk; yoksa bugünün bir sonraki saati. Gerisi arşiv. */
+/** Şu anki 40 dk; yoksa bugünün bir sonraki saati. */
 export function isCurrentAppointment(a: AppointmentClock) {
   return splitAppointmentsBySlot([a]).current.length === 1;
 }
 
+/** current: şu an / bugünün sıradaki; upcoming: kalan bugün + ileri günler; past: bitmiş, iptal, tamamlanmış. */
 export function splitAppointmentsBySlot<T extends AppointmentClock>(rows: T[], now = Date.now()) {
   const live: T[] = [];
   const laterToday: T[] = [];
+  const later: T[] = [];
   const past: T[] = [];
   const today = istanbulParts(new Date(now)).date;
   for (const a of rows) {
@@ -122,14 +124,16 @@ export function splitAppointmentsBySlot<T extends AppointmentClock>(rows: T[], n
     }
     if (now >= start) live.push(a);
     else if (clockDay(a) === today) laterToday.push(a);
-    else past.push(a);
+    else later.push(a);
   }
-  live.sort((x, y) => appointmentStartMs(x) - appointmentStartMs(y));
-  laterToday.sort((x, y) => appointmentStartMs(x) - appointmentStartMs(y));
+  const asc = (x: T, y: T) => appointmentStartMs(x) - appointmentStartMs(y);
+  live.sort(asc);
+  laterToday.sort(asc);
+  later.sort(asc);
   past.sort((x, y) => appointmentStartMs(y) - appointmentStartMs(x));
   const current = live.length ? live : laterToday.slice(0, 1);
   const restToday = live.length ? laterToday : laterToday.slice(1);
-  return { current, past: [...restToday, ...past] };
+  return { current, upcoming: [...restToday, ...later], past };
 }
 
 export type MeetingRoomStatus = 'idle' | 'waiting' | 'live' | 'ended' | 'blocked';
@@ -172,8 +176,8 @@ export function appointmentIdFromHash(hash = location.hash) {
   return '';
 }
 
-/** Onaylı randevu başlangıcından 1 tam gün sonra katılma aksiyonu gizlenir (yalnız UI). */
-const JOIN_VISIBLE_MS = 24 * 60 * 60 * 1000;
+/** Sunucu (063 can_join_meeting) ders bitiminden 15 dk sonra girişi kapatır; düğme de o an gizlenir. */
+const JOIN_AFTER_END_MS = 15 * 60 * 1000;
 
 function joinWallDate(raw: string) {
   const iso = String(raw || '').match(/(\d{4})-(\d{2})-(\d{2})/);
@@ -221,7 +225,8 @@ function plannedJoinStartMs(a: AppointmentClock) {
 export function isMeetingJoinVisible(a: AppointmentClock, now = Date.now()) {
   const start = plannedJoinStartMs(a);
   if (!start) return false;
-  return now < start + JOIN_VISIBLE_MS;
+  const minutes = Number(a.minutes) > 0 ? Number(a.minutes) : 40;
+  return now < start + minutes * 60_000 + JOIN_AFTER_END_MS;
 }
 
 export function openMeeting(appointmentId: string) {
@@ -255,6 +260,7 @@ function mapAppointment(r: Record<string, unknown>, coachName: string): MyAppoin
     status: asStatus(r.status),
     cancelReason: asCancelReason(r.cancel_reason),
     cancelRequestedAt: r.cancel_requested_at ? String(r.cancel_requested_at) : null,
+    cancelRequestedBy: r.cancel_requested_by ? String(r.cancel_requested_by) : null,
     cancelDecision: asCancelDecision(r.cancel_decision),
     coachName: getCoachDisplayName(coachName),
     startsAt: r.starts_at ? String(r.starts_at) : null,
@@ -283,7 +289,7 @@ export async function listMyAppointments(userId: string, coachId: string | null)
   if (!userId) return { ok: true, rows: [] };
   try {
     const { data, error } = await withTimeout(
-      supabase.from('appointments').select('id, coach_id, student_id, student_name, date, time, minutes, status, cancel_reason, cancel_requested_at, cancel_decision, starts_at').order('date', { ascending: false }),
+      supabase.from('appointments').select('id, coach_id, student_id, student_name, date, time, minutes, status, cancel_reason, cancel_requested_at, cancel_requested_by, cancel_decision, starts_at').order('date', { ascending: false }),
     );
     if (error) throw error;
     const rows = (data || []) as Record<string, unknown>[];
@@ -310,7 +316,7 @@ export async function fetchAppointmentForMeeting(id: string, userId: string): Pr
   if (!id || !userId) return { ok: false, reason: 'not-found' };
   try {
     const { data, error } = await withTimeout(
-      supabase.from('appointments').select('id, coach_id, student_id, student_name, date, time, minutes, status, cancel_reason, cancel_requested_at, cancel_decision, starts_at').eq('id', id).maybeSingle(),
+      supabase.from('appointments').select('id, coach_id, student_id, student_name, date, time, minutes, status, cancel_reason, cancel_requested_at, cancel_requested_by, cancel_decision, starts_at').eq('id', id).maybeSingle(),
     );
     if (error) throw error;
     if (!data) return { ok: false, reason: 'not-found' };
@@ -527,21 +533,30 @@ type MyAppointmentsResult = Awaited<ReturnType<typeof listMyAppointments>> & { c
 const myApptCache = new Map<string, { at: number; p: Promise<MyAppointmentsResult> }>();
 
 /**
- * Öğrencinin randevuları (koç kimliği dahil) — kısa süreli önbellek + aynı anda tek istek.
+ * Randevular — kısa süreli önbellek + aynı anda tek istek.
  * Ana Sayfa ve Takvim aynı veriyi gösterdiği için her sayfa/gün değişiminde iki ayrı sorgu atılmaz.
+ * Öğrenci modunda yalnız öğrenci olarak alınan randevular; koçluk dersleri yalnız asCoach ile.
  * Randevu yazılan sayfalar (Koçlar, Görüşmelerim) önbelleği kullanmaz ve invalidateMyAppointments çağırabilir.
  */
-export function myAppointmentsCached(userId: string, ttlMs = 30_000): Promise<MyAppointmentsResult> {
-  const hit = myApptCache.get(userId);
+export function myAppointmentsCached(userId: string, opts: { asCoach?: boolean; ttlMs?: number } = {}): Promise<MyAppointmentsResult> {
+  const asCoach = Boolean(opts.asCoach);
+  const ttlMs = opts.ttlMs ?? 30_000;
+  const key = `${userId}:${asCoach ? 'coach' : 'student'}`;
+  const hit = myApptCache.get(key);
   if (hit && Date.now() - hit.at < ttlMs) return hit.p;
   const p = (async (): Promise<MyAppointmentsResult> => {
-    const mine = await fetchMyCoach(userId);
-    const cid = mine && mine.status === 'active' ? mine.id : null;
+    let cid: string | null = null;
+    if (asCoach) {
+      const mine = await fetchMyCoach(userId);
+      cid = mine && mine.status === 'active' ? mine.id : null;
+    }
     const res = await listMyAppointments(userId, cid);
-    return { ...res, coachId: cid };
+    if (!res.ok) return { ...res, coachId: cid };
+    const rows = asCoach ? res.rows : res.rows.filter((a) => a.studentId === userId);
+    return { ...res, rows, coachId: cid };
   })();
-  myApptCache.set(userId, { at: Date.now(), p });
-  void p.then((r) => { if (!r.ok) myApptCache.delete(userId); }, () => myApptCache.delete(userId));
+  myApptCache.set(key, { at: Date.now(), p });
+  void p.then((r) => { if (!r.ok) myApptCache.delete(key); }, () => myApptCache.delete(key));
   return p;
 }
 

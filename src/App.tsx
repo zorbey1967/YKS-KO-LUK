@@ -118,7 +118,7 @@ function Shell() {
       )}
       {taskOpen && <TaskModal onClose={() => setTaskOpen(false)} />}
       <CommandPalette open={cmd} onClose={() => setCmd(false)} />
-      {page === 'meeting' || !user ? null : <CoachChat />}
+      {page === 'meeting' || !user || accessGate !== 'ok' || profile?.role === 'coach' ? null : <CoachChat />}
       {page === 'meeting' || !user ? null : <SupportPanel />}
       {profile?.role === 'coach' || accessGate !== 'ok' ? null : <ExamNotifyWatcher />}
       {accessGate === 'boot' ? null : <GuestCheckoutWatcher signedIn={Boolean(user)} />}

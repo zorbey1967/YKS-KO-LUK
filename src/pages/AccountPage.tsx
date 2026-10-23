@@ -5,7 +5,7 @@ import { SUPABASE_UNAVAILABLE, supabase, withTimeout } from '../lib/supabase';
 import { normalizeData, saveData } from '../lib/storage';
 import { coachAdvice } from '../lib/coach';
 import { COACH_TRACKS, clearCoachSession, compressCoachPhoto, type CoachTrack } from '../lib/coaches';
-import { fetchMyCoach, submitCoachApplication } from '../lib/cloudPlatform';
+import { fetchMyCoachChecked, setMyCoachPhoto, submitCoachApplication } from '../lib/cloudPlatform';
 import { postLoginPageForRole } from '../lib/roleNav';
 import {
   applyLoginMode,
@@ -38,6 +38,18 @@ import { GRADES } from '../lib/stage';
 import { TRACKS } from '../lib/goal';
 
 const SIGNUP_EXAMS = ['YKS', 'LGS', 'KPSS', 'Okul'] as const;
+
+const PENDING_COACH_KEY = 'yks_pending_coach_app';
+const PENDING_COACH_TTL_MS = 7 * 86_400_000;
+type PendingCoachApp = {
+  name: string;
+  email: string;
+  track: CoachTrack;
+  focus: string;
+  photo: string;
+  studentCount: number;
+  savedAt: number;
+};
 
 type AccountRole = 'ogrenci' | 'koc';
 
@@ -102,31 +114,47 @@ export function AccountPage() {
       }
       if (pending.intent === 'coach' && (pending.firstName || pending.lastName)) {
         try {
-          const existing = localStorage.getItem('yks_pending_coach_app');
+          const existing = localStorage.getItem(PENDING_COACH_KEY);
           if (!existing) {
-            localStorage.setItem('yks_pending_coach_app', JSON.stringify({
+            localStorage.setItem(PENDING_COACH_KEY, JSON.stringify({
               name: fullPersonName(pending.firstName, pending.lastName) || joinCoachName(firstName, lastName),
               email: user.email || email.trim(),
               track: coachTrack,
               focus: focus.trim() || 'Süreç koçluğu',
               photo,
               studentCount: Number(studentCount) || 0,
-            }));
+              savedAt: Date.now(),
+            } satisfies PendingCoachApp));
           }
         } catch { /* ignore */ }
       }
     }
     let raw = '';
-    try { raw = localStorage.getItem('yks_pending_coach_app') || ''; } catch { return; }
+    try { raw = localStorage.getItem(PENDING_COACH_KEY) || ''; } catch { return; }
     if (!raw) return;
     void (async () => {
       try {
-        const p = JSON.parse(raw) as { name: string; email: string; track: CoachTrack; focus: string; photo: string; studentCount: number };
-        const cloud = await submitCoachApplication({ userId: user.id, ...p });
-        if (cloud.ok) {
-          try { localStorage.removeItem('yks_pending_coach_app'); } catch { /* ignore */ }
-          void refreshAuth();
+        const p = JSON.parse(raw) as PendingCoachApp;
+        const fresh = Number(p.savedAt) > Date.now() - PENDING_COACH_TTL_MS;
+        if (!fresh) {
+          localStorage.removeItem(PENDING_COACH_KEY);
+          return;
         }
+        // Başvuru yalnız onu bu cihazda dolduran hesaba uygulanır.
+        if (!user.email || normalizeEmailInput(p.email || '') !== normalizeEmailInput(user.email)) return;
+        const existing = await fetchMyCoachChecked(user.id);
+        if (!existing.ok) return;
+        if (existing.coach) {
+          if (!existing.coach.photo && p.photo) await setMyCoachPhoto(user.id, p.photo);
+        } else {
+          const cloud = await submitCoachApplication({
+            userId: user.id, name: p.name, email: user.email, track: p.track,
+            focus: p.focus, photo: p.photo, studentCount: p.studentCount,
+          });
+          if (!cloud.ok) return;
+        }
+        localStorage.removeItem(PENDING_COACH_KEY);
+        void refreshAuth();
       } catch { /* ignore */ }
     })();
   }, [user]);
@@ -210,6 +238,11 @@ export function AccountPage() {
         grade: role === 'koc' ? '' : signupGrade,
         track: role === 'koc' ? '' : signupTrack,
         exam: role === 'koc' ? '' : signupExam,
+        ...(role === 'koc' ? {
+          coach_track: coachTrack,
+          coach_focus: focus.trim() || 'Süreç koçluğu',
+          coach_student_count: String(Number(studentCount) || 0),
+        } : {}),
       };
       if (role === 'koc') {
         if (supabase && !user) {
@@ -226,21 +259,23 @@ export function AccountPage() {
           }
           setLoginMode('coach');
           if (!res.session) {
+            // Başvuru sunucuda kayıtla açıldı (063); fotoğraf bu cihazda ilk girişte eklenir.
             try {
-              localStorage.setItem('yks_pending_coach_app', JSON.stringify({
+              localStorage.setItem(PENDING_COACH_KEY, JSON.stringify({
                 name: joinCoachName(firstName, lastName),
                 email: mail,
                 track: coachTrack,
                 focus: focus.trim() || 'Süreç koçluğu',
                 photo,
                 studentCount: Number(studentCount) || 0,
-              }));
+                savedAt: Date.now(),
+              } satisfies PendingCoachApp));
             } catch { /* ignore */ }
-            setAuthMsg('Kayıt tamam. E-postanı doğrula ve "Koç olarak gir" ile giriş yap; koç başvurun girişte gönderilir.');
+            setAuthMsg('Kayıt tamam ve koç başvurun alındı. E-postanı doğrula, sonra "Koç olarak gir" ile giriş yap. Yönetici onaylayınca koç paneli açılır.');
             return;
           }
         }
-        await applyCoach();
+        if (await applyCoach()) await refreshAuth();
         return;
       }
       if (!supabase) return setAuthMsg(SUPABASE_UNAVAILABLE);
@@ -315,12 +350,13 @@ export function AccountPage() {
         const { data: row } = await withTimeout(supabase.from('profiles').select('role, signup_intent').eq('id', uid).maybeSingle());
         const r = (row && typeof row === 'object' ? row : {}) as { role?: string; signup_intent?: string };
         const dbRole = r.role === 'admin' || r.role === 'coach' ? r.role : 'student';
-        const coachRow = await fetchMyCoach(uid);
+        const coachRes = await fetchMyCoachChecked(uid);
         const base: Profile = {
           name: '', email: '', plan: '',
           role: dbRole, base_role: dbRole,
           base_signup_intent: r.signup_intent === 'coach' ? 'coach' : 'student',
-          coach_status: coachRow?.status,
+          coach_status: coachRes.ok ? coachRes.coach?.status : undefined,
+          coach_lookup_failed: !coachRes.ok,
         };
         const note = loginModeNotice(base, loginAs);
         if (note) {
@@ -522,7 +558,7 @@ export function AccountPage() {
   const coachStatusNote = profile?.coach_status === 'pending'
     ? 'Koç başvurun yönetici onayı bekliyor. Onaylanınca buradan veya girişte "Koç olarak gir" ile koç paneline geçebilirsin.'
     : profile?.coach_status === 'rejected'
-      ? 'Koç başvurun kabul edilmedi. Öğrenci tarafını kullanmaya devam edebilirsin.'
+      ? 'Koç başvurun kabul edilmedi. Bilgilerini güncelleyip yeniden başvurabilir, öğrenci tarafını kullanmaya devam edebilirsin.'
       : profile?.coach_status === 'pasif'
         ? 'Koç kaydın pasif. Yönetici yeniden açana kadar koç paneli kapalı.'
         : '';
@@ -608,11 +644,24 @@ export function AccountPage() {
           ) : coachRecord ? (
             <>
               <p className="muted" style={{ marginTop: 0 }}>{coachStatusNote}</p>
-              {loginMode === 'coach' ? (
+              {profile?.coach_status === 'rejected' && coachFormOpen ? (
+                <form onSubmit={(e) => { e.preventDefault(); void applyCoachFromAccount(); }}>
+                  <div className="form-grid">{coachFields}</div>
+                  <div className="actions">
+                    <button className="btn primary" type="submit" disabled={busy}>{busy ? 'Gönderiliyor…' : 'Başvuruyu yeniden gönder'}</button>
+                    <button className="btn" type="button" disabled={busy} onClick={() => setCoachFormOpen(false)}>Vazgeç</button>
+                  </div>
+                </form>
+              ) : (
                 <div className="actions">
-                  <button className="btn primary" type="button" onClick={() => switchMode('student')}>Öğrenci moduna dön</button>
+                  {profile?.coach_status === 'rejected' ? (
+                    <button className="btn secondary" type="button" onClick={() => setCoachFormOpen(true)}>Yeniden başvur</button>
+                  ) : null}
+                  {loginMode === 'coach' ? (
+                    <button className="btn primary" type="button" onClick={() => switchMode('student')}>Öğrenci moduna dön</button>
+                  ) : null}
                 </div>
-              ) : null}
+              )}
             </>
           ) : (
             <>
@@ -666,6 +715,7 @@ export function AccountPage() {
       </div>
         </>
       ) : null}
+      {isCoach ? null : (
       <div style={{ marginTop: 16 }}>
         <div className="card">
           <div className="section-title"><h3>Veri yedeği</h3></div>
@@ -707,6 +757,7 @@ export function AccountPage() {
           </div>
         </div>
       </div>
+      )}
     </>
   );
 }

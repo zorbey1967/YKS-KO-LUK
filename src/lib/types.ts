@@ -317,6 +317,8 @@ export type Profile = {
   /** Veritabanındaki rol / kayıt niyeti; `role` ve `signup_intent` giriş moduna göre türetilir. */
   base_role?: ProfileRole;
   base_signup_intent?: SignupIntent;
+  /** Koç kaydı okunamadı (ağ / zaman aşımı); "koç kaydı yok" sayılmaz. */
+  coach_lookup_failed?: boolean;
   target_department?: string;
   target_rank?: number;
   score?: number;

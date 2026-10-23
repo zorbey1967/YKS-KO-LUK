@@ -255,6 +255,7 @@ export function AdminPage() {
   const notes = cloud?.notes.length ? cloud.notes : loadAdminNotes();
   const studentCount = cloud ? cloud.profiles.filter((p) => p.role !== 'coach').length : localSnap.studentCount;
   const activeCoaches = coaches.filter((a) => a.status === 'active').length;
+  const activeCoachUserIds = new Set(coaches.filter((a) => a.status === 'active' && a.userId).map((a) => String(a.userId)));
   const pendingCoaches = coaches.filter((a) => a.status === 'pending').length;
   const pendingAppts = apptsAll.filter((a) => a.status === 'bekliyor').length;
 
@@ -288,15 +289,23 @@ export function AdminPage() {
   }
 
   async function setStatus(id: string, status: CoachStatus) {
-    const cloudOk = await adminSetCoachStatus(id, status);
-    if (!cloudOk) patchCoachAccount(id, { status });
-    toast(status === 'active' ? 'Koç onaylandı.' : status === 'rejected' ? 'Başvuru reddedildi.' : 'Durum güncellendi.');
+    const res = await adminSetCoachStatus(id, status);
+    if (!res.ok && cloud) {
+      toast(`Koç durumu kaydedilmedi: ${res.error}`);
+      return;
+    }
+    if (!res.ok) patchCoachAccount(id, { status });
+    toast(status === 'active' ? 'Koç onaylandı.' : status === 'rejected' ? 'Başvuru reddedildi.' : status === 'pending' ? 'Başvuru yeniden incelemeye alındı.' : 'Durum güncellendi.');
     refresh();
   }
 
   async function saveEdit() {
     if (!editId) return;
     const cloudOk = await adminPatchCoach(editId, { name: editName.trim(), track: editTrack, focus: editFocus.trim() });
+    if (!cloudOk && cloud) {
+      toast('Koç bilgisi kaydedilemedi.');
+      return;
+    }
     if (!cloudOk) patchCoachAccount(editId, { name: editName.trim(), track: editTrack, focus: editFocus.trim() });
     setEditId('');
     toast('Koç bilgisi kaydedildi.');
@@ -308,7 +317,9 @@ export function AdminPage() {
       id: p.id,
       name: p.name || '—',
       email: p.email,
-      kind: p.role === 'admin' ? 'Yönetici' : p.role === 'coach' ? 'Koç hesabı' : 'Öğrenci',
+      kind: p.role === 'admin'
+        ? 'Yönetici'
+        : p.role === 'coach' ? 'Koç hesabı' : activeCoachUserIds.has(p.id) ? 'Öğrenci + koç' : 'Öğrenci',
       status: p.account_status === 'pasif' ? 'Pasif' : p.account_status === 'pending' ? 'Onay bekliyor' : p.account_status === 'rejected' ? 'Red' : 'Aktif',
       accountStatus: p.account_status,
       role: p.role,
@@ -582,7 +593,7 @@ export function AdminPage() {
                   <span>
                     <b>{c.name}</b> • {c.track}
                     <br />
-                    <small style={{ color: 'var(--muted)' }}>{c.email} • {c.focus} • masa {desk.students.length} / beyan {c.studentCount}</small>
+                    <small style={{ color: 'var(--muted)' }}>{c.email} • {c.focus} • eşleşme {desk.students.length} / beyan {c.studentCount}</small>
                   </span>
                   <span className="chip">{statusLabel(c.status)}</span>
                 </div>
@@ -595,6 +606,12 @@ export function AdminPage() {
                   ) : null}
                   {c.status === 'active' ? <button className="btn" type="button" onClick={() => void setStatus(c.id, 'pasif')}>Pasif</button> : null}
                   {c.status === 'pasif' ? <button className="btn primary" type="button" onClick={() => void setStatus(c.id, 'active')}>Aktif et</button> : null}
+                  {c.status === 'rejected' ? (
+                    <>
+                      <button className="btn primary" type="button" onClick={() => void setStatus(c.id, 'active')}>Onayla</button>
+                      <button className="btn secondary" type="button" onClick={() => void setStatus(c.id, 'pending')}>Yeniden incelemeye al</button>
+                    </>
+                  ) : null}
                   <button className="btn secondary" type="button" onClick={() => { setEditId(c.id); setEditName(c.name); setEditTrack(c.track); setEditFocus(c.focus); }}>Düzenle</button>
                 </div>
               </div>

@@ -1,14 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import {
   COACH_TRACKS,
   clearCoachSession,
   emptyDesk,
-  formatTry,
-  loadCoachDesk,
-  monthPayments,
-  saveCoachDesk,
-  saveCoachSession,
   appointmentStatusLabel,
   type CoachDesk,
   type CoachHomework,
@@ -16,6 +11,9 @@ import {
   type CoachTrack,
   type HumanCoach,
 } from '../lib/coaches';
+import { accessMessage } from '../lib/accessGate';
+import { canUseAi } from '../lib/subscription';
+import { studentModeAvailable } from '../lib/roleMode';
 import { addCoachSlot, assignCoachHomework, closeCoachSlot, decideApprovedAppointmentCancel, fetchActiveCoaches, fetchCoachDesk, fetchCoachStudentBrief, fetchLinkedStudents, fetchMyCoach, listMySlots, listOpenSlots, requestAppointment, requestCancelApprovedAppointment, respondAppointment, runAppointmentJobs, setCoachHomeworkDone, type LinkedStudentRow } from '../lib/cloudPlatform';
 import { CoachStudyBriefView } from '../components/CoachStudyBrief';
 import type { CoachStudyBrief } from '../lib/coachBrief';
@@ -42,13 +40,13 @@ import {
 } from '../lib/coachProgramPdfCloud';
 import { assertPdfFile } from '../lib/pdfStore';
 
-type PanelTab = 'ozet' | 'ogrenci' | 'odev' | 'para' | 'randevu' | 'musait' | 'oda';
+type PanelTab = 'ozet' | 'ogrenci' | 'odev' | 'randevu' | 'musait';
 
 const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
 const MINS = Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, '0'));
 
 export function CoachesPage() {
-  const { toast, go, user, profile, isAdmin } = useApp();
+  const { toast, go, user, profile, isAdmin, accessGate, setLoginMode } = useApp();
   const [session, setSession] = useState<CoachSession | null>(null);
   const [desk, setDesk] = useState<CoachDesk>(() => emptyDesk());
   const [tab, setTab] = useState<PanelTab>('ozet');
@@ -66,7 +64,10 @@ export function CoachesPage() {
   const [slotHour, setSlotHour] = useState(() => nextBookSlot().time.slice(0, 2));
   const [slotMin, setSlotMin] = useState(() => nextBookSlot().time.slice(3, 5));
   const [mySlots, setMySlots] = useState<{ id: string; date: string; time: string; status: string }[]>([]);
-  const [coachScore, setCoachScore] = useState<number | null>(null);
+  const [ownCoachId, setOwnCoachId] = useState<string | null>(null);
+  const [showOldAppts, setShowOldAppts] = useState(false);
+  const [bookBusy, setBookBusy] = useState(false);
+  const briefReq = useRef('');
 
   const [list, setList] = useState<HumanCoach[]>([]);
   const [listError, setListError] = useState('');
@@ -84,13 +85,17 @@ export function CoachesPage() {
   const [schedulePdfs, setSchedulePdfs] = useState<SchedulePdfSubmission[]>([]);
   const [coachProgramPdfs, setCoachProgramPdfs] = useState<CoachProgramPdf[]>([]);
   const coachUx = profile?.role === 'coach' || isAdmin;
+  /** Koç modu seçili ama koç kaydı onaylı değil (beklemede / reddedildi / pasif). */
+  const coachModeLocked = !isAdmin && profile?.role !== 'coach' && profile?.signup_intent === 'coach';
   const view = coachesView(coachesAudience({ signedIn: Boolean(user), role: profile?.role, isAdmin }));
+  const studentSideAi = canUseAi(profile ? { ...profile, role: profile.base_role ?? 'student' } : null, isAdmin);
 
   useEffect(() => {
     const apply = () => {
       const q = location.hash.split('?')[1] || '';
       if (new URLSearchParams(q).get('eski') === '1') {
         setTab('randevu');
+        setShowOldAppts(true);
       }
     };
     apply();
@@ -103,24 +108,11 @@ export function CoachesPage() {
       setListTick((n) => n + 1);
       return;
     }
-    void runAppointmentJobs().then(async (res) => {
+    void runAppointmentJobs().then((res) => {
       if (!res.ok) toast(res.error);
-      if (session) {
-        const d = await fetchCoachDesk(session.coachId);
-        if (d) {
-          const local = loadCoachDesk(session.coachId);
-          const merged = {
-            ...d,
-            homeworks: d.homeworks,
-            payments: d.payments.length ? d.payments : local.payments,
-          };
-          setDesk(merged);
-          saveCoachDesk(session.coachId, merged);
-        }
-      }
       setListTick((n) => n + 1);
     });
-  }, [user, session, toast]);
+  }, [user, toast]);
 
   useEffect(() => {
     let alive = true;
@@ -167,18 +159,15 @@ export function CoachesPage() {
     let alive = true;
     void fetchMyCoach(user.id).then((mine) => {
       if (!alive) return;
+      setOwnCoachId(mine?.id || null);
       if (!coachUx || !mine || mine.status !== 'active') {
         clearCoachSession();
         setSession(null);
         setCloudCoachId(null);
-        setCoachScore(null);
         return;
       }
       setCloudCoachId(mine.id);
-      setCoachScore(typeof mine.score === 'number' ? mine.score : null);
-      const sess: CoachSession = { coachId: mine.id, name: getCoachDisplayName(mine.name), email: mine.email, track: mine.track };
-      saveCoachSession(sess);
-      setSession(sess);
+      setSession({ coachId: mine.id, name: getCoachDisplayName(mine.name), email: mine.email, track: mine.track });
     });
     return () => { alive = false; };
   }, [user, coachUx]);
@@ -190,17 +179,19 @@ export function CoachesPage() {
       return;
     }
     let alive = true;
-    const allowed = (linked.length ? linked : desk.students).map((s) => s.id);
+    const allowed = linked.map((s) => s.id);
+    const mineOnly = <T extends { coach_id: string; student_id: string }>(rows: T[]) =>
+      rows.filter((r) => r.coach_id === session.coachId && r.student_id !== user?.id);
     void listCoachSchedulePdfSubmissions().then((res) => {
       if (!alive || !res.ok) return;
-      setSchedulePdfs(allowed.length ? filterCoachSchedulePdfsForStudents(res.rows, allowed) : res.rows);
+      setSchedulePdfs(filterCoachSchedulePdfsForStudents(mineOnly(res.rows), allowed));
     });
     void listCoachUploadedProgramPdfs().then((res) => {
       if (!alive || !res.ok) return;
-      setCoachProgramPdfs(allowed.length ? filterCoachProgramPdfsForStudents(res.rows, allowed) : res.rows);
+      setCoachProgramPdfs(filterCoachProgramPdfsForStudents(mineOnly(res.rows), allowed));
     });
     return () => { alive = false; };
-  }, [view.showCoachPanel, session, linked, desk.students]);
+  }, [view.showCoachPanel, session, linked, user?.id]);
 
   useEffect(() => {
     if (!session || !cloudCoachId) {
@@ -225,14 +216,7 @@ export function CoachesPage() {
     let alive = true;
     void fetchCoachDesk(session.coachId).then((d) => {
       if (!alive || !d) return;
-      const local = loadCoachDesk(session.coachId);
-      const merged = {
-        ...d,
-        homeworks: d.homeworks,
-        payments: d.payments.length ? d.payments : local.payments,
-      };
-      setDesk(merged);
-      saveCoachDesk(session.coachId, merged);
+      setDesk(d);
     });
     return () => { alive = false; };
   }, [session]);
@@ -263,7 +247,10 @@ export function CoachesPage() {
     return () => { alive = false; };
   }, [session, listTick]);
 
-  const coaches = useMemo(() => (track === 'Tümü' ? list : list.filter((c) => c.track === track)), [list, track]);
+  const coaches = useMemo(() => {
+    const others = list.filter((c) => c.id !== ownCoachId);
+    return track === 'Tümü' ? others : others.filter((c) => c.track === track);
+  }, [list, track, ownCoachId]);
   const allAppts = useMemo(() => {
     const map = new Map<string, MyAppointment>();
     for (const a of myAppts) map.set(a.id, a);
@@ -274,23 +261,42 @@ export function CoachesPage() {
     }
     return [...map.values()];
   }, [myAppts, desk.appointments, session]);
+  /** Koç panelinde yalnız koç olarak verilen dersler; öğrenci olarak alınanlar burada sayılmaz. */
+  const coachAppts = useMemo(
+    () => (session ? allAppts.filter((a) => a.coachId === session.coachId && a.studentId !== user?.id) : []),
+    [allAppts, session, user?.id],
+  );
+  const studentAppts = useMemo(
+    () => (user ? allAppts.filter((a) => a.studentId === user.id) : []),
+    [allAppts, user],
+  );
+  const coachApptSplit = useMemo(() => splitAppointmentsBySlot(coachAppts), [coachAppts, nowTick]);
+  const studentRows = useMemo(
+    () => (linked.length ? linked : desk.students.filter((s) => s.id.length > 20)),
+    [linked, desk.students],
+  );
   const slotSplit = useMemo(
     () => splitAppointmentsBySlot(mySlots.map((s) => ({ ...s, minutes: 40 }))),
     [mySlots, nowTick],
   );
-  const pendingAppts = useMemo(() => allAppts.filter((a) => a.status === 'bekliyor'), [allAppts]);
+  const pendingAppts = useMemo(() => coachAppts.filter((a) => a.status === 'bekliyor'), [coachAppts]);
   const todayLessons = useMemo(
-    () => allAppts.filter((a) => a.date === istanbulToday() && a.status === 'onay'),
-    [allAppts],
+    () => coachAppts.filter((a) => a.date === istanbulToday() && a.status === 'onay'),
+    [coachAppts],
   );
 
-  async function onLogout() {
-    const mine = user ? await fetchMyCoach(user.id) : null;
+  async function leaveCoachPanel() {
     clearCoachSession();
     setSession(null);
-    setDesk({ students: [], homeworks: [], payments: [], appointments: [] });
-    if (mine && supabase) await supabase.auth.signOut();
-    toast('Koç paneli kapandı.');
+    setDesk(emptyDesk());
+    if (studentModeAvailable(profile)) {
+      setLoginMode('student');
+      toast('Öğrenci moduna geçildi.');
+      window.setTimeout(() => go('membership'), 0);
+      return;
+    }
+    if (supabase) await supabase.auth.signOut({ scope: 'global' });
+    toast('Çıkış yapıldı.');
   }
 
   function addHomework() {
@@ -310,14 +316,7 @@ export function CoachesPage() {
   async function applyCloudDesk(coachId: string) {
     const d = await fetchCoachDesk(coachId);
     if (!d) return false;
-    const local = loadCoachDesk(coachId);
-    const merged = {
-      ...d,
-      homeworks: d.homeworks,
-      payments: d.payments.length ? d.payments : local.payments,
-    };
-    setDesk(merged);
-    saveCoachDesk(coachId, merged);
+    setDesk(d);
     return true;
   }
 
@@ -350,12 +349,19 @@ export function CoachesPage() {
     const studentName = getPersonDisplayName(profile?.name, '');
     if (studentName.length < 2) return toast('Hesabında görünen ad yok. Kayıt adınla giriş yap.');
     if (!bookSlotId) return toast('Koçun açtığı bir saat seç.');
+    if (bookBusy) return;
+    setBookBusy(true);
     const res = await requestAppointment(bookSlotId);
+    setBookBusy(false);
+    if (!res.ok) {
+      toast(res.error);
+      return;
+    }
     setBookCoach(null);
     setBookSlotId('');
-    toast(res.ok
-      ? 'Talep gönderildi. Koç onaylamadan randevu kesinleşmez. Aynı saat için başka koça da talep gönderebilirsin; biri kabul edince diğerleri düşer.'
-      : res.error);
+    invalidateMyAppointments();
+    setListTick((n) => n + 1);
+    toast('Talep gönderildi. Koç onaylamadan randevu kesinleşmez. Aynı saat için başka koça da talep gönderebilirsin; biri kabul edince diğerleri düşer.');
   }
 
   async function addMySlot() {
@@ -391,7 +397,6 @@ export function CoachesPage() {
     setBookSlotsMsg(res.rows.length ? '' : 'Bu koçun en az 30 dk sonrası için açık saati yok.');
   }
 
-  const monthTotal = monthPayments(desk);
   const studentName = (id: string) =>
     linked.find((s) => s.id === id)?.name || desk.students.find((s) => s.id === id)?.name || 'Öğrenci';
 
@@ -403,12 +408,6 @@ export function CoachesPage() {
           {asCoach ? a.studentName : a.coachName} • {a.date} {a.time} ({a.minutes} dk)
           <br />
           <small className="muted">{appointmentStatusLabel(a, asCoach ? 'coach' : 'student')}</small>
-          {user && a.studentId === user.id && a.cancelReason === 'student_no_show' ? (
-            <>
-              <br />
-              <small className="muted">Kalan puanın: {profile?.score ?? '—'}. Detay Hesabım’da.</small>
-            </>
-          ) : null}
         </span>
         {asCoach && a.status === 'bekliyor' ? (
           <span style={{ display: 'flex', gap: 8 }}>
@@ -457,9 +456,23 @@ export function CoachesPage() {
         <p>
           {session
             ? 'Öğrencilerin, randevuların ve müsaitliklerin bu panelde.'
-            : 'Yayınlanan koçlardan randevu al. Koç olmak için Hesabım’dan kayıt ol.'}
+            : 'Yayınlanan koçlardan randevu al. Koç olmak için Hesabım’dan başvur.'}
         </p>
       </div>
+
+      {coachModeLocked && user ? (
+        <div className="card" style={{ marginTop: 16 }}>
+          <div className="section-title"><h3>Koç paneli kapalı</h3></div>
+          <p className="muted" style={{ marginTop: 0 }}>{accessMessage(accessGate) || 'Koç kaydın onaylı değil.'}</p>
+          <div className="actions">
+            <button className="btn primary" type="button" onClick={() => {
+              setLoginMode('student');
+              window.setTimeout(() => go('membership'), 0);
+            }}>Öğrenci moduna geç</button>
+            <button className="btn secondary" type="button" onClick={() => go('account')}>Hesabım</button>
+          </div>
+        </div>
+      ) : null}
 
       {view.showCoachLoginHint ? (
         <p className="muted" style={{ marginTop: 12 }}>
@@ -472,8 +485,8 @@ export function CoachesPage() {
         <div className="card" style={{ marginTop: 16 }}>
           <p className="muted">
             {isAdmin
-              ? 'Koç paneli bu hesapta coaches satırı olunca açılır. Yönetici rolü koça dönüştürülmez.'
-              : 'Koç kaydın henüz yok veya onay bekliyor. Panel, yönetici onayından sonra açılır.'}
+              ? 'Koç paneli bu hesapta onaylı koç kaydı olunca açılır. Yönetici rolü koça dönüştürülmez.'
+              : 'Koç kaydın yüklenemedi. Sayfayı yenile; sorun sürerse Hesabım’dan durumu kontrol et.'}
           </p>
         </div>
       ) : null}
@@ -483,19 +496,29 @@ export function CoachesPage() {
           <div className="card" style={{ marginTop: 16 }}>
             <div className="section-title">
               <h3>Koç paneli</h3>
-              <button className="btn" type="button" onClick={onLogout}>Çıkış</button>
+              <button className="btn" type="button" onClick={() => void leaveCoachPanel()}>
+                {studentModeAvailable(profile) ? 'Öğrenci moduna geç' : 'Çıkış'}
+              </button>
             </div>
-            <CoachZorroAssist students={linked} homeworks={desk.homeworks} />
+            {studentSideAi ? (
+              <CoachZorroAssist students={linked} homeworks={desk.homeworks} />
+            ) : (
+              <div className="card" style={{ marginTop: 16 }}>
+                <div className="section-title"><h3>ZORRO — Koç Asistanı</h3></div>
+                <p className="muted" style={{ margin: 0 }}>
+                  Koç Asistanı, hesabındaki Premium veya 14 günlük deneme ile çalışır. Öğrenci modunda Üyelik sayfasından açabilirsin.
+                </p>
+              </div>
+            )}
             <div className="chip-row" style={{ marginBottom: 12 }}>
-              {([['ozet', 'Özet'], ['ogrenci', 'Öğrenciler'], ['odev', 'Ödev'], ['para', 'Tahsilat'], ['randevu', 'Randevu'], ['musait', 'Boşum'], ['oda', 'Çalışma odası']] as const).map(([id, label]) => (
+              {([['ozet', 'Özet'], ['ogrenci', 'Öğrenciler'], ['odev', 'Ödev'], ['randevu', 'Randevu'], ['musait', 'Boşum']] as const).map(([id, label]) => (
                 <button key={id} className={`chip ${tab === id ? 'on' : ''}`} type="button" onClick={() => setTab(id)}>{label}</button>
               ))}
             </div>
             <div className="grid stats">
-              <div className="card stat" style={{ boxShadow: 'none' }}><div className="label">Öğrenci</div><div className="value">{desk.students.length}</div></div>
+              <div className="card stat" style={{ boxShadow: 'none' }}><div className="label">Öğrenci</div><div className="value">{studentRows.length}</div></div>
               <div className="card stat" style={{ boxShadow: 'none' }}><div className="label">Açık ödev</div><div className="value">{desk.homeworks.filter((h) => !h.done).length}</div></div>
               <div className="card stat" style={{ boxShadow: 'none' }}><div className="label">Bekleyen talep</div><div className="value">{pendingAppts.length}</div></div>
-              {coachScore != null ? <div className="card stat" style={{ boxShadow: 'none' }}><div className="label">Puan</div><div className="value">{coachScore}</div></div> : null}
             </div>
             {tab === 'ozet' ? (
               <div style={{ marginTop: 12 }}>
@@ -507,8 +530,29 @@ export function CoachesPage() {
                   </div>
                 )) : <div className="empty">Bugün onaylı ders yok.</div>}
                 {pendingAppts.length ? (
-                  <p className="muted" style={{ marginBottom: 0 }}>{pendingAppts.length} yeni talep Randevu sekmesinde.</p>
+                  <p className="muted" style={{ marginBottom: 0 }}>
+                    {pendingAppts.length} yeni talep.{' '}
+                    <button className="btn secondary" type="button" onClick={() => setTab('randevu')}>Randevu sekmesi</button>
+                  </p>
                 ) : null}
+              </div>
+            ) : null}
+            {tab === 'randevu' ? (
+              <div style={{ marginTop: 12 }}>
+                <div className="section-title"><h3>Talepler</h3></div>
+                {pendingAppts.length ? pendingAppts.map((a) => apptRow(a)) : <div className="empty">Bekleyen talep yok.</div>}
+                <div className="section-title" style={{ marginTop: 12 }}><h3>Yaklaşan dersler</h3></div>
+                {[...coachApptSplit.current, ...coachApptSplit.upcoming].filter((a) => a.status === 'onay').length
+                  ? [...coachApptSplit.current, ...coachApptSplit.upcoming].filter((a) => a.status === 'onay').map((a) => apptRow(a))
+                  : <div className="empty">Yaklaşan onaylı ders yok.</div>}
+                {coachApptSplit.past.length ? (
+                  <div className="actions" style={{ marginTop: 12 }}>
+                    <button className="btn secondary" type="button" onClick={() => setShowOldAppts((v) => !v)}>
+                      {showOldAppts ? 'Eski randevuları gizle' : `Eski randevular (${coachApptSplit.past.length})`}
+                    </button>
+                  </div>
+                ) : null}
+                {showOldAppts ? coachApptSplit.past.map((a) => apptRow(a)) : null}
               </div>
             ) : null}
           </div>
@@ -518,7 +562,7 @@ export function CoachesPage() {
               <div className="section-title"><h3>Öğrencilerin</h3></div>
               <p className="muted">Liste randevu / eşleşmeden gelir. İsimle sahte öğrenci eklenmez.</p>
               {linkedMsg ? <p className="notice">{linkedMsg}</p> : null}
-              {(linked.length ? linked : desk.students.filter((s) => s.id.length > 20)).length ? (linked.length ? linked : desk.students).map((s) => (
+              {studentRows.length ? studentRows.map((s) => (
                 <div className="plan-item" key={s.id}>
                   <span>
                     <b>{s.name}</b>
@@ -535,7 +579,9 @@ export function CoachesPage() {
                     setBriefId(s.id);
                     setBrief(null);
                     setBriefErr('');
+                    briefReq.current = s.id;
                     void fetchCoachStudentBrief(s.id, today()).then((res) => {
+                      if (briefReq.current !== s.id) return;
                       if (!res.ok) {
                         setBriefErr(res.missing ? 'Öğrenci özeti şu an alınamadı.' : res.error);
                         return;
@@ -560,7 +606,7 @@ export function CoachesPage() {
                   <label>Öğrenci</label>
                   <select value={planStudent} onChange={(e) => setPlanStudent(e.target.value)}>
                     <option value="">Seç</option>
-                    {(linked.length ? linked : desk.students).map((s) => (
+                    {studentRows.map((s) => (
                       <option key={s.id} value={s.id}>{s.name}</option>
                     ))}
                   </select>
@@ -664,8 +710,7 @@ export function CoachesPage() {
                   <label>Öğrenci</label>
                   <select value={hwStudent} onChange={(e) => setHwStudent(e.target.value)}>
                     <option value="">Seç</option>
-                    {desk.students.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                    {linked.filter((s) => !desk.students.some((d) => d.id === s.id)).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                    {studentRows.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                   </select>
                 </div>
                 <div className="field"><label>Teslim</label><input type="date" value={hwDue} onChange={(e) => setHwDue(e.target.value)} /></div>
@@ -694,40 +739,6 @@ export function CoachesPage() {
             </div>
           ) : null}
 
-          {tab === 'ozet' || tab === 'para' ? (
-            <div className="card" style={{ marginTop: 16 }}>
-              <div className="section-title"><h3>Öğrencilerden tahsilat</h3><span>Bu ay {formatTry(monthTotal)}</span></div>
-              <p style={{ color: 'var(--muted)', fontSize: 13 }}>Kart çekilmez; kayıt defteri. Gerçek ödeme sonraki faz.</p>
-              {desk.payments.length ? desk.payments.map((p) => (
-                <div className="plan-item" key={p.id}>
-                  <span>{studentName(p.studentId)} • {p.note}<br /><small style={{ color: 'var(--muted)' }}>{p.date}</small></span>
-                  <b>{formatTry(p.amount)}</b>
-                </div>
-              )) : <div className="empty">Kayıt yok.</div>}
-              <div className="plan-item"><span>Toplam</span><b>{formatTry(desk.payments.reduce((a, p) => a + p.amount, 0))}</b></div>
-            </div>
-          ) : null}
-
-          {tab === 'oda' ? (
-            <div className="card" style={{ marginTop: 16 }}>
-              <div className="section-title"><h3>Özel çalışma odası</h3></div>
-              <p className="muted">Varsayılan sessiz. Mikrofon kapalı. Sesli modu yalnız koç açar. Kamera isteğe bağlı ve henüz LiveKit oda token’ına bağlı değil. Yalnız eşleşmiş öğrenciler.</p>
-              {(linked.length ? linked : desk.students).map((s) => (
-                <div className="plan-item" key={s.id}>
-                  <span>{s.name}</span>
-                  <button className="btn secondary" type="button" onClick={() => {
-                    void (async () => {
-                      if (!supabase) return;
-                      const { error } = await supabase.rpc('coach_kick_student', { p_student: s.id });
-                      toast(error ? 'Çıkarma işlemi yok veya yetkin yok.' : 'Öğrenci odadan çıkarıldı.');
-                    })();
-                  }}>Odadan çıkar</button>
-                </div>
-              ))}
-              {!(linked.length || desk.students.length) ? <div className="empty">Atanmış öğrenci yok.</div> : null}
-            </div>
-          ) : null}
-
           {tab === 'ozet' || tab === 'musait' ? (
             <div className="card" style={{ marginTop: 16 }}>
               <div className="section-title"><h3>Boşum / Müsaitlik</h3><span>Türkiye saati</span></div>
@@ -750,14 +761,14 @@ export function CoachesPage() {
               <div className="actions">
                 <button className="btn primary" type="button" onClick={() => void addMySlot()}>Saat aç</button>
               </div>
-              {slotSplit.current.length ? slotSplit.current.map((s) => (
+              {[...slotSplit.current, ...slotSplit.upcoming].length ? [...slotSplit.current, ...slotSplit.upcoming].map((s) => (
                 <div className="plan-item" key={s.id}>
                   <span>{s.date} {s.time} • 40 dk<br /><small style={{ color: 'var(--muted)' }}>{s.status === 'open' ? 'Açık' : s.status === 'held' ? 'Talep var' : 'Onaylı'}</small></span>
                   {s.status === 'booked' ? <span className="chip">kilitli</span> : (
                     <button className="btn secondary" type="button" onClick={() => void closeMySlot(s.id)}>Kapat</button>
                   )}
                 </div>
-              )) : <div className="empty">{mySlots.length ? 'Bu saat için açık slot yok.' : 'Açık saat yok.'}</div>}
+              )) : <div className="empty">Yaklaşan açık saat yok.</div>}
               {slotSplit.past.length ? (
                 <div className="actions" style={{ marginTop: 12 }}>
                   <button className="btn secondary" type="button" onClick={() => setShowOldSlots((v) => !v)}>
@@ -778,7 +789,7 @@ export function CoachesPage() {
         </>
       ) : null}
 
-      {view.showDirectory ? (
+      {view.showDirectory && !coachModeLocked ? (
       <div className="card" style={{ marginTop: 16 }}>
         <div className="section-title"><h3>Randevu al</h3><span>Koçlar</span></div>
         <p className="muted" style={{ marginTop: 0 }}>Koçun açtığı saatlerden seç. Son talep, dersten 30 dk önce kapanır. Saatler Türkiye.</p>
@@ -815,9 +826,10 @@ export function CoachesPage() {
       </div>
       ) : null}
 
+      {!session && !coachModeLocked ? (
       <div className="card" style={{ marginTop: 16 }}>
         <div className="section-title"><h3>Randevularım</h3><span>Görüşme</span></div>
-        <p className="muted" style={{ marginTop: 0 }}>Geçmiş randevular listede kalır. Katılma, başlangıçtan 24 saat sonra kapanır. Sayaç, iki taraf da odadayken 40 dk başlar. Kayıt yok.</p>
+        <p className="muted" style={{ marginTop: 0 }}>Geçmiş randevular listede kalır. Katılma, başlangıçtan 20 dk önce açılır ve ders bitiminden 15 dk sonra kapanır. Sayaç, iki taraf da odadayken 40 dk başlar. Kayıt yok.</p>
         {!user ? (
           <div className="empty">
             Görüşmeleri görmek için giriş yap.
@@ -825,16 +837,17 @@ export function CoachesPage() {
               <button className="btn primary" type="button" onClick={() => go('account')}>Giriş</button>
             </div>
           </div>
-        ) : myApptsMsg && !allAppts.length ? (
+        ) : myApptsMsg && !studentAppts.length ? (
           <div className="notice">{myApptsMsg}</div>
-        ) : allAppts.length ? (
-          allAppts.map((a) => apptRow(a))
+        ) : studentAppts.length ? (
+          studentAppts.map((a) => apptRow(a))
         ) : (
-          <div className="empty">Bulutta randevu yok.</div>
+          <div className="empty">Henüz randevun yok.</div>
         )}
       </div>
+      ) : null}
 
-      {bookCoach && view.showDirectory ? (
+      {bookCoach && view.showDirectory && !coachModeLocked ? (
         <div className="modal" role="dialog" aria-modal="true" aria-label={`Randevu • ${getCoachDisplayName(bookCoach.name)}`} onClick={() => setBookCoach(null)}>
           <div className="modal-box" onClick={(e) => e.stopPropagation()}>
             <div className="section-title">
@@ -857,7 +870,7 @@ export function CoachesPage() {
               <p className="muted" style={{ margin: '8px 0 0' }}>Onaylanmayan talepler süre sonunda düşer.</p>
             )}
             <div className="actions">
-              <button className="btn primary" type="button" disabled={!bookSlotId} onClick={() => void studentBook()}>Talep gönder</button>
+              <button className="btn primary" type="button" disabled={!bookSlotId || bookBusy} onClick={() => void studentBook()}>{bookBusy ? 'Gönderiliyor…' : 'Talep gönder'}</button>
             </div>
           </div>
         </div>

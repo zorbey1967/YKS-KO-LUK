@@ -7,7 +7,8 @@ import { emptyData } from '../lib/types';
 import { storageKey } from '../lib/storage';
 
 export function SettingsPage() {
-  const { data, setData, toast, theme, toggleTheme, user, cloudStatus, go } = useApp();
+  const { data, setData, toast, theme, toggleTheme, user, cloudStatus, go, profile } = useApp();
+  const coachMode = profile?.role === 'coach';
   const [man, setMan] = useState<{ questionCount: number; curriculum: Record<string, unknown> } | null>(null);
   useEffect(() => {
     // Soru bankası kapalıyken her Ayarlar açılışında bank-pack çağrılmaz.
@@ -33,7 +34,7 @@ export function SettingsPage() {
         <div className="status"><b>Supabase</b><span>{isSupabaseConfigured() ? 'Hazır' : 'Yapılandırılmadı'}</span></div>
         <div className="status"><b>Bulut</b><span>{cloudStatus}</span></div>
         <div className="status"><b>Yerel veri</b><span>{(raw.length / 1024).toFixed(1)} KB</span></div>
-        <div className="status"><b>Görev / deneme</b><span>{data.tasks.length} / {data.exams.length}</span></div>
+        {coachMode ? null : <div className="status"><b>Görev / deneme</b><span>{data.tasks.length} / {data.exams.length}</span></div>}
       </div>
       {!isSupabaseConfigured() ? <div className="notice" role="alert" style={{ marginTop: 12 }}>{SUPABASE_UNAVAILABLE}</div> : null}
       <div className="switch">
@@ -52,14 +53,16 @@ export function SettingsPage() {
         <div><b>Koyu tema</b><br /><small className="muted">Gece görünümü</small></div>
         <button className={`toggle ${theme === 'dark' ? 'on' : ''}`} type="button" aria-pressed={theme === 'dark'} aria-label="Koyu tema" onClick={toggleTheme}><i /></button>
       </div>
+      {coachMode ? null : (
       <div className="switch">
-        <div><b>Verileri sıfırla</b><br /><small className="muted">Bu cihazdaki görev, deneme ve süre kayıtlarını siler.</small></div>
+        <div><b>Verileri sıfırla</b><br /><small className="muted">Görev, deneme ve süre kayıtlarını siler (hesabındaki bulut kopyası dahil).</small></div>
         <button className="btn danger" type="button" onClick={() => {
-          if (!confirm('Bu cihazdaki YKS verileri silinsin mi?')) return;
+          if (!confirm('Görev, deneme ve süre kayıtların silinsin mi? Bu işlem hesabındaki bulut kopyasını da değiştirir.')) return;
           setData(emptyData());
           toast('Veriler sıfırlandı');
         }}>Sıfırla</button>
       </div>
+      )}
     </div>
     </>
   );

@@ -9,7 +9,8 @@ export type AccessGate =
   | 'rejected'
   | 'suspended'
   | 'coach_pending'
-  | 'coach_rejected';
+  | 'coach_rejected'
+  | 'coach_suspended';
 
 export function isEmailConfirmed(user: { email_confirmed_at?: string | null } | null | undefined) {
   return Boolean(user?.email_confirmed_at);
@@ -35,6 +36,7 @@ export function resolveAccessGate(input: {
     const cs = profile.coach_status;
     if (cs === 'active' || profile.role === 'coach') return 'ok';
     if (cs === 'rejected') return 'coach_rejected';
+    if (cs === 'pasif') return 'coach_suspended';
     return 'coach_pending';
   }
   const st = profile?.account_status;
@@ -57,7 +59,10 @@ export function accessMessage(gate: AccessGate) {
     return 'Koç başvurunuz alındı. Yönetici onayından sonra koç paneli açılır.';
   }
   if (gate === 'coach_rejected') {
-    return 'Koç başvurunuz kabul edilmedi.';
+    return 'Koç başvurunuz kabul edilmedi. Hesabım’dan yeniden başvurabilir veya öğrenci moduna geçebilirsiniz.';
+  }
+  if (gate === 'coach_suspended') {
+    return 'Koç kaydınız pasife alındı. Yönetici yeniden açana kadar koç paneli kapalı; öğrenci tarafı açık.';
   }
   if (gate === 'suspended') {
     return 'Bu hesap askıya alındı. Yönetici yeniden etkinleştirene kadar giriş ve korunan işlemler kapalıdır.';
@@ -68,7 +73,7 @@ export function accessMessage(gate: AccessGate) {
 export function pagesAllowedForGate(gate: AccessGate): PageId[] | null {
   if (gate === 'ok' || gate === 'boot') return null;
   if (gate === 'guest') return ['account'];
-  if (gate === 'coach_pending' || gate === 'coach_rejected') return ['account', 'settings', 'coaches'];
+  if (gate === 'coach_pending' || gate === 'coach_rejected' || gate === 'coach_suspended') return ['account', 'coaches'];
   return ['account', 'settings'];
 }
 
@@ -81,6 +86,6 @@ export function coercePageForAccess(page: PageId, gate: AccessGate): PageId {
 export function landingPageForGate(gate: AccessGate, role?: string | null): PageId {
   if (gate === 'ok') return role === 'coach' ? 'coaches' : 'home';
   if (gate === 'boot') return 'home';
-  if (gate === 'coach_pending' || gate === 'coach_rejected') return 'coaches';
+  if (gate === 'coach_pending' || gate === 'coach_rejected' || gate === 'coach_suspended') return 'coaches';
   return 'account';
 }

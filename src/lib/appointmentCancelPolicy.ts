@@ -6,6 +6,7 @@ export type CancelAppt = {
   studentId: string;
   coachId: string;
   cancelDecision?: AppointmentCancelDecision | null;
+  cancelRequestedBy?: string | null;
 };
 
 /** 040: yalnız onaylı satır; taraf öğrenci veya o randevunun koçu. */
@@ -25,7 +26,7 @@ export function isDuplicateCancelRequest(appt: CancelAppt) {
   return appt.status === 'onay' && appt.cancelDecision === 'pending';
 }
 
-/** 040: öğrenci karar veremez (yönetici değilse). Koç veya sunucu isAdmin. */
+/** 063: talebi açan taraf karar veremez; karşı taraf (öğrenci veya o randevunun koçu) ya da yönetici karar verir. */
 export function canDecideApprovedCancel(
   appt: CancelAppt,
   userId: string | null | undefined,
@@ -35,6 +36,8 @@ export function canDecideApprovedCancel(
   if (appt.status !== 'onay') return false;
   if (appt.cancelDecision !== 'pending') return false;
   if (opts.isAdmin) return true;
-  if (appt.studentId === userId && !opts.isAdmin) return false;
-  return opts.asCoachForThisAppt;
+  const party = appt.studentId === userId || opts.asCoachForThisAppt;
+  if (!party) return false;
+  if (!appt.cancelRequestedBy) return opts.asCoachForThisAppt;
+  return appt.cancelRequestedBy !== userId;
 }

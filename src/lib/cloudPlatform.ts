@@ -131,6 +131,17 @@ function rpcUserMessage(e: unknown): string {
     return SESSION_REQUIRED;
   }
   const known = [
+    'kendi saatine randevu alamazsın',
+    'en fazla 5 bekleyen talep',
+    'bu saatte onaylı randevun var',
+    'koç hesabı onaylı değil',
+    'yalnız onaylı randevu için iptal talebi',
+    'kendi iptal talebine karşı taraf karar verir',
+    'iptal talebi yok',
+    'yalnız onaylı randevu',
+    'hesap askıda',
+    'ders başlamadan bitirilemez',
+    'görüşme için yetki veya zaman yok',
     'koç hesabı yok',
     'geçmiş saat eklenemez',
     'slot en az 30 dk sonra olmalı',
@@ -164,6 +175,9 @@ function rpcUserMessage(e: unknown): string {
   if (hit === 'üyelik gerekli') return 'Deneme veya ücretli üyelik gerekli.';
   if (hit === 'e-posta doğrulanmamış') return 'E-posta adresiniz doğrulanmamış.';
   if (hit === 'yetkisiz') return 'Bu işlem için yetkiniz yok.';
+  if (hit === 'hesap askıda') return 'Hesabın askıda; bu işlem yapılamaz.';
+  if (hit === 'kendi iptal talebine karşı taraf karar verir') return 'Kendi iptal talebine karşı taraf (veya yönetici) karar verir.';
+  if (hit === 'görüşme için yetki veya zaman yok') return 'Görüşmeye yalnız ders saatinde girilebilir (20 dk önceden).';
   if (hit) return hit.charAt(0).toUpperCase() + hit.slice(1) + '.';
   return publicCloudError(e);
 }
@@ -226,7 +240,8 @@ export async function submitCoachApplication(input: {
   studentCount: number;
 }): Promise<{ ok: true; id: string } | { ok: false; error: string; missing?: boolean }> {
   if (!supabase) return { ok: false, error: SUPABASE_UNAVAILABLE, missing: true };
-  const photo = input.photo.length > 180000 ? '' : input.photo;
+  if (input.photo.length > 180000) return { ok: false, error: 'Fotoğraf çok büyük. Daha küçük bir fotoğraf seç.' };
+  const photo = input.photo;
   try {
     const { data, error } = await withTimeout(
       supabase
@@ -255,15 +270,34 @@ export async function submitCoachApplication(input: {
 }
 
 export async function fetchMyCoach(userId: string): Promise<CloudCoach | null> {
-  if (!supabase) return null;
+  const res = await fetchMyCoachChecked(userId);
+  return res.ok ? res.coach : null;
+}
+
+/** Koç kaydı yok (`coach: null`) ile okunamadı (`ok: false`) ayrılır; ağ hatası "koç değil" sayılmaz. */
+export async function fetchMyCoachChecked(userId: string): Promise<{ ok: true; coach: CloudCoach | null } | { ok: false }> {
+  if (!supabase) return { ok: false };
   try {
     const { data, error } = await withTimeout(
       supabase.from('coaches').select('*').eq('user_id', userId).maybeSingle(),
     );
     if (error) throw error;
-    return data ? mapCoach(data as Record<string, unknown>) : null;
+    return { ok: true, coach: data ? mapCoach(data as Record<string, unknown>) : null };
   } catch {
-    return null;
+    return { ok: false };
+  }
+}
+
+/** Kayıtta başvuru sunucuda fotoğrafsız açılır; ilk girişte bu cihazdaki fotoğraf eklenir. */
+export async function setMyCoachPhoto(userId: string, photo: string): Promise<boolean> {
+  if (!supabase || !photo.startsWith('data:image/') || photo.length > 180000) return false;
+  try {
+    const { error } = await withTimeout(
+      supabase.from('coaches').update({ photo }).eq('user_id', userId).eq('photo', ''),
+    );
+    return !error;
+  } catch {
+    return false;
   }
 }
 
@@ -342,11 +376,14 @@ export async function setCoachHomeworkDone(id: string, done: boolean): Promise<{
   }
 }
 
-export async function fetchMyCoachHomework(): Promise<{ ok: true; rows: CoachHomework[] } | { ok: false; error: string; missing?: boolean }> {
-  if (!supabase) return { ok: false, error: SESSION_REQUIRED };
+/** Öğrenci olarak aldığın ödevler; koç olarak verdiklerin (aynı hesap) buraya girmez. */
+export async function fetchMyCoachHomework(studentId: string): Promise<{ ok: true; rows: CoachHomework[] } | { ok: false; error: string; missing?: boolean }> {
+  if (!supabase || !isUuid(studentId)) return { ok: false, error: SESSION_REQUIRED };
   try {
     const { data, error } = await withTimeout(
-      supabase.from('coach_homeworks').select('id, student_id, title, due, done, created_at, updated_at').order('created_at', { ascending: false }).limit(80),
+      supabase.from('coach_homeworks').select('id, student_id, title, due, done, created_at, updated_at')
+        .eq('student_id', studentId)
+        .order('created_at', { ascending: false }).limit(80),
     );
     if (error) throw error;
     return {
@@ -404,16 +441,14 @@ export async function fetchCoachStudentBrief(studentId: string, today: string): 
 
 export async function fetchCoachDesk(coachId: string): Promise<CoachDesk | null> {
   if (!supabase || !isUuid(coachId)) return null;
-  const [matches, legacyStudents, hw, pay, ap] = await Promise.all([
+  const [matches, hw, ap] = await Promise.all([
     rowsFrom('coach_matches', coachId),
-    rowsFrom('coach_students', coachId),
     rowsFrom('coach_homeworks', coachId),
-    rowsFrom('coach_payments', coachId),
     rowsFrom('appointments', coachId),
   ]);
-  const studentRows = matches.length ? matches : legacyStudents;
+  const pay: Record<string, unknown>[] = [];
   return {
-    students: mapStudents(studentRows),
+    students: mapStudents(matches),
     homeworks: hw.map((r) => ({
       id: String(r.id),
       studentId: String(r.student_id || ''),
@@ -441,34 +476,11 @@ export async function fetchCoachDesk(coachId: string): Promise<CoachDesk | null>
       status: asAppt(r.status),
       cancelReason: asCancelReason(r.cancel_reason),
       cancelRequestedAt: r.cancel_requested_at ? String(r.cancel_requested_at) : null,
+      cancelRequestedBy: r.cancel_requested_by ? String(r.cancel_requested_by) : null,
       cancelDecision: asCancelDecision(r.cancel_decision),
       startsAt: r.starts_at ? String(r.starts_at) : null,
     })),
   };
-}
-
-export async function pushCoachDesk(coachId: string, desk: CoachDesk): Promise<boolean> {
-  if (!supabase || !isUuid(coachId)) return false;
-  try {
-    await withTimeout(supabase.from('coach_matches').delete().eq('coach_id', coachId));
-    if (desk.students.length) {
-      const { error } = await supabase.from('coach_matches').insert(
-        desk.students.map((s) => ({
-          id: s.id,
-          coach_id: coachId,
-          student_id: isUuid(s.id) ? s.id : null,
-          student_name: s.name,
-          grade: s.grade,
-          note: s.note,
-          status: 'active',
-        })),
-      );
-      if (error && !isMissingRelation(error)) throw error;
-    }
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 function asSlotRows(data: unknown): Record<string, unknown>[] {
@@ -507,7 +519,7 @@ export async function requestCancelApprovedAppointment(apptId: string): Promise<
     return {
       ok: true,
       duplicate,
-      message: duplicate ? 'İptal talebi zaten açık.' : 'İptal talebi gönderildi. Koç veya yönetici onaylamadan randevu düşmez.',
+      message: duplicate ? 'İptal talebi zaten açık.' : 'İptal talebi gönderildi. Karşı taraf veya yönetici onaylamadan randevu düşmez.',
     };
   } catch (e) {
     return { ok: false, error: rpcUserMessage(e) };
@@ -633,14 +645,14 @@ export async function updateAppointmentStatus(apptId: string, status: Appointmen
   }
 }
 
-export async function adminSetCoachStatus(id: string, status: CoachStatus): Promise<boolean> {
-  if (!supabase || !isUuid(id)) return false;
+export async function adminSetCoachStatus(id: string, status: CoachStatus): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!supabase || !isUuid(id)) return { ok: false, error: 'Geçersiz koç kaydı.' };
   try {
     const { error } = await withTimeout(supabase.rpc('admin_set_coach_status', { p_id: id, p_status: status }));
     if (error) throw error;
-    return true;
-  } catch {
-    return false;
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: rpcUserMessage(e) };
   }
 }
 
@@ -934,6 +946,7 @@ export async function fetchAdminBundle(): Promise<CloudAdminBundle | null> {
       coachName: nameOf(String(r.coach_id)),
       cancelReason: asCancelReason(r.cancel_reason),
       cancelRequestedAt: r.cancel_requested_at ? String(r.cancel_requested_at) : null,
+      cancelRequestedBy: r.cancel_requested_by ? String(r.cancel_requested_by) : null,
       cancelDecision: asCancelDecision(r.cancel_decision),
       startsAt: r.starts_at ? String(r.starts_at) : null,
     }));

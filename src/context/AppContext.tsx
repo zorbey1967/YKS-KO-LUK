@@ -8,7 +8,7 @@ import { canAccessAdminPanel, fetchServerAdmin, fetchServerPlatformOwner } from 
 import { readLocal, writeLocal } from '../lib/util';
 import { coerceAppPage, postLoginPageForRole } from '../lib/roleNav';
 import { getPersonDisplayName } from '../lib/displayName';
-import { parseAccountStatus, fetchMyCoach, pushStudentData } from '../lib/cloudPlatform';
+import { parseAccountStatus, fetchMyCoachChecked, pushStudentData } from '../lib/cloudPlatform';
 import { mergeAppData } from '../lib/syncMerge';
 import { resolveAccessGate, type AccessGate } from '../lib/accessGate';
 import { consumeOAuthRedirect, noteOAuthAuthEvent, oauthExchangeInFlight, urlHasOAuthCallback } from '../lib/authCallback';
@@ -19,7 +19,7 @@ import { emptyLibraryPrefs } from '../lib/libraryPresence';
 import { clearLive } from '../lib/studyTimer';
 import { clearCoachSession } from '../lib/coaches';
 import { clearGoogleSignupPending } from '../lib/googleOAuth';
-import { applyLoginMode, loginModeNotice, readLoginMode, resolveLoginMode, writeLoginMode, type LoginMode } from '../lib/roleMode';
+import { applyLoginMode, clearLoginMode, loginModeNotice, readLoginMode, resolveLoginMode, writeLoginMode, type LoginMode } from '../lib/roleMode';
 
 type Ctx = {
   page: PageId;
@@ -193,7 +193,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         supabase.from('profiles').select('*').eq('id', u.id).maybeSingle(),
       );
       if (error) throw error;
-      const coach = await fetchMyCoach(u.id);
+      const coachRes = await fetchMyCoachChecked(u.id);
+      const coach = coachRes.ok ? coachRes.coach : null;
       const p: Profile = row
         ? {
             id: row.id,
@@ -209,6 +210,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             signup_track: String(row.signup_track || ''),
             signup_exam: String(row.signup_exam || ''),
             coach_status: coach?.status,
+            coach_lookup_failed: !coachRes.ok,
             target_department: row.target_department,
             target_rank: row.target_rank,
             score: Number.isFinite(Number(row.score)) ? Math.max(0, Math.min(100, Number(row.score))) : undefined,
@@ -296,6 +298,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         clearLive(localStorage, null);
         clearCoachSession();
         clearGoogleSignupPending();
+        if (leaving?.id) {
+          clearLoginMode();
+          setStoredLoginMode(null);
+        }
         hydratedUserId.current = null;
         userRef.current = null;
         setUser(null);

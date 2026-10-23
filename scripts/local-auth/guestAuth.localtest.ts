@@ -216,6 +216,37 @@ describe.skipIf(!schemaMode)('Uçtan uca: tek hesap öğrenci + koç (062)', () 
     const tier = await s.rpc('caller_access_tier');
     report.dualStudentTier = tier.error ? `HATA: ${tier.error.message}` : tier.data;
     expect(tier.data).toBe('none');
+
+    // 063: öğrenci onaylı koçu dizinde görür; koç kendi saatine randevu alamaz
+    const st = browser();
+    const stPw = `Rk${uuid().slice(0, 8)}9a`;
+    const stEmail = `ogr-${uuid().slice(0, 8)}@example.com`;
+    expect((await admin.auth.admin.createUser({ email: stEmail, password: stPw, email_confirm: true, user_metadata: { name: 'Öğrenci Test' } })).error).toBeNull();
+    expect((await st.auth.signInWithPassword({ email: stEmail, password: stPw })).error).toBeNull();
+    const dir = await st.from('coach_directory').select('id');
+    report.studentSeesDirectory = dir.error ? `HATA: ${dir.error.message}` : (dir.data || []).some((r) => r.id === coachId);
+    expect((dir.data || []).some((r) => r.id === coachId)).toBe(true);
+    const slot = await s.rpc('add_coach_slot', { p_starts_at: new Date(Date.now() + 2 * 86_400_000).toISOString() });
+    expect(slot.error, slot.error?.message).toBeNull();
+    const ownSlot = await s.rpc('request_appointment', { p_availability_id: (slot.data as { id: string }).id });
+    report.selfBooking = ownSlot.error ? 'reddedildi' : 'KABUL (beklenmedik)';
+    expect(ownSlot.error?.message || '').toMatch(/kendi saatine/);
+  });
+
+  it('7) koç niyetiyle e-posta kaydı başvuruyu sunucuda beklemede açar; normal kayıt etkilenmez', async () => {
+    const email = `koc-kayit-${uuid().slice(0, 8)}@example.com`;
+    const r = await browser().auth.signUp({
+      email,
+      password: `Rk${uuid().slice(0, 8)}9a`,
+      options: { data: { name: 'Kayıt Koç', intent: 'coach', coach_track: 'YKS Sözel', coach_focus: 'Paragraf', coach_student_count: '3' } },
+    });
+    report.coachSignup = r.error ? `HATA: ${r.error.message}` : 'kabul';
+    expect(r.error, r.error?.message).toBeNull();
+    const row = await admin.from('coaches').select('status, track, student_count, photo').eq('email', email).maybeSingle();
+    report.coachSignupRow = row.data || row.error?.message || null;
+    expect(row.data).toMatchObject({ status: 'pending', track: 'YKS Sözel', student_count: 3, photo: '' });
+    const plain = await browser().auth.signUp({ email: `ogr-kayit-${uuid().slice(0, 8)}@example.com`, password: `Rk${uuid().slice(0, 8)}9a` });
+    expect(plain.error, plain.error?.message).toBeNull();
   });
 });
 

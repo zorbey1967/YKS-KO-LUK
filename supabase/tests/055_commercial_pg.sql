@@ -139,8 +139,9 @@ begin
   select * into r from public.profiles where id = 'b0000000-0000-4000-8000-000000000003';
   if r.role <> 'student' or r.signup_intent <> 'student' then raise exception 'kayıt admin açılmamalı: %', r.role; end if;
 
-  select count(*) into n from public.profiles where id = 'a0000000-0000-4000-8000-000000000004' and role = 'coach';
-  if n <> 1 then raise exception 'onaylı koç coach olmalı'; end if;
+  -- Tek hesap modeli (062/063): onaylı koçun profil rolü öğrenci kalır; koçluk coaches kaydındadır.
+  select count(*) into n from public.profiles where id = 'a0000000-0000-4000-8000-000000000004' and role = 'student';
+  if n <> 1 then raise exception 'onaylı koç öğrenci rolünde kalmalı'; end if;
   select count(*) into n from public.profiles where id = 'a0000000-0000-4000-8000-000000000005' and role = 'student';
   if n <> 1 then raise exception 'bekleyen koç öğrenci kalmalı'; end if;
   select count(*) into n from public.profiles where id = 'a0000000-0000-4000-8000-000000000001' and role = 'admin';
@@ -285,11 +286,11 @@ begin
   r := public.start_top_plan_trial();
   if r->>'status' <> 'trialing' or r->>'message' <> 'Deneme zaten açık.' then raise exception 'ikinci çağrı yeni deneme yazmamalı: %', r; end if;
 
-  -- koç
+  -- onaylı koç (tek hesap modeli): öğrenci tarafında normal kurallarla deneme başlatır
   perform set_config('request.jwt.claims', '{"sub":"a0000000-0000-4000-8000-000000000004","role":"authenticated"}', true);
   perform set_config('request.jwt.claim.sub', 'a0000000-0000-4000-8000-000000000004', true);
   r := public.start_top_plan_trial();
-  if (r->>'ok')::boolean then raise exception 'koç deneme başlatamamalı: %', r; end if;
+  if r->>'status' <> 'trialing' then raise exception 'öğrenci rolündeki koç deneme başlatabilmeli: %', r; end if;
 
   -- askıdaki öğrenci
   perform set_config('request.jwt.claims', '{"sub":"a0000000-0000-4000-8000-000000000006","role":"authenticated"}', true);

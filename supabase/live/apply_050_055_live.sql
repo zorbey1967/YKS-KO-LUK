@@ -1079,13 +1079,8 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
 
--- Onaylı koçların profil rolü (tek seferlik, tekrar çalıştırmak etkisiz).
-update public.profiles p
-   set role = 'coach'
-  from public.coaches c
- where c.user_id = p.id
-   and c.status = 'active'
-   and p.role = 'student';
+-- (Kaldırıldı, 063: tek hesap modelinde onaylı koçun profil rolü 'student' kalır; bu dosya
+--  yeniden çalıştırılırsa öğrenci + koç hesaplarını saf koça çevirmesin.)
 
 -- 3) Ödeme: yenileme ve paket değişimi ----------------------------------------------------
 

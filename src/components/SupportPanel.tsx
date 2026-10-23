@@ -96,7 +96,10 @@ export function SupportPanel() {
     setErr('');
     setNote('');
     const names = supportNamesForTicket({ profileName: profile?.name, consent });
-    const res = await createSupportTicket({ firstName: names.firstName, lastName: names.lastName, subject: sub, body: msg });
+    const res = await createSupportTicket({
+      firstName: names.firstName, lastName: names.lastName, subject: sub, body: msg,
+      senderRole: profile?.role === 'coach' ? 'coach' : 'student',
+    });
     setBusy(false);
     if (!res.ok) {
       setErr('Mesaj gönderilemedi. Lütfen tekrar deneyin.');

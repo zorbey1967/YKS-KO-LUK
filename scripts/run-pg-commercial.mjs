@@ -43,6 +43,7 @@ const M059 = mig('059');
 const M060 = mig('060');
 const M061 = mig('061');
 const M062 = mig('062');
+const M063 = mig('063');
 
 function load(rel) {
   return readFileSync(join(root, rel), 'utf8');
@@ -126,7 +127,12 @@ function scenario(label, db, list) {
   apply(db, [M062, M062]);
   const out62 = psql(db, load('supabase/tests/062_dual_role_pg.sql'));
   if (!out62.includes('OK 062_dual_role_pg')) throw new Error(`${label}: 062 test sonucu yok`);
-  console.log(`  OK${out58.includes('(zorro_rls)') ? ' (058 ZORRO yazma kapısı dahil)' : ''} + 060/061 + 062`);
+  apply(db, [M063, M063]);
+  const out62b = psql(db, load('supabase/tests/062_dual_role_pg.sql'));
+  if (!out62b.includes('OK 062_dual_role_pg')) throw new Error(`${label}: 063 sonrası 062 test sonucu yok`);
+  const out63 = psql(db, load('supabase/tests/063_coach_flow_pg.sql'));
+  if (!out63.includes('OK 063_coach_flow_pg')) throw new Error(`${label}: 063 test sonucu yok`);
+  console.log(`  OK${out58.includes('(zorro_rls)') ? ' (058 ZORRO yazma kapısı dahil)' : ''} + 060/061 + 062 + 063`);
 }
 
 try {
@@ -196,6 +202,14 @@ try {
   let f62 = false;
   try { psql('c062n', load('supabase/tests/062_dual_role_pg.sql')); } catch { f62 = true; }
   if (!f62) throw new Error('062 olmadan 062 testi geçti; test açığı yakalamıyor');
+  console.log('  OK (beklenen hata)');
+
+  process.stdout.write('• Negatif kontrol: 063 olmadan 063 testi başarısız olmalı\n');
+  fresh('c063n');
+  apply('c063n', [...LIVE_LIKE, ...FEATURE, M055, M058, M059, M060, M061, M062]);
+  let f63 = false;
+  try { psql('c063n', load('supabase/tests/063_coach_flow_pg.sql')); } catch { f63 = true; }
+  if (!f63) throw new Error('063 olmadan 063 testi geçti; test açığı yakalamıyor');
   console.log('  OK (beklenen hata)');
 
   console.log('PG_COMMERCIAL_OK');

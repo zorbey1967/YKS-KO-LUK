@@ -21,7 +21,7 @@ export function TasksPage({ onNewTask }: { onNewTask: () => void }) {
       return;
     }
     let alive = true;
-    void fetchMyCoachHomework().then((res) => {
+    void fetchMyCoachHomework(user.id).then((res) => {
       if (!alive) return;
       if (!res.ok) {
         setCoachHw([]);

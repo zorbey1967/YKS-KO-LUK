@@ -82,6 +82,7 @@ export type CoachAppointment = {
   status: AppointmentStatus;
   cancelReason?: AppointmentCancelReason | null;
   cancelRequestedAt?: string | null;
+  cancelRequestedBy?: string | null;
   cancelDecision?: AppointmentCancelDecision | null;
   startsAt?: string | null;
 };
@@ -104,15 +105,13 @@ export function asCancelDecision(v: unknown): AppointmentCancelDecision | null {
 export function appointmentStatusLabel(a: Pick<CoachAppointment, 'status' | 'cancelReason' | 'cancelDecision'>, party: 'student' | 'coach' = 'student') {
   if (a.status === 'bekliyor') return party === 'coach' ? 'Onay bekliyor' : 'Bekliyor — koç onayı yok, kesin değil';
   if (a.status === 'onay' && a.cancelReason === 'approved_cancel_request' && a.cancelDecision !== 'denied') {
-    return party === 'coach'
-      ? 'Onaylı — iptal talebi bekliyor'
-      : 'Onaylı — iptal talebin koç/yönetici onayında';
+    return 'Onaylı — iptal talebi açık (talebi açmayan taraf veya yönetici karar verir)';
   }
   if (a.status === 'onay') return 'Onaylı — randevu kesin';
   if (a.status === 'tamamlandi') return 'Tamamlandı';
   if (a.cancelReason === 'student_no_show') {
     return party === 'student'
-      ? 'İptal (no-show): 10 dk içinde katılmadın. Puanın düştü.'
+      ? 'İptal (no-show): 10 dk içinde katılmadın.'
       : 'İptal: öğrenci 10 dk içinde katılmadı (no-show).';
   }
   if (a.cancelReason === 'sibling_accepted') {
@@ -219,8 +218,12 @@ export function saveCoachSession(session: CoachSession) {
   writeJson(SES_KEY, session);
 }
 
+/** Çıkışta koç oturumu ve koç masası (öğrenci adları, ödevler) cihazda kalmaz. */
 export function clearCoachSession() {
-  try { localStorage.removeItem(SES_KEY); } catch { /* ignore */ }
+  try {
+    localStorage.removeItem(SES_KEY);
+    localStorage.removeItem(DESK_KEY);
+  } catch { /* ignore */ }
 }
 
 function desks(): Record<string, CoachDesk> {

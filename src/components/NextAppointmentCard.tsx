@@ -25,7 +25,7 @@ export function NextAppointmentCard() {
       }
       const split = splitAppointmentsBySlot(res.rows);
       setCoachId(cid);
-      setCurrent(split.current[0] || null);
+      setCurrent(split.current[0] || split.upcoming[0] || null);
       setOldCount(split.past.length);
       setReady(true);
     })();
@@ -53,7 +53,7 @@ export function NextAppointmentCard() {
           <MeetingJoinButton appt={current} userId={user.id} coachId={coachId} />
         </div>
       ) : (
-        <div className="empty">Bu saat için randevu yok.</div>
+        <div className="empty">Yaklaşan randevu yok.</div>
       )}
       {oldCount ? (
         <div className="actions" style={{ marginTop: 12 }}>

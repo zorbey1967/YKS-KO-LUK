@@ -18,6 +18,10 @@ export function writeLoginMode(mode: LoginMode) {
   writeLocal(LOGIN_MODE_KEY, mode);
 }
 
+export function clearLoginMode() {
+  try { localStorage.removeItem(LOGIN_MODE_KEY); } catch { /* ignore */ }
+}
+
 export function baseRoleOf(p: Profile | null | undefined) {
   return p?.base_role ?? p?.role ?? 'student';
 }
@@ -44,9 +48,11 @@ export function resolveLoginMode(p: Profile | null | undefined, stored: LoginMod
   const role = baseRoleOf(p);
   if (role === 'coach') return 'coach';
   if (role === 'admin') return 'student';
-  const preferred = stored ?? ((p?.base_signup_intent ?? p?.signup_intent) === 'coach' ? 'coach' : 'student');
-  if (preferred === 'coach' && !hasCoachRecord(p)) return 'student';
-  return preferred;
+  if (stored === 'coach') return hasCoachRecord(p) || p?.coach_lookup_failed ? 'coach' : 'student';
+  if (stored === 'student') return 'student';
+  // Seçim yoksa: koç niyetiyle kayıtlı ve başvurusu açık / onaylıysa koç; reddedilmiş veya pasifse öğrenci.
+  const intent = (p?.base_signup_intent ?? p?.signup_intent) === 'coach';
+  return intent && (p?.coach_status === 'pending' || p?.coach_status === 'active') ? 'coach' : 'student';
 }
 
 /** Profili seçilen giriş moduna göre gösterir; tekrar uygulanması sonucu değiştirmez. */
@@ -65,6 +71,7 @@ export function applyLoginMode(p: Profile | null, stored: LoginMode | null): Pro
 
 /** Giriş ekranında "Koç olarak gir" seçildi ama hesap koç paneline giremiyorsa açıklama. */
 export function loginModeNotice(p: Profile | null | undefined, chosen: LoginMode | null): string {
+  if (baseRoleOf(p) === 'admin' || p?.coach_lookup_failed) return '';
   if (chosen === 'coach' && !hasCoachRecord(p)) {
     return 'Bu hesapta koç kaydı yok; öğrenci olarak giriş yapıldı. Koç olmak için Hesabım\'dan başvurabilirsin.';
   }
